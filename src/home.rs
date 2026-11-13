@@ -24,11 +24,12 @@ pub fn greeting(hour: u32) -> &'static str {
 pub fn view<'a>(
     hour: u32,
     backdrop: Option<&'a image::Handle>,
+    zoom: f32,
     recents: &'a [Card],
     mixes: &'a [Card],
 ) -> Element<'a, Message> {
     let content = column![
-        hero(hour, backdrop),
+        hero(hour, backdrop, zoom),
         section("Recently played", recents_grid(recents)),
         section("Mixed for you", mixes_row(mixes)),
     ];
@@ -36,12 +37,13 @@ pub fn view<'a>(
     scrollable(content).height(Fill).into()
 }
 
-fn hero(hour: u32, backdrop: Option<&image::Handle>) -> Element<'_, Message> {
+fn hero(hour: u32, backdrop: Option<&image::Handle>, zoom: f32) -> Element<'_, Message> {
     let background: Element<'_, Message> = match backdrop {
         Some(handle) => image(handle.clone())
             .width(Fill)
             .height(HERO_HEIGHT)
             .content_fit(ContentFit::Cover)
+            .scale(zoom)
             .into(),
         None => container(space())
             .width(Fill)

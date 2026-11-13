@@ -1,17 +1,20 @@
 //! The synced lyrics panel on the right.
 
 use iced::font::Weight;
-use iced::widget::{Column, container, text};
-use iced::{Element, Fill, Font};
+use iced::gradient::Linear;
+use iced::widget::{Column, column, container, pin, space, stack, text};
+use iced::{Degrees, Element, Fill, Font};
 
 use crate::{Message, theme};
 
 pub const WIDTH: f32 = 300.0;
 
-/// How many lines are shown before the current one.
-const LINES_BEFORE: usize = 2;
-/// How many lines are shown in total.
-const LINES_SHOWN: usize = 9;
+/// The height of every lyric row. Fixed so the scroll position of any line is easy to compute.
+const ROW_HEIGHT: f32 = 88.0;
+/// How far from the top of the panel the current line sits.
+const FOCUS_OFFSET: f32 = 140.0;
+/// The height of the fade at the top and bottom of the panel.
+const FADE_HEIGHT: f32 = 90.0;
 
 /// One line of synced lyrics: when it starts and what it says.
 pub struct LyricLine {
@@ -49,28 +52,46 @@ pub fn current_line(lines: &[LyricLine], elapsed: u32) -> Option<usize> {
     lines.iter().rposition(|line| line.start <= elapsed)
 }
 
-/// A few lines around the current one, with the current line bright and the rest dimmed.
-pub fn view(lines: &[LyricLine], current: Option<usize>) -> Element<'_, Message> {
+/// Every line of the track, scrolled so the line at `scroll` (a line index, animated between
+/// whole numbers) sits near the top, with the current line bright and fades at both edges.
+pub fn view(lines: &[LyricLine], current: Option<usize>, scroll: f32) -> Element<'_, Message> {
     let content: Element<'_, Message> = if lines.is_empty() {
-        text("No lyrics for this track")
-            .color(theme::TEXT_SECONDARY)
+        container(text("No lyrics for this track").color(theme::TEXT_SECONDARY))
+            .padding([48, 26])
             .into()
     } else {
-        let first = current.unwrap_or(0).saturating_sub(LINES_BEFORE);
-        let last = (first + LINES_SHOWN).min(lines.len());
-        let shown = lines[first..last]
-            .iter()
-            .enumerate()
-            .map(|(offset, line)| lyric(line, Some(first + offset) == current));
+        let rows = lines.iter().enumerate().map(|(index, line)| {
+            container(lyric(line, Some(index) == current))
+                .height(ROW_HEIGHT)
+                .clip(true)
+                .into()
+        });
+        let list = Column::with_children(rows).width(WIDTH).padding([0, 26]);
 
-        Column::with_children(shown).spacing(18).into()
+        pin(list).y(FOCUS_OFFSET - scroll * ROW_HEIGHT).into()
     };
 
-    container(content)
+    let fades = column![fade(Degrees(0.0)), space::vertical(), fade(Degrees(180.0))];
+
+    container(stack![content, fades])
         .width(WIDTH)
         .height(Fill)
-        .padding([48, 26])
+        .clip(true)
         .style(|_| theme::panel(theme::LYRICS))
+        .into()
+}
+
+/// A band that goes from the panel color to transparent, pointing at `direction`.
+fn fade(direction: Degrees) -> Element<'static, Message> {
+    container(space())
+        .width(Fill)
+        .height(FADE_HEIGHT)
+        .style(move |_| {
+            let gradient = Linear::new(direction)
+                .add_stop(0.0, theme::LYRICS.scale_alpha(0.0))
+                .add_stop(1.0, theme::LYRICS);
+            container::background(gradient)
+        })
         .into()
 }
 
