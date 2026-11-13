@@ -31,6 +31,8 @@ pub enum NavItem {
     NewPlaylist,
     LikedMusic,
     Playlist(usize),
+    /// Nothing highlighted, while another screen is shown.
+    None,
 }
 
 /// What the sidebar remembers: the selected entry and which sections are open.
@@ -153,34 +155,37 @@ pub fn view<'a>(
     state: &'a SidebarState,
     playlists: &'a [Playlist],
     query: &'a str,
+    suggestions: &'a [String],
+    on_home: bool,
 ) -> Element<'a, Message> {
-    let mut content = column![search_box(query)].spacing(2);
+    // Away from Home (search results, an album) no sidebar entry is highlighted.
+    let selected = if on_home {
+        state.selected
+    } else {
+        NavItem::None
+    };
+    let mut content = column![search_box(query), suggestion_list(suggestions)].spacing(2);
 
     content = content.push(section_header("YouTube Music", Section::Music));
     if state.is_open(Section::Music) {
-        content = content.push(entries(&MUSIC, state.selected));
+        content = content.push(entries(&MUSIC, selected));
     }
 
     content = content.push(section_header("Library", Section::Library));
     if state.is_open(Section::Library) {
-        content = content.push(entries(&LIBRARY, state.selected));
+        content = content.push(entries(&LIBRARY, selected));
     }
 
     content = content.push(section_header("Playlists", Section::Playlists));
     if state.is_open(Section::Playlists) {
-        content = content.push(entries(&PLAYLIST_ACTIONS, state.selected));
+        content = content.push(entries(&PLAYLIST_ACTIONS, selected));
         for (index, playlist) in playlists.iter().enumerate() {
             let item = NavItem::Playlist(index);
             let swatch = container(space())
                 .width(18)
                 .height(18)
                 .style(move |_| container::background(playlist.color).border(border::rounded(4)));
-            content = content.push(nav_button(
-                swatch.into(),
-                &playlist.name,
-                item,
-                state.selected,
-            ));
+            content = content.push(nav_button(swatch.into(), &playlist.name, item, selected));
         }
     }
 
@@ -190,6 +195,30 @@ pub fn view<'a>(
         .padding([12, 10])
         .style(|_| theme::panel(theme::SIDEBAR))
         .into()
+}
+
+/// Search terms suggested while typing; clicking one searches for it.
+fn suggestion_list(suggestions: &[String]) -> Element<'_, Message> {
+    let rows = suggestions.iter().map(|term| {
+        button(
+            row![
+                theme::icon(
+                    include_bytes!("../assets/icons/search.svg"),
+                    theme::TEXT_DIM,
+                    14.0,
+                ),
+                text(term).size(13),
+            ]
+            .spacing(10)
+            .align_y(iced::Center),
+        )
+        .on_press(Message::PickSuggestion(term.clone()))
+        .width(Fill)
+        .padding([6, 10])
+        .style(|_, status| theme::flat_button(status, false))
+        .into()
+    });
+    Column::with_children(rows).padding([4, 0]).into()
 }
 
 /// The search field: typing updates the query and Enter runs the search.

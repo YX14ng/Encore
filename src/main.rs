@@ -3,6 +3,8 @@
 mod audio;
 mod backdrop;
 mod clock;
+mod collection;
+mod download;
 mod home;
 mod layout;
 mod lyrics;
@@ -28,9 +30,10 @@ use clock::Playback;
 use lyrics::LyricLine;
 use mock::{Card, Playlist, Track};
 use online::{Online, Poll};
+use search::Filter;
 use sidebar::{NavItem, Section, SidebarState};
 use song::Song;
-use youtube::SearchTrack;
+use youtube::{Collection, SearchPage, SearchTrack, Tile};
 
 fn main() -> iced::Result {
     iced::application(App::new, App::update, App::view)
@@ -79,6 +82,7 @@ struct App {
 enum Screen {
     Home,
     Search,
+    Collection,
 }
 
 /// Everything that can happen in the app.
@@ -95,12 +99,19 @@ enum Message {
     Next,
     WindowResized(f32),
     SearchChanged(String),
+    SuggestionsLoaded(u64, Result<Vec<String>, String>),
+    PickSuggestion(String),
     Search,
-    SearchFinished(Result<Vec<SearchTrack>, String>),
-    CoverFetched(String, Result<Vec<u8>, String>),
-    Play(usize),
+    SearchFinished(Result<SearchPage, String>),
+    SetFilter(Filter),
+    ImageFetched(String, Result<Vec<u8>, String>),
+    OpenTile(Tile),
+    CollectionLoaded(Result<Collection, String>),
+    PlayQueue(Vec<SearchTrack>, usize),
+    PlayTop,
     AudioReady(usize, Result<std::path::PathBuf, String>),
     Prefetched,
+    Back,
 }
 
 impl App {
@@ -183,24 +194,50 @@ impl App {
                 self.next_track();
             }
             Message::WindowResized(width) => self.window_width = width,
-            Message::SearchChanged(query) => self.online.query = query,
+            Message::SearchChanged(query) => return self.online.query_changed(query),
+            Message::SuggestionsLoaded(request, result) => {
+                self.online.suggestions_loaded(request, result);
+            }
+            Message::PickSuggestion(term) => {
+                self.online.query = term;
+                self.screen = Screen::Search;
+                return self.online.search();
+            }
             Message::Search => {
                 self.screen = Screen::Search;
                 return self.online.search();
             }
             Message::SearchFinished(result) => return self.online.search_finished(result),
-            Message::CoverFetched(id, bytes) => {
-                if self.online.cover_fetched(id.clone(), bytes) {
-                    self.now_playing.cover = self.online.cover(&id);
-                    self.backdrop = self
-                        .online
-                        .cover_bytes(&id)
-                        .and_then(backdrop::blurred_backdrop);
+            Message::SetFilter(filter) => {
+                self.screen = Screen::Search;
+                self.online.set_filter(filter);
+            }
+            Message::ImageFetched(url, bytes) => {
+                if self.online.image_fetched(url.clone(), bytes) {
+                    self.show_cover(&url);
                 }
             }
-            Message::Play(index) => return self.online.play(index),
+            Message::OpenTile(tile) => {
+                self.screen = Screen::Collection;
+                return self.online.open(tile);
+            }
+            Message::CollectionLoaded(result) => return self.online.collection_loaded(result),
+            Message::PlayQueue(tracks, index) => return self.online.play_queue(tracks, index),
+            Message::PlayTop => {
+                let (opens, task) = self.online.play_top();
+                if opens {
+                    self.screen = Screen::Collection;
+                }
+                return task;
+            }
             Message::AudioReady(index, path) => return self.start_online(index, path),
             Message::Prefetched => {}
+            Message::Back => {
+                self.screen = match self.screen {
+                    Screen::Collection => Screen::Search,
+                    Screen::Search | Screen::Home => Screen::Home,
+                };
+            }
         }
         Task::none()
     }
@@ -215,12 +252,17 @@ impl App {
         let Some(track) = started else {
             return prefetch;
         };
-        let (id, duration) = (track.id.clone(), track.duration);
-        self.now_playing = Song::from_search(&track, self.online.cover(&id));
-        self.backdrop = self
-            .online
-            .cover_bytes(&id)
+        let cover = track
+            .cover_url
+            .as_deref()
+            .and_then(|url| self.online.image(url));
+        self.now_playing = Song::from_search(&track, cover);
+        self.backdrop = track
+            .cover_url
+            .as_deref()
+            .and_then(|url| self.online.image_bytes(url))
             .and_then(backdrop::blurred_backdrop);
+        let duration = track.duration;
         self.playback = Playback {
             elapsed: 0,
             duration,
@@ -231,7 +273,16 @@ impl App {
         prefetch
     }
 
-    /// Plays the next search result, if there is one.
+    /// Puts a freshly downloaded cover on the player and behind the home greeting.
+    fn show_cover(&mut self, url: &str) {
+        self.now_playing.cover = self.online.image(url);
+        self.backdrop = self
+            .online
+            .image_bytes(url)
+            .and_then(backdrop::blurred_backdrop);
+    }
+
+    /// Plays the next song of the queue, if there is one.
     fn play_next_online(&mut self) -> Task<Message> {
         match self.online.next_index() {
             Some(next) => self.online.play(next),
@@ -277,10 +328,14 @@ impl App {
                 &self.mixes,
             ),
             Screen::Search => search::view(self.online.results()),
+            Screen::Collection => {
+                let (collection, status, shared) = self.online.collection();
+                collection::view(collection, status, shared)
+            }
         };
 
         let center = container(column![
-            top_bar::view(columns.sidebar, columns.lyrics),
+            top_bar::view(columns.sidebar, columns.lyrics, self.screen != Screen::Home),
             content,
             player::view(&self.now_playing, &self.playback, self.liked)
         ])
@@ -289,11 +344,15 @@ impl App {
         .style(|_| theme::panel(theme::CENTER));
 
         row![]
-            .push(
-                columns
-                    .sidebar
-                    .then(|| sidebar::view(&self.sidebar, &self.playlists, &self.online.query)),
-            )
+            .push(columns.sidebar.then(|| {
+                sidebar::view(
+                    &self.sidebar,
+                    &self.playlists,
+                    &self.online.query,
+                    self.online.suggestions(),
+                    self.screen == Screen::Home,
+                )
+            }))
             .push(center)
             .push(columns.lyrics.then(|| {
                 let current = lyrics::current_line(&self.lyrics, self.playback.elapsed);

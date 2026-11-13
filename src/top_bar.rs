@@ -5,14 +5,15 @@ use iced::{Center, Element};
 
 use crate::{Message, theme};
 
-/// Back and forward, the panel toggles and the shortcuts on the right.
+/// Back and forward, the panel toggles and the shortcuts on the right. Back is active while a
+/// search or a collection is open.
 /// The sidebar and lyrics buttons are highlighted while their panel is shown.
-pub fn view(show_sidebar: bool, show_lyrics: bool) -> Element<'static, Message> {
+pub fn view(show_sidebar: bool, show_lyrics: bool, can_go_back: bool) -> Element<'static, Message> {
     row![
         tool(include_bytes!("../assets/icons/more.svg"), None, false),
         tool(
             include_bytes!("../assets/icons/chevron-left.svg"),
-            None,
+            can_go_back.then_some(Message::Back),
             false
         ),
         tool(

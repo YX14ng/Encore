@@ -1,21 +1,15 @@
-//! YouTube Music: searching the catalog with rustypipe and downloading audio with yt-dlp.
-//!
-//! rustypipe's own stream download no longer works (its signature deobfuscation is out of date),
-//! so audio goes through yt-dlp, which keeps up with YouTube's changes.
-
-use std::path::{Path, PathBuf};
+//! The YouTube Music catalog through rustypipe: search, suggestions, albums, playlists and
+//! artists. Audio downloads live in `download.rs`.
 
 use rustypipe::client::RustyPipe;
-use rustypipe::model::TrackItem;
-use tokio::process::Command;
+use rustypipe::model::{
+    AlbumItem, AlbumType, ArtistItem, MusicItem, MusicPlaylistItem, Thumbnail, TrackItem,
+};
 
-/// The widest cover worth downloading for the player card and the blurred background.
+/// The widest image worth downloading for covers and the blurred background.
 const COVER_MAX_WIDTH: u32 = 544;
 
-/// Audio formats yt-dlp may leave in the cache, in order of preference.
-const AUDIO_EXTENSIONS: [&str; 4] = ["webm", "opus", "m4a", "mp4"];
-
-/// A track found by a search.
+/// A song that can be played.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SearchTrack {
     pub id: String,
@@ -26,47 +20,55 @@ pub struct SearchTrack {
     pub cover_url: Option<String>,
 }
 
-impl SearchTrack {
-    fn from_item(item: &TrackItem) -> Self {
-        let artist = item
-            .artists
-            .iter()
-            .map(|artist| artist.name.as_str())
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        Self {
-            id: item.id.clone(),
-            title: item.name.clone(),
-            artist,
-            album: item
-                .album
-                .as_ref()
-                .map(|album| album.name.clone())
-                .unwrap_or_default(),
-            duration: item.duration.unwrap_or(0),
-            cover_url: pick_cover(
-                item.cover
-                    .iter()
-                    .map(|thumbnail| (thumbnail.width, thumbnail.url.as_str())),
-                COVER_MAX_WIDTH,
-            ),
-        }
-    }
+/// What a card opens.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TileKind {
+    Album,
+    Artist,
+    Playlist,
 }
 
-/// Where Encore keeps its cache: `$XDG_CACHE_HOME/encore`, or `~/.cache/encore`.
-pub fn cache_dir() -> PathBuf {
-    let base = std::env::var_os("XDG_CACHE_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
-        .unwrap_or_else(std::env::temp_dir);
-    base.join("encore")
+/// An album, artist or playlist, shown as a card.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Tile {
+    pub kind: TileKind,
+    pub id: String,
+    pub title: String,
+    pub subtitle: String,
+    pub image_url: Option<String>,
+}
+
+/// The single best match of a search, shown big at the top.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TopResult {
+    Track(SearchTrack),
+    Tile(Tile),
+}
+
+/// Everything a search found, by category.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SearchPage {
+    pub top: Option<TopResult>,
+    pub songs: Vec<SearchTrack>,
+    pub videos: Vec<SearchTrack>,
+    pub albums: Vec<Tile>,
+    pub artists: Vec<Tile>,
+    pub playlists: Vec<Tile>,
+}
+
+/// An opened album, playlist or artist with its songs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Collection {
+    pub kind: TileKind,
+    pub title: String,
+    pub subtitle: String,
+    pub image_url: Option<String>,
+    pub tracks: Vec<SearchTrack>,
 }
 
 /// A rustypipe client that keeps its data in Encore's cache.
 pub fn client() -> Result<RustyPipe, String> {
-    let storage = cache_dir().join("rustypipe");
+    let storage = crate::download::cache_dir().join("rustypipe");
     std::fs::create_dir_all(&storage).map_err(|error| error.to_string())?;
     RustyPipe::builder()
         .storage_dir(storage)
@@ -74,22 +76,196 @@ pub fn client() -> Result<RustyPipe, String> {
         .map_err(|error| error.to_string())
 }
 
-/// Searches YouTube Music for songs.
-pub async fn search(rp: RustyPipe, query: String) -> Result<Vec<SearchTrack>, String> {
-    let result = rp
-        .query()
-        .music_search_tracks(&query)
-        .await
-        .map_err(|error| error.to_string())?;
-    Ok(result
-        .items
-        .items
-        .iter()
-        .map(SearchTrack::from_item)
-        .collect())
+/// Searches every category at once, the way YouTube Music's results page does.
+pub async fn search_all(rp: RustyPipe, query: String) -> Result<SearchPage, String> {
+    let q = rp.query();
+    let (main, songs, videos, albums, artists, playlists) = tokio::join!(
+        q.music_search_main(&query),
+        q.music_search_tracks(&query),
+        q.music_search_videos(&query),
+        q.music_search_albums(&query),
+        q.music_search_artists(&query),
+        q.music_search_playlists(&query, false),
+    );
+
+    if let (Err(error), Err(_), Err(_), Err(_), Err(_), Err(_)) =
+        (&main, &songs, &videos, &albums, &artists, &playlists)
+    {
+        return Err(error.to_string());
+    }
+
+    Ok(SearchPage {
+        top: main
+            .ok()
+            .and_then(|result| result.items.items.first().and_then(top_result)),
+        songs: songs
+            .map(|result| result.items.items.iter().map(track).collect())
+            .unwrap_or_default(),
+        videos: videos
+            .map(|result| result.items.items.iter().map(track).collect())
+            .unwrap_or_default(),
+        albums: albums
+            .map(|result| result.items.items.iter().map(album_tile).collect())
+            .unwrap_or_default(),
+        artists: artists
+            .map(|result| result.items.items.iter().map(artist_tile).collect())
+            .unwrap_or_default(),
+        playlists: playlists
+            .map(|result| result.items.items.iter().map(playlist_tile).collect())
+            .unwrap_or_default(),
+    })
 }
 
-/// From `(width, url)` pairs, the largest cover that is at most `max_width` wide, or the
+/// Search terms YouTube Music suggests for what has been typed so far.
+pub async fn suggestions(rp: RustyPipe, query: String) -> Result<Vec<String>, String> {
+    let result = rp
+        .query()
+        .music_search_suggestion(&query)
+        .await
+        .map_err(|error| error.to_string())?;
+    Ok(result.terms.into_iter().take(6).collect())
+}
+
+/// Loads the songs of an album, a playlist or an artist (their top songs).
+pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
+    let q = rp.query();
+    match tile.kind {
+        TileKind::Album => {
+            let album = q
+                .music_album(&tile.id)
+                .await
+                .map_err(|error| error.to_string())?;
+            let cover = best_image(&album.cover);
+            let tracks = album
+                .tracks
+                .iter()
+                .map(|item| {
+                    let mut song = track(item);
+                    song.album.clone_from(&album.name);
+                    if song.cover_url.is_none() {
+                        song.cover_url.clone_from(&cover);
+                    }
+                    song
+                })
+                .collect();
+            Ok(Collection {
+                kind: TileKind::Album,
+                title: album.name.clone(),
+                subtitle: album_subtitle(
+                    album.album_type,
+                    &artist_names(&album.artists),
+                    album.year,
+                ),
+                image_url: cover,
+                tracks,
+            })
+        }
+        TileKind::Playlist => {
+            let playlist = q
+                .music_playlist(&tile.id)
+                .await
+                .map_err(|error| error.to_string())?;
+            Ok(Collection {
+                kind: TileKind::Playlist,
+                title: playlist.name.clone(),
+                subtitle: tile.subtitle,
+                image_url: best_image(&playlist.thumbnail),
+                tracks: playlist.tracks.items.iter().map(track).collect(),
+            })
+        }
+        TileKind::Artist => {
+            let artist = q
+                .music_artist(&tile.id, false)
+                .await
+                .map_err(|error| error.to_string())?;
+            Ok(Collection {
+                kind: TileKind::Artist,
+                title: artist.name.clone(),
+                subtitle: artist_subtitle(artist.subscriber_count),
+                image_url: best_image(&artist.header_image).or(tile.image_url),
+                tracks: artist.tracks.iter().map(track).collect(),
+            })
+        }
+    }
+}
+
+fn top_result(item: &MusicItem) -> Option<TopResult> {
+    match item {
+        MusicItem::Track(item) => Some(TopResult::Track(track(item))),
+        MusicItem::Album(item) => Some(TopResult::Tile(album_tile(item))),
+        MusicItem::Artist(item) => Some(TopResult::Tile(artist_tile(item))),
+        MusicItem::Playlist(item) => Some(TopResult::Tile(playlist_tile(item))),
+        MusicItem::User(_) => None,
+    }
+}
+
+fn track(item: &TrackItem) -> SearchTrack {
+    SearchTrack {
+        id: item.id.clone(),
+        title: item.name.clone(),
+        artist: artist_names(&item.artists),
+        album: item
+            .album
+            .as_ref()
+            .map(|album| album.name.clone())
+            .unwrap_or_default(),
+        duration: item.duration.unwrap_or(0),
+        cover_url: best_image(&item.cover),
+    }
+}
+
+fn album_tile(item: &AlbumItem) -> Tile {
+    Tile {
+        kind: TileKind::Album,
+        id: item.id.clone(),
+        title: item.name.clone(),
+        subtitle: album_subtitle(item.album_type, &artist_names(&item.artists), item.year),
+        image_url: best_image(&item.cover),
+    }
+}
+
+fn artist_tile(item: &ArtistItem) -> Tile {
+    Tile {
+        kind: TileKind::Artist,
+        id: item.id.clone(),
+        title: item.name.clone(),
+        subtitle: artist_subtitle(item.subscriber_count),
+        image_url: best_image(&item.avatar),
+    }
+}
+
+fn playlist_tile(item: &MusicPlaylistItem) -> Tile {
+    let owner = item
+        .channel
+        .as_ref()
+        .map_or("YouTube Music", |channel| channel.name.as_str());
+    Tile {
+        kind: TileKind::Playlist,
+        id: item.id.clone(),
+        title: item.name.clone(),
+        subtitle: format!("Playlist \u{b7} {owner}"),
+        image_url: best_image(&item.thumbnail),
+    }
+}
+
+fn artist_names(artists: &[rustypipe::model::ArtistId]) -> String {
+    artists
+        .iter()
+        .map(|artist| artist.name.as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn best_image(thumbnails: &[Thumbnail]) -> Option<String> {
+    pick_cover(
+        thumbnails
+            .iter()
+            .map(|thumbnail| (thumbnail.width, thumbnail.url.as_str())),
+        COVER_MAX_WIDTH,
+    )
+}
+
+/// From `(width, url)` pairs, the largest image that is at most `max_width` wide, or the
 /// smallest one if all are wider.
 pub fn pick_cover<'a>(
     covers: impl Iterator<Item = (u32, &'a str)> + Clone,
@@ -104,68 +280,44 @@ pub fn pick_cover<'a>(
         .map(|(_, url)| url.to_string())
 }
 
-/// A finished download of `id` in `dir`, if there is one.
-pub fn find_cached(dir: &Path, id: &str) -> Option<PathBuf> {
-    AUDIO_EXTENSIONS
-        .iter()
-        .map(|extension| dir.join(format!("{id}.{extension}")))
-        .find(|path| path.exists())
-}
-
-/// The yt-dlp arguments that download the best audio of `id` into `dir` and print the file path.
-pub fn ytdlp_args(id: &str, dir: &Path) -> Vec<String> {
-    let template = dir.join("%(id)s.%(ext)s");
-    vec![
-        "--no-config".to_string(),
-        "--no-playlist".to_string(),
-        "--quiet".to_string(),
-        "--no-warnings".to_string(),
-        "-f".to_string(),
-        "bestaudio[ext=webm]/bestaudio".to_string(),
-        "-o".to_string(),
-        template.to_string_lossy().into_owned(),
-        "--print".to_string(),
-        "after_move:filepath".to_string(),
-        format!("https://music.youtube.com/watch?v={id}"),
-    ]
-}
-
-/// Downloads the audio of `id` into the cache, or returns the cached file.
-pub async fn download_audio(id: String) -> Result<PathBuf, String> {
-    let dir = cache_dir().join("audio");
-    tokio::fs::create_dir_all(&dir)
-        .await
-        .map_err(|error| error.to_string())?;
-    if let Some(path) = find_cached(&dir, &id) {
-        return Ok(path);
+/// "Single · Ado · 2021", leaving out what is unknown.
+pub fn album_subtitle(album_type: AlbumType, artists: &str, year: Option<u16>) -> String {
+    let kind = match album_type {
+        AlbumType::Single => "Single",
+        AlbumType::Ep => "EP",
+        _ => "Album",
+    };
+    let mut parts = vec![kind.to_string()];
+    if !artists.is_empty() {
+        parts.push(artists.to_string());
     }
-
-    let output = Command::new("yt-dlp")
-        .args(ytdlp_args(&id, &dir))
-        .output()
-        .await
-        .map_err(|error| format!("could not run yt-dlp: {error}"))?;
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+    if let Some(year) = year {
+        parts.push(year.to_string());
     }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    stdout
-        .lines()
-        .last()
-        .map(PathBuf::from)
-        .filter(|path| path.exists())
-        .ok_or_else(|| "yt-dlp did not report the downloaded file".to_string())
+    parts.join(" \u{b7} ")
 }
 
-/// Downloads a small file, such as a cover image.
-pub async fn fetch_bytes(url: String) -> Result<Vec<u8>, String> {
-    let response = reqwest::get(&url)
-        .await
-        .and_then(reqwest::Response::error_for_status)
-        .map_err(|error| error.to_string())?;
-    let bytes = response.bytes().await.map_err(|error| error.to_string())?;
-    Ok(bytes.to_vec())
+/// "Artist · 38M subscribers", or just "Artist".
+pub fn artist_subtitle(subscribers: Option<u64>) -> String {
+    match subscribers {
+        Some(count) => format!("Artist \u{b7} {} subscribers", compact_count(count)),
+        None => "Artist".to_string(),
+    }
+}
+
+/// A short count: 950, 1.2K, 38M.
+pub fn compact_count(count: u64) -> String {
+    let (value, suffix) = match count {
+        0..=999 => return count.to_string(),
+        1_000..=999_999 => (count as f64 / 1_000.0, "K"),
+        1_000_000..=999_999_999 => (count as f64 / 1_000_000.0, "M"),
+        _ => (count as f64 / 1_000_000_000.0, "B"),
+    };
+    if value < 10.0 && value.fract() >= 0.05 {
+        format!("{value:.1}{suffix}")
+    } else {
+        format!("{value:.0}{suffix}")
+    }
 }
 
 #[cfg(test)]
@@ -189,25 +341,29 @@ mod tests {
     }
 
     #[test]
-    fn asks_yt_dlp_for_audio_only() {
-        let args = ytdlp_args("abc", Path::new("/cache"));
-        assert!(args.contains(&"bestaudio[ext=webm]/bestaudio".to_string()));
-        assert!(args.contains(&"/cache/%(id)s.%(ext)s".to_string()));
-        assert_eq!(
-            args.last().map(String::as_str),
-            Some("https://music.youtube.com/watch?v=abc")
-        );
+    fn counts_are_short() {
+        assert_eq!(compact_count(950), "950");
+        assert_eq!(compact_count(1_200), "1.2K");
+        assert_eq!(compact_count(38_000_000), "38M");
+        assert_eq!(compact_count(2_000_000_000), "2B");
     }
 
     #[test]
-    fn finds_only_finished_downloads() {
-        let dir = std::env::temp_dir().join(format!("encore-cache-test-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).expect("temp dir");
-        std::fs::write(dir.join("abc.webm.part"), b"partial").expect("part file");
-        assert_eq!(find_cached(&dir, "abc"), None);
-        std::fs::write(dir.join("abc.webm"), b"done").expect("final file");
-        assert_eq!(find_cached(&dir, "abc"), Some(dir.join("abc.webm")));
-        std::fs::remove_dir_all(&dir).expect("cleanup");
+    fn album_subtitles_skip_unknown_parts() {
+        assert_eq!(
+            album_subtitle(AlbumType::Single, "Ado", Some(2021)),
+            "Single \u{b7} Ado \u{b7} 2021"
+        );
+        assert_eq!(album_subtitle(AlbumType::Album, "", None), "Album");
+    }
+
+    #[test]
+    fn artist_subtitle_mentions_subscribers() {
+        assert_eq!(
+            artist_subtitle(Some(38_000_000)),
+            "Artist \u{b7} 38M subscribers"
+        );
+        assert_eq!(artist_subtitle(None), "Artist");
     }
 
     /// Hits the network and decodes audio silently: `cargo test -- --ignored`.
@@ -215,11 +371,15 @@ mod tests {
     #[ignore = "needs the network, yt-dlp and libmpv"]
     async fn searches_downloads_and_plays() {
         let rp = client().expect("client");
-        let results = search(rp, "Daft Punk Get Lucky".to_string())
+        let page = search_all(rp.clone(), "Daft Punk Get Lucky".to_string())
             .await
             .expect("search");
-        let first = results.first().expect("at least one result");
-        let path = download_audio(first.id.clone()).await.expect("download");
+        assert!(page.top.is_some(), "no top result");
+        assert!(!page.albums.is_empty(), "no albums");
+        let first = page.songs.first().expect("at least one song");
+        let path = crate::download::audio(first.id.clone())
+            .await
+            .expect("download");
         let audio = crate::audio::Audio::muted().expect("mpv");
         audio.play(&path).expect("play");
         std::thread::sleep(std::time::Duration::from_secs(3));
@@ -227,5 +387,9 @@ mod tests {
             audio.position().unwrap_or(0.0) > 0.5,
             "audio did not advance"
         );
+
+        let album = page.albums.first().cloned().expect("an album");
+        let collection = open(rp, album).await.expect("open album");
+        assert!(!collection.tracks.is_empty(), "the album has no songs");
     }
 }
