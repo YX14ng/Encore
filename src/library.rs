@@ -45,6 +45,8 @@ pub enum Account {
     Checking,
     SignedOut,
     SigningIn,
+    /// Waiting for the user to sign in in this browser.
+    Waiting(Browser),
     SignedIn(LibraryData),
     Failed(String),
 }
@@ -117,7 +119,31 @@ pub async fn sign_in(
 
 /// Reads the session from `browser` through yt-dlp, then signs in.
 pub async fn sign_in_with_browser(rp: RustyPipe, browser: Browser) -> Result<LibraryData, String> {
-    sign_in(rp, account::read_from_browser(browser).await).await
+    let cookies = account::read_from_browser(browser)
+        .await
+        .map_err(|error| error.to_string());
+    sign_in(rp, cookies).await
+}
+
+/// How many times to look for the session while the user signs in, five seconds apart.
+const SIGN_IN_ATTEMPTS: u32 = 36;
+
+/// Waits for the user to sign in to YouTube Music in `browser` (opened by Encore), checking
+/// every five seconds for up to three minutes, then signs in.
+pub async fn wait_for_sign_in(rp: RustyPipe, browser: Browser) -> Result<LibraryData, String> {
+    for _ in 0..SIGN_IN_ATTEMPTS {
+        match account::read_from_browser(browser).await {
+            Ok(cookies) => return sign_in(rp, Ok(cookies)).await,
+            Err(account::ReadError::NoSession) => {
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            }
+            Err(error) => return Err(error.to_string()),
+        }
+    }
+    Err(format!(
+        "no sign-in was detected in {} after three minutes",
+        browser.name()
+    ))
 }
 
 /// Restores the session saved by an earlier sign-in, if it is still valid.
@@ -156,7 +182,9 @@ pub fn shelf_view<'a>(
             Shelf::Albums => search::card_grid(&data.albums, shared),
             Shelf::Artists => search::card_grid(&data.artists, shared),
         },
-        Account::Checking | Account::SigningIn => note("Loading your library\u{2026}"),
+        Account::Checking | Account::SigningIn | Account::Waiting(_) => {
+            note("Loading your library\u{2026}")
+        }
         Account::SignedOut | Account::Failed(_) => column![
             note("Sign in to see your library."),
             accent_button("Sign in", Message::OpenAccount),
@@ -170,8 +198,13 @@ pub fn shelf_view<'a>(
         .into()
 }
 
-/// The account screen: pick a browser to sign in with, import a cookies file, or sign out.
-pub fn account_view<'a>(account: &'a Account, cookie_path: &'a str) -> Element<'a, Message> {
+/// The account screen: sign in through the default browser, pick another browser, import a
+/// cookies file, or sign out.
+pub fn account_view<'a>(
+    account: &'a Account,
+    cookie_path: &'a str,
+    default_browser: Option<Browser>,
+) -> Element<'a, Message> {
     let mut content = column![heading("Your YouTube Music account")]
         .spacing(18)
         .padding([28, 32])
@@ -187,6 +220,13 @@ pub fn account_view<'a>(account: &'a Account, cookie_path: &'a str) -> Element<'
         }
         Account::Checking | Account::SigningIn => {
             content = content.push(note("Signing in\u{2026}"));
+        }
+        Account::Waiting(browser) => {
+            content = content.push(note(format!(
+                "YouTube Music is open in {}. Sign in there with your Google account; Encore \
+                 notices on its own within a few seconds.",
+                browser.name()
+            )));
         }
         Account::SignedOut | Account::Failed(_) => {
             if let Account::Failed(error) = account {
@@ -204,10 +244,19 @@ pub fn account_view<'a>(account: &'a Account, cookie_path: &'a str) -> Element<'
                     })
                     .into()
             });
+            let main_label = match default_browser {
+                Some(browser) => format!("Sign in with {}", browser.name()),
+                None => "Sign in with your browser".to_string(),
+            };
             content = content
                 .push(note(
-                    "Encore reads your YouTube session from the browser where you are signed in to \
-                     music.youtube.com. Only the YouTube cookies are kept, on this computer.",
+                    "Encore opens YouTube Music in your browser. Sign in there with your Google \
+                     account and Encore picks up the session: only the YouTube cookies are kept, \
+                     on this computer.",
+                ))
+                .push(accent_button_owned(main_label, Message::SignInDefault))
+                .push(note(
+                    "Already signed in somewhere else? Read the session from:",
                 ))
                 .push(Row::with_children(browsers).spacing(8))
                 .push(note("Or import a cookies.txt exported from your browser:"))
@@ -225,6 +274,19 @@ pub fn account_view<'a>(account: &'a Account, cookie_path: &'a str) -> Element<'
     }
 
     scrollable(content).height(Fill).into()
+}
+
+fn accent_button_owned(label: String, message: Message) -> Element<'static, Message> {
+    button(text(label).size(14).color(theme::TEXT))
+        .on_press(message)
+        .padding([8, 22])
+        .style(|_, status| {
+            let mut style = theme::flat_button(status, false);
+            style.background = Some(theme::ACCENT.into());
+            style.border = border::rounded(18);
+            style
+        })
+        .into()
 }
 
 fn accent_button(label: &str, message: Message) -> Element<'_, Message> {

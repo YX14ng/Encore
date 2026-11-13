@@ -83,6 +83,8 @@ struct App {
     account: Account,
     /// The cookies.txt path typed on the account screen.
     cookie_path: String,
+    /// The system's default browser, for "Sign in with your browser".
+    default_browser: Option<Browser>,
 }
 
 /// The screens of the center column.
@@ -123,6 +125,7 @@ enum Message {
     Prefetched,
     Back,
     OpenAccount,
+    SignInDefault,
     SignInWith(Browser),
     CookiePathChanged(String),
     ImportCookies,
@@ -185,6 +188,7 @@ impl App {
             now_playing,
             account: Account::SignedOut,
             cookie_path: String::new(),
+            default_browser: account::default_browser(),
         }
     }
 
@@ -279,6 +283,26 @@ impl App {
                 self.account = Account::SigningIn;
                 return Task::perform(
                     library::sign_in_with_browser(client, browser),
+                    Message::SignedIn,
+                );
+            }
+            Message::SignInDefault => {
+                let Some(client) = self.online.client() else {
+                    return Task::none();
+                };
+                let Some(browser) = self.default_browser else {
+                    self.account = Account::Failed(
+                        "could not tell which browser is the default; pick it below".to_string(),
+                    );
+                    return Task::none();
+                };
+                if let Err(error) = account::open_sign_in_page() {
+                    self.account = Account::Failed(error);
+                    return Task::none();
+                }
+                self.account = Account::Waiting(browser);
+                return Task::perform(
+                    library::wait_for_sign_in(client, browser),
                     Message::SignedIn,
                 );
             }
@@ -445,7 +469,9 @@ impl App {
             Screen::Library(shelf) => {
                 library::shelf_view(shelf, &self.account, self.online.shared_view())
             }
-            Screen::Account => library::account_view(&self.account, &self.cookie_path),
+            Screen::Account => {
+                library::account_view(&self.account, &self.cookie_path, self.default_browser)
+            }
         };
 
         let center = container(column![

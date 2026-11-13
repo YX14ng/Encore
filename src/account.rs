@@ -32,7 +32,36 @@ pub const BROWSERS: [(Browser, &str); 5] = [
     (Browser::Brave, "Brave"),
 ];
 
+/// Why reading a browser's session failed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReadError {
+    /// The browser has no signed-in YouTube session (yet).
+    NoSession,
+    /// Something else went wrong: no profile, yt-dlp failed, ...
+    Failed(String),
+}
+
+impl std::fmt::Display for ReadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReadError::NoSession => write!(
+                f,
+                "no YouTube session was found there; sign in to music.youtube.com in that browser first"
+            ),
+            ReadError::Failed(error) => write!(f, "{error}"),
+        }
+    }
+}
+
 impl Browser {
+    /// The browser's name as shown on screen.
+    pub fn name(self) -> &'static str {
+        BROWSERS
+            .iter()
+            .find(|(browser, _)| *browser == self)
+            .map_or("your browser", |(_, name)| name)
+    }
+
     /// The value for yt-dlp's `--cookies-from-browser`. Zen is Firefox-based but unknown to
     /// yt-dlp, so it is passed as Firefox with the path of its profile.
     pub fn ytdlp_spec(self, home: &Path) -> Result<String, String> {
@@ -65,19 +94,30 @@ pub fn private_dir(dir: &Path) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
-/// The Zen profile in use: among the profiles that have cookies, the most recently written one.
-/// Looks in the regular install (`~/.zen`) and the Flatpak one.
-pub fn zen_profile(home: &Path) -> Result<PathBuf, String> {
+/// The folders where Zen keeps its profiles: `~/.config/zen` in recent versions, `~/.zen` in
+/// older ones, and the same two inside the Flatpak sandbox. Profiles sit right inside them or
+/// inside a `Profiles` subfolder.
+fn zen_profile_dirs(home: &Path) -> Vec<PathBuf> {
     let roots = [
+        home.join(".config/zen"),
         home.join(".zen"),
+        home.join(".var/app/app.zen_browser.zen/config/zen"),
         home.join(".var/app/app.zen_browser.zen/.zen"),
     ];
     roots
         .iter()
-        .filter_map(|root| std::fs::read_dir(root).ok())
+        .flat_map(|root| [root.clone(), root.join("Profiles")])
+        .filter_map(|dir| std::fs::read_dir(dir).ok())
         .flatten()
         .filter_map(Result::ok)
         .map(|entry| entry.path())
+        .collect()
+}
+
+/// The Zen profile in use: among the profiles that have cookies, the most recently written one.
+pub fn zen_profile(home: &Path) -> Result<PathBuf, String> {
+    zen_profile_dirs(home)
+        .into_iter()
         .filter_map(|profile| {
             let modified = std::fs::metadata(profile.join("cookies.sqlite"))
                 .and_then(|metadata| metadata.modified())
@@ -115,14 +155,14 @@ pub fn has_session(cookies_txt: &str) -> bool {
 }
 
 /// Reads the YouTube session cookies of `browser` through yt-dlp.
-pub async fn read_from_browser(browser: Browser) -> Result<String, String> {
+pub async fn read_from_browser(browser: Browser) -> Result<String, ReadError> {
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
-        .ok_or("HOME is not set")?;
-    let spec = browser.ytdlp_spec(&home)?;
+        .ok_or(ReadError::Failed("HOME is not set".to_string()))?;
+    let spec = browser.ytdlp_spec(&home).map_err(ReadError::Failed)?;
 
     let dir = data_dir();
-    private_dir(&dir)?;
+    private_dir(&dir).map_err(ReadError::Failed)?;
     let raw = dir.join("cookies-from-browser.txt");
 
     let output = Command::new("yt-dlp")
@@ -138,18 +178,53 @@ pub async fn read_from_browser(browser: Browser) -> Result<String, String> {
     let all = std::fs::read_to_string(&raw);
     let _ = std::fs::remove_file(&raw);
 
-    let output = output.map_err(|error| format!("could not run yt-dlp: {error}"))?;
+    let output =
+        output.map_err(|error| ReadError::Failed(format!("could not run yt-dlp: {error}")))?;
     if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+        let error = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(ReadError::Failed(error));
     }
-    let cookies = youtube_only(&all.map_err(|error| error.to_string())?);
+    let cookies = youtube_only(&all.map_err(|error| ReadError::Failed(error.to_string()))?);
     if !has_session(&cookies) {
-        return Err(
-            "no YouTube session was found there; sign in to music.youtube.com in that browser first"
-                .to_string(),
-        );
+        return Err(ReadError::NoSession);
     }
     Ok(cookies)
+}
+
+/// The browser for a `.desktop` file name like `zen.desktop` or `google-chrome.desktop`.
+pub fn browser_from_desktop(desktop: &str) -> Option<Browser> {
+    let name = desktop.to_lowercase();
+    if name.contains("zen") {
+        Some(Browser::Zen)
+    } else if name.contains("brave") {
+        Some(Browser::Brave)
+    } else if name.contains("chromium") {
+        Some(Browser::Chromium)
+    } else if name.contains("chrome") {
+        Some(Browser::Chrome)
+    } else if name.contains("firefox") {
+        Some(Browser::Firefox)
+    } else {
+        None
+    }
+}
+
+/// The system's default web browser, if it is one Encore can read a session from.
+pub fn default_browser() -> Option<Browser> {
+    let output = std::process::Command::new("xdg-settings")
+        .args(["get", "default-web-browser"])
+        .output()
+        .ok()?;
+    browser_from_desktop(String::from_utf8_lossy(&output.stdout).trim())
+}
+
+/// Opens YouTube Music in the default browser so the user can sign in there.
+pub fn open_sign_in_page() -> Result<(), String> {
+    std::process::Command::new("xdg-open")
+        .arg("https://music.youtube.com")
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("could not open the browser: {error}"))
 }
 
 /// Reads a cookies.txt exported by hand (plan B), keeping only the YouTube cookies.
@@ -215,6 +290,42 @@ mod tests {
         );
         assert_eq!(Browser::Chrome.ytdlp_spec(&home), Ok("chrome".to_string()));
         std::fs::remove_dir_all(&home).expect("cleanup");
+    }
+
+    #[test]
+    fn finds_zen_profiles_in_the_xdg_config_folder() {
+        let home = std::env::temp_dir().join(format!("encore-zen-xdg-{}", std::process::id()));
+        let profile = home.join(".config/zen/abc.Default (release)");
+        std::fs::create_dir_all(&profile).expect("profile");
+        std::fs::write(profile.join("cookies.sqlite"), b"x").expect("cookies");
+        assert_eq!(zen_profile(&home), Ok(profile));
+        std::fs::remove_dir_all(&home).expect("cleanup");
+    }
+
+    #[test]
+    fn recognizes_default_browsers() {
+        assert_eq!(browser_from_desktop("zen.desktop"), Some(Browser::Zen));
+        assert_eq!(
+            browser_from_desktop("app.zen_browser.zen.desktop"),
+            Some(Browser::Zen)
+        );
+        assert_eq!(
+            browser_from_desktop("firefox.desktop"),
+            Some(Browser::Firefox)
+        );
+        assert_eq!(
+            browser_from_desktop("chromium.desktop"),
+            Some(Browser::Chromium)
+        );
+        assert_eq!(
+            browser_from_desktop("google-chrome.desktop"),
+            Some(Browser::Chrome)
+        );
+        assert_eq!(
+            browser_from_desktop("brave-browser.desktop"),
+            Some(Browser::Brave)
+        );
+        assert_eq!(browser_from_desktop("org.gnome.Epiphany.desktop"), None);
     }
 
     #[test]
