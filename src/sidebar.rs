@@ -1,6 +1,6 @@
 //! The library sidebar on the left.
 
-use iced::widget::{Column, button, column, container, row, space, svg, text};
+use iced::widget::{Column, button, column, container, row, space, text};
 use iced::{Element, Fill, border};
 
 use crate::mock::Playlist;
@@ -177,9 +177,10 @@ fn search_box() -> Element<'static, Message> {
     container(row![
         text("Search").color(theme::TEXT_DIM),
         space::horizontal(),
-        icon(
+        theme::icon(
             include_bytes!("../assets/icons/search.svg"),
-            theme::TEXT_DIM
+            theme::TEXT_DIM,
+            18.0,
         )
     ])
     .padding([7, 10])
@@ -194,9 +195,10 @@ fn section_header(label: &'static str, section: Section) -> Element<'static, Mes
     let title = text(label.to_uppercase())
         .size(11)
         .color(theme::TEXT_SECONDARY);
-    let chevron = icon(
+    let chevron = theme::icon(
         include_bytes!("../assets/icons/chevron-down.svg"),
         theme::TEXT_SECONDARY,
+        18.0,
     );
 
     button(row![title, space::horizontal(), chevron])
@@ -210,7 +212,7 @@ fn section_header(label: &'static str, section: Section) -> Element<'static, Mes
 fn entries(list: &[Entry], selected: NavItem) -> Column<'static, Message> {
     let mut entries = column![].spacing(1);
     for (item, label, icon_bytes) in list {
-        let glyph = icon(icon_bytes, theme::ACCENT);
+        let glyph = theme::icon(icon_bytes, theme::ACCENT, 18.0);
         entries = entries.push(nav_button(glyph.into(), label, *item, selected));
     }
     entries
@@ -230,13 +232,6 @@ fn nav_button<'a>(
         .padding([7, 10])
         .style(move |_, status| theme::flat_button(status, is_selected))
         .into()
-}
-
-fn icon(bytes: &'static [u8], color: iced::Color) -> svg::Svg<'static> {
-    svg(svg::Handle::from_memory(bytes))
-        .width(18)
-        .height(18)
-        .style(move |_, _| svg::Style { color: Some(color) })
 }
 
 #[cfg(test)]

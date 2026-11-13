@@ -1,6 +1,6 @@
 //! Encore's colors and shared styles.
 
-use iced::widget::{button, container};
+use iced::widget::{button, container, svg};
 use iced::{Background, Color, border};
 
 pub const SIDEBAR: Color = Color::from_rgb8(0x13, 0x13, 0x15);
@@ -34,4 +34,12 @@ pub fn flat_button(status: button::Status, selected: bool) -> button::Style {
         border: border::rounded(7),
         ..button::Style::default()
     }
+}
+
+/// A square SVG icon painted in one color.
+pub fn icon(bytes: &'static [u8], color: Color, size: f32) -> svg::Svg<'static> {
+    svg(svg::Handle::from_memory(bytes))
+        .width(size)
+        .height(size)
+        .style(move |_, _| svg::Style { color: Some(color) })
 }

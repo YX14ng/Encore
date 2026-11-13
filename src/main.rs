@@ -37,6 +37,7 @@ struct App {
     recents: Vec<Card>,
     mixes: Vec<Card>,
     backdrop: Option<image::Handle>,
+    liked: bool,
 }
 
 #[derive(Debug, Clone)] // step 10: derive
@@ -47,6 +48,7 @@ enum Message {
     ToggleLyrics,
     ToggleSection(Section),
     Select(NavItem),
+    ToggleLike,
 }
 
 impl App {
@@ -69,6 +71,7 @@ impl App {
             },
             show_sidebar: true,
             show_lyrics: true,
+            liked: true,
         }
     }
 
@@ -80,6 +83,7 @@ impl App {
             Message::ToggleLyrics => self.show_lyrics = !self.show_lyrics,
             Message::ToggleSection(section) => self.sidebar.toggle(section),
             Message::Select(item) => self.sidebar.selected = item,
+            Message::ToggleLike => self.liked = !self.liked,
         }
     }
 
@@ -91,7 +95,7 @@ impl App {
         let center = container(column![
             top_bar::view(),
             home,
-            player::view(&self.tracks[0], &self.playback)
+            player::view(&self.tracks[0], &self.playback, self.liked)
         ])
         .width(Fill)
         .height(Fill)
