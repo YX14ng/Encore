@@ -1,5 +1,6 @@
 mod clock;
 mod lyrics;
+mod mock;
 mod player;
 mod sidebar;
 mod theme;
@@ -11,6 +12,7 @@ use iced::widget::{column, container, row, text};
 use iced::{Element, Fill, Subscription, Theme, time};
 
 use clock::Playback;
+use mock::Track;
 
 fn main() -> iced::Result {
     iced::application(App::new, App::update, App::view)
@@ -22,6 +24,7 @@ fn main() -> iced::Result {
 }
 
 struct App {
+    tracks: Vec<Track>,
     playback: Playback,
     show_sidebar: bool,
     show_lyrics: bool,
@@ -37,10 +40,14 @@ enum Message {
 
 impl App {
     fn new() -> Self {
+        let tracks = mock::parse_tracks(include_str!("../assets/mock/tracks.tsv"));
+        let duration = tracks[0].duration;
+
         Self {
+            tracks,
             playback: Playback {
                 elapsed: 93,
-                duration: 214,
+                duration,
                 is_playing: false,
             },
             show_sidebar: true,
@@ -61,10 +68,14 @@ impl App {
         // step 11: the '_ lifetime
         let home = container(text("Encore").size(32)).center(Fill);
 
-        let center = container(column![top_bar::view(), home, player::view(&self.playback)])
-            .width(Fill)
-            .height(Fill)
-            .style(|_| theme::panel(theme::CENTER));
+        let center = container(column![
+            top_bar::view(),
+            home,
+            player::view(&self.tracks[0], &self.playback)
+        ])
+        .width(Fill)
+        .height(Fill)
+        .style(|_| theme::panel(theme::CENTER));
 
         row![]
             .push(self.show_sidebar.then(sidebar::view))
