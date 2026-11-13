@@ -10,8 +10,8 @@ use crate::online::Poll;
 use crate::sidebar::NavItem;
 use crate::song::Song;
 use crate::{
-    App, Message, Screen, account, backdrop, clock, library, load_backdrop, load_lyrics, lyrics,
-    lyrics_source, offline,
+    App, Message, Screen, account, backdrop, clock, discord, library, load_backdrop, load_lyrics,
+    lyrics, lyrics_source, offline,
 };
 
 impl App {
@@ -23,8 +23,20 @@ impl App {
         task
     }
 
-    /// Tells the desktop's media controls (MPRIS) about the song and the playback state.
+    /// Tells the desktop's media controls (MPRIS) and Discord about the song and the playback
+    /// state. Discord only hears about real songs, not the samples.
     fn publish_media(&mut self) {
+        let presence = self.online.playing_track().map(|track| discord::Presence {
+            title: track.title.clone(),
+            artist: track.artist.clone(),
+            album: track.album.clone(),
+            cover_url: track.cover_url.clone(),
+            duration: self.playback.duration,
+            elapsed: self.playback.elapsed,
+            playing: self.playback.is_playing,
+        });
+        self.discord.update(presence);
+
         let Some(media) = &mut self.media else {
             return;
         };

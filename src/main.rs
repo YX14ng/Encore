@@ -5,6 +5,7 @@ mod audio;
 mod backdrop;
 mod clock;
 mod collection;
+mod discord;
 mod download;
 mod home;
 mod immersive;
@@ -99,6 +100,8 @@ struct App {
     immersive: bool,
     /// Encore's entry in the desktop's media controls, if there is a session bus.
     media: Option<media_keys::MediaKeys>,
+    /// The "Listening to …" status on Discord.
+    discord: discord::Discord,
 }
 
 /// The screens of the center column.
@@ -226,6 +229,7 @@ impl App {
             offline: Offline::load(),
             immersive: false,
             media: media_keys::MediaKeys::start(),
+            discord: discord::Discord::start(),
         }
     }
 }
