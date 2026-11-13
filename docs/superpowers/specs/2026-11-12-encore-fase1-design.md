@@ -77,6 +77,17 @@ decided in phase 2); and LRCLIB for synced lyrics.
 - **Small files:** 200 to 400 lines is typical, 800 is the limit. Files are organized by feature,
   not by type.
 - **Language:** identifiers, UI text, commit messages and the repo docs are in English.
+- **Code style (user's decision, 2026-11-13):** the
+  [Google Rust Style Guide](https://chromium.googlesource.com/external/github.com/google/styleguide/+/HEAD/rustguide.md).
+  In practice: rustfmt at 100 columns; one `use` per module and no glob imports except
+  `use super::*` in tests; doc comments on every `pub` item that do not restate the name;
+  `Option` for obvious failures, `Result` when the caller needs context, `expect` with a reason
+  instead of `unwrap` (enforced by `clippy::unwrap_used = "deny"`); named fields over tuples;
+  explicit types on `.parse()` and `.into()` when the target is not obvious; traits imported
+  inside the function that uses them; `Default` next to every argument-less `new()`. Its
+  Chromium- and Fuchsia-only rules (gtest, `chromium::import!`, no async) do not apply, and the
+  options that need nightly rustfmt (`hex_literal_case`, `imports_granularity`) are followed by
+  hand.
 
 ## 5. Working mode (agreed with the user)
 

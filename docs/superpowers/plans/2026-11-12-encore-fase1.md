@@ -39,6 +39,7 @@ in the course index.
 - Widths: sidebar 236 px, lyrics panel 300 px. The lyrics hide below a 1100 px window and the
   sidebar below 720 px.
 - The assistant does not open windows on the PC: the user runs the app and sends a screenshot.
+- Code follows the Google Rust Style Guide as summarized in the spec's constraints.
 
 ## Review focus
 
@@ -396,6 +397,24 @@ play/pause, next, repeat and like; the track card with a 40 px cover, title, art
 **Verification:** screenshot of the player; play, pause and like work; `scripts/check.sh` passes.
 
 - [x] **Commit:** `feat: add player bar`
+
+### Step 13b: apply the Google Rust Style Guide
+
+**Explanation:** what the guide asks for and why each change makes the code easier to read or
+harder to misuse: explicit `.parse::<T>()`, named fields instead of a tuple, `expect` instead of an
+index that can panic silently, traits imported where they are used, `Default` next to `new()`, and
+doc comments on public items. Lints and `rustfmt.toml` enforce what can be enforced.
+
+**Reading:** none from the course; the guide itself.
+
+**Objective:** the same app, restyled: `rustfmt.toml`, `[lints.clippy] unwrap_used = "deny"`, the
+sidebar's `Entry` as a struct, `parse::<u32>()` and `parse::<Color>()` in `mock.rs`,
+`tracks.first().expect(...)` in `App::new`, `use chrono::Timelike` inside `view`, `use std::fs`,
+`impl Default for SidebarState`, and docs on every `pub fn view`.
+
+**Verification:** 28 tests still pass, the window looks exactly as before, `scripts/check.sh` passes.
+
+- [ ] **Commit:** `refactor: follow the Google Rust style guide`
 
 ### Step 14: next track
 
