@@ -1,8 +1,9 @@
 //! The home screen: greeting, recently played and mixes.
 
 use iced::font::Weight;
-use iced::widget::{Column, column, container, image, row, scrollable, space, text};
-use iced::{Element, Fill, Font};
+use iced::gradient::Linear;
+use iced::widget::{Column, column, container, image, row, scrollable, space, stack, text};
+use iced::{ContentFit, Degrees, Element, Fill, Font};
 
 use crate::mock::{self, Card};
 use crate::{Message, theme};
@@ -18,21 +19,53 @@ pub fn greeting(hour: u32) -> &'static str {
     }
 }
 
-pub fn view<'a>(hour: u32, recents: &'a [Card], mixes: &'a [Card]) -> Element<'a, Message> {
-    let hero = container(text(greeting(hour)).size(40).font(bold()))
-        .width(Fill)
-        .height(HERO_HEIGHT)
-        .align_bottom(HERO_HEIGHT)
-        .padding([22, 32])
-        .style(|_| theme::panel(theme::HERO));
-
+pub fn view<'a>(
+    hour: u32,
+    backdrop: Option<&'a image::Handle>,
+    recents: &'a [Card],
+    mixes: &'a [Card],
+) -> Element<'a, Message> {
     let content = column![
-        hero,
+        hero(hour, backdrop),
         section("Recently played", recents_grid(recents)),
         section("Mixed for you", mixes_row(mixes)),
     ];
 
     scrollable(content).height(Fill).into()
+}
+
+fn hero(hour: u32, backdrop: Option<&image::Handle>) -> Element<'_, Message> {
+    let background: Element<'_, Message> = match backdrop {
+        Some(handle) => image(handle.clone())
+            .width(Fill)
+            .height(HERO_HEIGHT)
+            .content_fit(ContentFit::Cover)
+            .into(),
+        None => container(space())
+            .width(Fill)
+            .height(HERO_HEIGHT)
+            .style(|_| theme::panel(theme::HERO))
+            .into(),
+    };
+
+    let fade = container(space())
+        .width(Fill)
+        .height(HERO_HEIGHT)
+        .style(|_| {
+            let gradient = Linear::new(Degrees(180.0))
+                .add_stop(0.0, theme::CENTER.scale_alpha(0.0))
+                .add_stop(0.6, theme::CENTER.scale_alpha(0.5))
+                .add_stop(1.0, theme::CENTER);
+            container::background(gradient)
+        });
+
+    let greeting = container(text(greeting(hour)).size(40).font(bold()))
+        .width(Fill)
+        .height(HERO_HEIGHT)
+        .align_bottom(HERO_HEIGHT)
+        .padding([22, 32]);
+
+    stack![background, fade, greeting].into()
 }
 
 fn section<'a>(title: &'a str, body: Element<'a, Message>) -> Element<'a, Message> {

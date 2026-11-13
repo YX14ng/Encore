@@ -8,7 +8,6 @@ pub struct Track {
     pub artist: String,
     pub album: String,
     pub duration: u32,
-    #[allow(dead_code)]
     pub cover: String,
     #[allow(dead_code)]
     pub lyrics: Option<String>,
