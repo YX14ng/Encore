@@ -167,7 +167,12 @@ impl App {
                 self.now = now;
                 if self.online.is_active() {
                     match self.online.poll() {
-                        Poll::Position(seconds) => self.playback.elapsed = seconds,
+                        Poll::Position(seconds) => {
+                            self.playback.elapsed = seconds;
+                            if self.playback.duration == 0 {
+                                self.playback.duration = self.online.duration().unwrap_or(0);
+                            }
+                        }
                         Poll::Finished => return self.play_next_online(),
                         Poll::Waiting => {}
                     }

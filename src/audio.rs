@@ -10,21 +10,24 @@ pub struct Audio {
 }
 
 impl Audio {
-    /// An mpv player that sends sound to the system's default output.
+    /// An mpv player that sends sound to the system's default output (mpv picks it, usually
+    /// PipeWire). Note: `ao=auto` is not a valid mpv value; it silently disables sound.
     pub fn new() -> Result<Self, String> {
-        Self::with_output("auto")
+        Self::with_output(None)
     }
 
     /// An mpv player that decodes but makes no sound, for tests.
     #[cfg(test)]
     pub fn muted() -> Result<Self, String> {
-        Self::with_output("null")
+        Self::with_output(Some("null"))
     }
 
-    fn with_output(audio_output: &str) -> Result<Self, String> {
+    fn with_output(audio_output: Option<&str>) -> Result<Self, String> {
         let mpv = Mpv::with_initializer(|init| {
             init.set_property("vid", "no")?;
-            init.set_property("ao", audio_output)?;
+            if let Some(output) = audio_output {
+                init.set_property("ao", output)?;
+            }
             Ok(())
         })
         .map_err(|error| error.to_string())?;
@@ -52,8 +55,57 @@ impl Audio {
         self.mpv.get_property("time-pos").ok()
     }
 
+    /// The length of the current file in seconds, once mpv knows it.
+    pub fn duration(&self) -> Option<f64> {
+        self.mpv.get_property("duration").ok()
+    }
+
+    /// The audio output mpv opened (like "pipewire"), or `None` if it has no sound.
+    #[cfg(test)]
+    pub fn output(&self) -> Option<String> {
+        self.mpv
+            .get_property::<String>("current-ao")
+            .ok()
+            .filter(|name| !name.is_empty())
+    }
+
+    /// Sets the volume, from 0 to 100.
+    #[cfg(test)]
+    pub fn set_volume(&self, volume: i64) {
+        let _ = self.mpv.set_property("volume", volume);
+    }
+
     /// Whether mpv has nothing loaded, which after a file was playing means it ended.
     pub fn is_idle(&self) -> bool {
         self.mpv.get_property("idle-active").unwrap_or(false)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Opens the real sound output at volume 0 and plays a cached song for a moment:
+    /// `cargo test -- --ignored opens_the_sound_output`.
+    #[test]
+    #[ignore = "needs libmpv, a sound server and a song in the cache"]
+    fn opens_the_sound_output() {
+        let dir = crate::download::cache_dir().join("audio");
+        let song = std::fs::read_dir(&dir)
+            .expect("cache dir")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| path.extension().is_some_and(|ext| ext == "webm"))
+            .expect("a cached song");
+        let audio = Audio::new().expect("mpv");
+        audio.set_volume(0);
+        audio.play(&song).expect("play");
+        std::thread::sleep(std::time::Duration::from_millis(2000));
+        assert!(audio.output().is_some(), "mpv opened no sound output");
+        assert!(
+            audio.position().unwrap_or(0.0) > 0.5,
+            "audio did not advance"
+        );
+        assert!(audio.duration().unwrap_or(0.0) > 1.0, "no duration");
     }
 }

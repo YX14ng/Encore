@@ -348,6 +348,12 @@ impl Online {
         Poll::Waiting
     }
 
+    /// The length of the playing song according to mpv, for lists that come without durations.
+    pub fn duration(&self) -> Option<u32> {
+        let seconds = self.audio.as_ref()?.duration()?;
+        (seconds > 0.0).then_some(seconds as u32)
+    }
+
     /// The song after the one that is playing, if any.
     pub fn next_index(&self) -> Option<usize> {
         let next = self.playing? + 1;
