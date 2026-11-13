@@ -478,7 +478,7 @@ sorting a `Vec`; and showing a slice of the list (`&lines[a..b]`) without going 
 **Verification:** the lyrics follow the clock and the track without lyrics shows the message
 (screenshots); `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: show synced lyrics`
+- [x] **Commit:** `feat: show synced lyrics`
 
 ### Step 16: font, narrow window and polish
 
