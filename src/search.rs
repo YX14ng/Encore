@@ -292,7 +292,7 @@ fn shelf<'a>(tiles: &'a [Tile], shared: Shared<'a>) -> Element<'a, Message> {
 }
 
 /// Cards in rows of `GRID_COLUMNS`.
-fn card_grid<'a>(tiles: &'a [Tile], shared: Shared<'a>) -> Element<'a, Message> {
+pub fn card_grid<'a>(tiles: &'a [Tile], shared: Shared<'a>) -> Element<'a, Message> {
     if tiles.is_empty() {
         return note("Nothing found.");
     }

@@ -76,6 +76,16 @@ impl Online {
         }
     }
 
+    /// The YouTube client, if it started.
+    pub fn client(&self) -> Option<RustyPipe> {
+        self.client.clone()
+    }
+
+    /// Images and playback state for the library screens.
+    pub fn shared_view(&self) -> Shared<'_> {
+        self.shared()
+    }
+
     /// Updates the query and asks YouTube Music for suggestions.
     pub fn query_changed(&mut self, query: String) -> Task<Message> {
         self.query = query;
@@ -163,7 +173,8 @@ impl Online {
         self.filter = filter;
     }
 
-    fn fetch_images(&mut self, urls: Vec<String>) -> Task<Message> {
+    /// Downloads images that were not asked for yet.
+    pub fn fetch_images(&mut self, urls: Vec<String>) -> Task<Message> {
         let tasks: Vec<_> = urls
             .into_iter()
             .filter(|url| self.requested_images.insert(url.clone()))

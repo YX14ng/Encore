@@ -9,7 +9,7 @@ iced = { version = "0.14", features = ["tokio", "image", "svg"] }
 image = "0.25.10"
 libmpv2 = "7"
 reqwest = "0.12"
-rustypipe = "0.11"
+rustypipe = { version = "0.11", features = ["userdata"] }
 tokio = { version = "1", features = ["process", "fs", "macros", "rt-multi-thread"] }
 
 [lints.clippy]

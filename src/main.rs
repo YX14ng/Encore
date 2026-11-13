@@ -1,5 +1,6 @@
 //! Encore: a YouTube Music desktop player written with iced.
 
+mod account;
 mod audio;
 mod backdrop;
 mod clock;
@@ -7,6 +8,7 @@ mod collection;
 mod download;
 mod home;
 mod layout;
+mod library;
 mod lyrics;
 mod mock;
 mod online;
@@ -26,17 +28,19 @@ use iced::time::Instant;
 use iced::widget::{column, container, image, row};
 use iced::{Element, Fill, Subscription, Task, Theme, time, window};
 
+use account::Browser;
 use clock::Playback;
+use library::{Account, LibraryData, Shelf};
 use lyrics::LyricLine;
 use mock::{Card, Playlist, Track};
 use online::{Online, Poll};
 use search::Filter;
-use sidebar::{NavItem, Section, SidebarState};
+use sidebar::{NavItem, Section, SidebarAccount, SidebarState};
 use song::Song;
 use youtube::{Collection, SearchPage, SearchTrack, Tile};
 
 fn main() -> iced::Result {
-    iced::application(App::new, App::update, App::view)
+    iced::application(App::boot, App::update, App::view)
         .title("Encore")
         .subscription(App::subscription)
         .theme(Theme::Dark)
@@ -75,6 +79,10 @@ struct App {
     online: Online,
     /// The track shown in the player bar.
     now_playing: Song,
+    /// Signed in or not, and the library once signed in.
+    account: Account,
+    /// The cookies.txt path typed on the account screen.
+    cookie_path: String,
 }
 
 /// The screens of the center column.
@@ -83,6 +91,8 @@ enum Screen {
     Home,
     Search,
     Collection,
+    Library(Shelf),
+    Account,
 }
 
 /// Everything that can happen in the app.
@@ -112,9 +122,30 @@ enum Message {
     AudioReady(usize, Result<std::path::PathBuf, String>),
     Prefetched,
     Back,
+    OpenAccount,
+    SignInWith(Browser),
+    CookiePathChanged(String),
+    ImportCookies,
+    SignedIn(Result<LibraryData, String>),
+    Restored(Result<LibraryData, String>),
+    SignOut,
+    SignedOut,
 }
 
 impl App {
+    /// The initial state, plus restoring a saved session in the background.
+    fn boot() -> (Self, Task<Message>) {
+        let mut app = Self::new();
+        let restore = match app.online.client() {
+            Some(client) => {
+                app.account = Account::Checking;
+                Task::perform(library::restore(client), Message::Restored)
+            }
+            None => Task::none(),
+        };
+        (app, restore)
+    }
+
     fn new() -> Self {
         let tracks = mock::parse_tracks(include_str!("../assets/mock/tracks.tsv"));
         let first = tracks.first().expect("tracks.tsv lists at least one track");
@@ -152,6 +183,8 @@ impl App {
             screen: Screen::Home,
             online: Online::new(),
             now_playing,
+            account: Account::SignedOut,
+            cookie_path: String::new(),
         }
     }
 
@@ -185,12 +218,7 @@ impl App {
             Message::ToggleSidebar => self.show_sidebar = !self.show_sidebar,
             Message::ToggleLyrics => self.show_lyrics = !self.show_lyrics,
             Message::ToggleSection(section) => self.sidebar.toggle(section),
-            Message::Select(item) => {
-                self.sidebar.selected = item;
-                if item == NavItem::Home {
-                    self.screen = Screen::Home;
-                }
-            }
+            Message::Select(item) => return self.select(item),
             Message::ToggleLike => self.liked = !self.liked,
             Message::Next => {
                 if self.online.is_active() {
@@ -240,9 +268,38 @@ impl App {
             Message::Back => {
                 self.screen = match self.screen {
                     Screen::Collection => Screen::Search,
-                    Screen::Search | Screen::Home => Screen::Home,
+                    _ => Screen::Home,
                 };
             }
+            Message::OpenAccount => return self.select(NavItem::Account),
+            Message::SignInWith(browser) => {
+                let Some(client) = self.online.client() else {
+                    return Task::none();
+                };
+                self.account = Account::SigningIn;
+                return Task::perform(
+                    library::sign_in_with_browser(client, browser),
+                    Message::SignedIn,
+                );
+            }
+            Message::CookiePathChanged(path) => self.cookie_path = path,
+            Message::ImportCookies => {
+                let Some(client) = self.online.client() else {
+                    return Task::none();
+                };
+                self.account = Account::SigningIn;
+                let cookies = account::read_from_file(&self.cookie_path);
+                return Task::perform(library::sign_in(client, cookies), Message::SignedIn);
+            }
+            Message::SignedIn(result) => return self.library_loaded(result, true),
+            Message::Restored(result) => return self.library_loaded(result, false),
+            Message::SignOut => {
+                self.account = Account::SignedOut;
+                if let Some(client) = self.online.client() {
+                    return Task::perform(library::sign_out(client), |()| Message::SignedOut);
+                }
+            }
+            Message::SignedOut => {}
         }
         Task::none()
     }
@@ -276,6 +333,54 @@ impl App {
         self.lyrics = Vec::new();
         self.follow_lyrics();
         prefetch
+    }
+
+    /// Highlights a sidebar entry and shows its screen.
+    fn select(&mut self, item: NavItem) -> Task<Message> {
+        self.sidebar.selected = item;
+        self.screen = match item {
+            NavItem::History => Screen::Library(Shelf::History),
+            NavItem::Songs => Screen::Library(Shelf::Songs),
+            NavItem::LikedMusic => Screen::Library(Shelf::Liked),
+            NavItem::Albums => Screen::Library(Shelf::Albums),
+            NavItem::Artists => Screen::Library(Shelf::Artists),
+            NavItem::Account => Screen::Account,
+            NavItem::Playlist(index) => {
+                if let Account::SignedIn(data) = &self.account
+                    && let Some(playlist) = data.playlists.get(index).cloned()
+                {
+                    self.screen = Screen::Collection;
+                    return self.online.open(playlist);
+                }
+                Screen::Home
+            }
+            _ => Screen::Home,
+        };
+        Task::none()
+    }
+
+    /// Shows the library after signing in or restoring a session, and downloads its images.
+    /// A failed restore at startup just means "signed out"; a failed sign-in shows the error.
+    fn library_loaded(
+        &mut self,
+        result: Result<LibraryData, String>,
+        from_sign_in: bool,
+    ) -> Task<Message> {
+        match result {
+            Ok(data) => {
+                let images = self.online.fetch_images(data.image_urls());
+                self.account = Account::SignedIn(data);
+                images
+            }
+            Err(error) => {
+                self.account = if from_sign_in {
+                    Account::Failed(error)
+                } else {
+                    Account::SignedOut
+                };
+                Task::none()
+            }
+        }
     }
 
     /// Puts a freshly downloaded cover on the player and behind the home greeting.
@@ -337,6 +442,10 @@ impl App {
                 let (collection, status, shared) = self.online.collection();
                 collection::view(collection, status, shared)
             }
+            Screen::Library(shelf) => {
+                library::shelf_view(shelf, &self.account, self.online.shared_view())
+            }
+            Screen::Account => library::account_view(&self.account, &self.cookie_path),
         };
 
         let center = container(column![
@@ -355,7 +464,17 @@ impl App {
                     &self.playlists,
                     &self.online.query,
                     self.online.suggestions(),
-                    self.screen == Screen::Home,
+                    SidebarAccount {
+                        signed_in: matches!(self.account, Account::SignedIn(_)),
+                        playlists: match &self.account {
+                            Account::SignedIn(data) => Some(&data.playlists),
+                            _ => None,
+                        },
+                        highlight: matches!(
+                            self.screen,
+                            Screen::Home | Screen::Library(_) | Screen::Account
+                        ),
+                    },
                 )
             }))
             .push(center)

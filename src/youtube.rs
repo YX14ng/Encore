@@ -66,10 +66,12 @@ pub struct Collection {
     pub tracks: Vec<SearchTrack>,
 }
 
-/// A rustypipe client that keeps its data in Encore's cache.
+/// A rustypipe client. Its storage holds the session cookies after signing in, so it lives in
+/// Encore's private data folder.
 pub fn client() -> Result<RustyPipe, String> {
-    let storage = crate::download::cache_dir().join("rustypipe");
-    std::fs::create_dir_all(&storage).map_err(|error| error.to_string())?;
+    let storage = crate::account::data_dir().join("rustypipe");
+    crate::account::private_dir(&crate::account::data_dir())?;
+    crate::account::private_dir(&storage)?;
     RustyPipe::builder()
         .storage_dir(storage)
         .build()
@@ -199,7 +201,7 @@ fn top_result(item: &MusicItem) -> Option<TopResult> {
     }
 }
 
-fn track(item: &TrackItem) -> SearchTrack {
+pub(crate) fn track(item: &TrackItem) -> SearchTrack {
     SearchTrack {
         id: item.id.clone(),
         title: item.name.clone(),
@@ -214,7 +216,7 @@ fn track(item: &TrackItem) -> SearchTrack {
     }
 }
 
-fn album_tile(item: &AlbumItem) -> Tile {
+pub(crate) fn album_tile(item: &AlbumItem) -> Tile {
     Tile {
         kind: TileKind::Album,
         id: item.id.clone(),
@@ -224,7 +226,7 @@ fn album_tile(item: &AlbumItem) -> Tile {
     }
 }
 
-fn artist_tile(item: &ArtistItem) -> Tile {
+pub(crate) fn artist_tile(item: &ArtistItem) -> Tile {
     Tile {
         kind: TileKind::Artist,
         id: item.id.clone(),
@@ -234,7 +236,7 @@ fn artist_tile(item: &ArtistItem) -> Tile {
     }
 }
 
-fn playlist_tile(item: &MusicPlaylistItem) -> Tile {
+pub(crate) fn playlist_tile(item: &MusicPlaylistItem) -> Tile {
     let owner = item
         .channel
         .as_ref()

@@ -1,9 +1,10 @@
 //! The library sidebar on the left.
 
-use iced::widget::{Column, button, column, container, row, space, text, text_input};
+use iced::widget::{Column, button, column, container, row, scrollable, space, text, text_input};
 use iced::{Element, Fill, border};
 
 use crate::mock::Playlist;
+use crate::youtube::Tile;
 use crate::{Message, theme};
 
 pub const WIDTH: f32 = 236.0;
@@ -31,6 +32,8 @@ pub enum NavItem {
     NewPlaylist,
     LikedMusic,
     Playlist(usize),
+    /// The account screen.
+    Account,
     /// Nothing highlighted, while another screen is shown.
     None,
 }
@@ -156,10 +159,10 @@ pub fn view<'a>(
     playlists: &'a [Playlist],
     query: &'a str,
     suggestions: &'a [String],
-    on_home: bool,
+    account: SidebarAccount<'a>,
 ) -> Element<'a, Message> {
-    // Away from Home (search results, an album) no sidebar entry is highlighted.
-    let selected = if on_home {
+    // Away from Home and the library (search results, an album) nothing is highlighted.
+    let selected = if account.highlight {
         state.selected
     } else {
         NavItem::None
@@ -179,22 +182,66 @@ pub fn view<'a>(
     content = content.push(section_header("Playlists", Section::Playlists));
     if state.is_open(Section::Playlists) {
         content = content.push(entries(&PLAYLIST_ACTIONS, selected));
-        for (index, playlist) in playlists.iter().enumerate() {
-            let item = NavItem::Playlist(index);
-            let swatch = container(space())
-                .width(18)
-                .height(18)
-                .style(move |_| container::background(playlist.color).border(border::rounded(4)));
-            content = content.push(nav_button(swatch.into(), &playlist.name, item, selected));
+        match account.playlists {
+            // Signed in: the user's own playlists.
+            Some(user_playlists) => {
+                for (index, playlist) in user_playlists.iter().enumerate() {
+                    let glyph = theme::icon(
+                        include_bytes!("../assets/icons/queue.svg"),
+                        theme::ACCENT,
+                        18.0,
+                    );
+                    let item = NavItem::Playlist(index);
+                    content =
+                        content.push(nav_button(glyph.into(), &playlist.title, item, selected));
+                }
+            }
+            // Signed out: the sample playlists.
+            None => {
+                for (index, playlist) in playlists.iter().enumerate() {
+                    let item = NavItem::Playlist(index);
+                    let swatch = container(space()).width(18).height(18).style(move |_| {
+                        container::background(playlist.color).border(border::rounded(4))
+                    });
+                    content =
+                        content.push(nav_button(swatch.into(), &playlist.name, item, selected));
+                }
+            }
         }
     }
 
-    container(content)
+    let label = if account.signed_in {
+        "Account"
+    } else {
+        "Sign in"
+    };
+    let footer = nav_button(
+        theme::icon(
+            include_bytes!("../assets/icons/artists.svg"),
+            theme::TEXT_SECONDARY,
+            18.0,
+        )
+        .into(),
+        label,
+        NavItem::Account,
+        selected,
+    );
+
+    container(column![scrollable(content).height(Fill), footer].spacing(6))
         .width(WIDTH)
         .height(Fill)
         .padding([12, 10])
         .style(|_| theme::panel(theme::SIDEBAR))
         .into()
+}
+
+/// What the sidebar needs to know about the account.
+pub struct SidebarAccount<'a> {
+    pub signed_in: bool,
+    /// The user's playlists once signed in; the sample ones are shown otherwise.
+    pub playlists: Option<&'a [Tile]>,
+    /// Whether the selected entry is on screen (Home or a library shelf).
+    pub highlight: bool,
 }
 
 /// Search terms suggested while typing; clicking one searches for it.
