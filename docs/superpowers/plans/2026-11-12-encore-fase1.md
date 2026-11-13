@@ -119,7 +119,7 @@ centered.
 
 **Verification:** the window opens (send a screenshot) and `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: open the Encore window`
+- [x] **Commit:** `feat: open the Encore window`
 
 ### Step 4: Play/Pause button
 
@@ -139,7 +139,7 @@ step 3 get properly explained.
 
 **Verification:** the button toggles (screenshots of both states); `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: add play/pause button`
+- [x] **Commit:** `feat: add play/pause button`
 
 ### Step 5: format times, with tests
 
@@ -171,7 +171,7 @@ step 3 get properly explained.
 **Verification:** write the tests first and watch them fail (`cargo test`), then write the
 functions and watch them pass; `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: format playback times`
+- [x] **Commit:** `feat: format playback times`
 
 ### Step 6: fake clock with a subscription
 
@@ -201,7 +201,7 @@ stops. When it reaches the duration, it goes back to `0:00`.
 
 **Verification:** the counter advances and stops; `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: simulate the playback clock`
+- [x] **Commit:** `feat: simulate the playback clock`
 
 ### Step 7: colors and the three columns
 
