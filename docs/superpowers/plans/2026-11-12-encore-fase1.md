@@ -414,7 +414,7 @@ sidebar's `Entry` as a struct, `parse::<u32>()` and `parse::<Color>()` in `mock.
 
 **Verification:** 28 tests still pass, the window looks exactly as before, `scripts/check.sh` passes.
 
-- [ ] **Commit:** `refactor: follow the Google Rust style guide`
+- [x] **Commit:** `refactor: follow the Google Rust style guide`
 
 ### Step 14: next track
 
