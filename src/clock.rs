@@ -9,6 +9,31 @@ pub fn remaining(elapsed: u32, duration: u32) -> u32 {
     duration.saturating_sub(elapsed)
 }
 
+/// The fake playback clock: where we are in the track and whether it is running.
+pub struct Playback {
+    pub elapsed: u32,
+    pub duration: u32,
+    pub is_playing: bool,
+}
+
+impl Playback {
+    /// Advances one second while playing, and starts over at the end of the track.
+    pub fn tick(&mut self) {
+        if !self.is_playing {
+            return;
+        }
+        self.elapsed += 1;
+        if self.elapsed >= self.duration {
+            self.elapsed = 0;
+        }
+    }
+
+    /// Switches between playing and paused
+    pub fn toggle(&mut self) {
+        self.is_playing = !self.is_playing;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -31,5 +56,50 @@ mod tests {
     #[test]
     fn remaining_never_goes_negative() {
         assert_eq!(remaining(300, 214), 0);
+    }
+
+    fn playing_at(elapsed: u32) -> Playback {
+        Playback {
+            elapsed,
+            duration: 214,
+            is_playing: true,
+        }
+    }
+    #[test]
+    fn tick_advances_while_playing() {
+        let mut playback = playing_at(93);
+        playback.tick();
+        assert_eq!(playback.elapsed, 94);
+    }
+
+    #[test]
+    fn tick_starts_over_at_the_end() {
+        let mut playback = playing_at(213);
+        playback.tick();
+        assert_eq!(playback.elapsed, 0);
+    }
+
+    #[test]
+    fn tick_recovers_when_past_the_end() {
+        let mut playback = playing_at(300);
+        playback.tick();
+        assert_eq!(playback.elapsed, 0);
+    }
+
+    #[test]
+    fn tick_does_nothing_while_paused() {
+        let mut playback = playing_at(93);
+        playback.is_playing = false;
+        playback.tick();
+        assert_eq!(playback.elapsed, 93);
+    }
+
+    #[test]
+    fn toggle_flips_between_playing_and_paused() {
+        let mut playback = playing_at(93);
+        playback.toggle();
+        assert!(!playback.is_playing);
+        playback.toggle();
+        assert!(playback.is_playing);
     }
 }
