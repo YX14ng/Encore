@@ -11,6 +11,7 @@ pub const TEXT_SECONDARY: Color = Color::from_rgb8(0x9b, 0x9b, 0xa4);
 pub const TEXT_DIM: Color = Color::from_rgb8(0x5f, 0x5f, 0x68);
 pub const ACCENT: Color = Color::from_rgb8(0xff, 0x44, 0x59);
 pub const LINE: Color = Color::from_rgba8(255, 255, 255, 0.07);
+pub const HERO: Color = Color::from_rgb8(0x24, 0x24, 0x24);
 
 /// A container style with a solid background and Encore's text color.
 pub fn panel(background: Color) -> container::Style {

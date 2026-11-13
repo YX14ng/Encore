@@ -1,5 +1,6 @@
 //! Sample data for phase 1, read from the files in `assets/mock/`.
 use iced::Color;
+use std::path::PathBuf;
 
 /// A track that can be played.
 pub struct Track {
@@ -58,6 +59,41 @@ fn parse_playlist(line: &str) -> Option<Playlist> {
         name: name.to_string(),
         color: color.parse().ok()?,
     })
+}
+
+/// A tile on the home screen: a recently played item or a mix.
+pub struct Card {
+    pub title: String,
+    pub subtitle: String,
+    pub cover: String,
+}
+
+/// Reads `recents.tsv` or `mixes.tsv`: title, subtitle and cover file per line.
+pub fn parse_cards(text: &str) -> Vec<Card> {
+    text.lines().filter_map(parse_card).collect()
+}
+
+fn parse_card(line: &str) -> Option<Card> {
+    let mut fields = line.split('\t');
+    let title = fields.next()?;
+    let subtitle = fields.next()?;
+    let cover = fields.next()?;
+    if fields.next().is_some() {
+        return None;
+    }
+
+    Some(Card {
+        title: title.to_string(),
+        subtitle: subtitle.to_string(),
+        cover: cover.to_string(),
+    })
+}
+
+/// Where a cover image lives on disk, no matter where the app is started from.
+pub fn cover_path(file: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("assets/covers")
+        .join(file)
 }
 
 #[cfg(test)]
@@ -134,5 +170,35 @@ mod tests {
             parse_playlists(include_str!("../assets/mock/playlists.tsv")).len(),
             5
         );
+    }
+
+    #[test]
+    fn parses_a_card() {
+        let cards = parse_cards("Mix 1\tHanabi Club and more\tsea.png");
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].title, "Mix 1");
+        assert_eq!(cards[0].subtitle, "Hanabi Club and more");
+        assert_eq!(cards[0].cover, "sea.png");
+    }
+
+    #[test]
+    fn reads_the_sample_cards() {
+        assert_eq!(
+            parse_cards(include_str!("../assets/mock/recents.tsv")).len(),
+            6
+        );
+        assert_eq!(
+            parse_cards(include_str!("../assets/mock/mixes.tsv")).len(),
+            5
+        );
+    }
+
+    #[test]
+    fn every_sample_cover_exists() {
+        let recents = parse_cards(include_str!("../assets/mock/recents.tsv"));
+        let mixes = parse_cards(include_str!("../assets/mock/mixes.tsv"));
+        for card in recents.iter().chain(&mixes) {
+            assert!(cover_path(&card.cover).exists(), "missing: {}", card.cover);
+        }
     }
 }

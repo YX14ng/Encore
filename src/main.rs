@@ -1,4 +1,5 @@
 mod clock;
+mod home;
 mod lyrics;
 mod mock;
 mod player;
@@ -8,11 +9,12 @@ mod top_bar;
 
 use std::time::Duration;
 
-use iced::widget::{column, container, row, text};
+use chrono::Timelike;
+use iced::widget::{column, container, row};
 use iced::{Element, Fill, Subscription, Theme, time};
 
 use clock::Playback;
-use mock::{Playlist, Track};
+use mock::{Card, Playlist, Track};
 use sidebar::{NavItem, Section, SidebarState};
 
 fn main() -> iced::Result {
@@ -31,6 +33,8 @@ struct App {
     show_sidebar: bool,
     show_lyrics: bool,
     playlists: Vec<Playlist>,
+    recents: Vec<Card>,
+    mixes: Vec<Card>,
 }
 
 #[derive(Debug, Clone)] // step 10: derive
@@ -51,6 +55,8 @@ impl App {
         Self {
             tracks,
             playlists: mock::parse_playlists(include_str!("../assets/mock/playlists.tsv")),
+            recents: mock::parse_cards(include_str!("../assets/mock/recents.tsv")),
+            mixes: mock::parse_cards(include_str!("../assets/mock/mixes.tsv")),
             sidebar: SidebarState::new(),
             playback: Playback {
                 elapsed: 93,
@@ -75,7 +81,8 @@ impl App {
 
     fn view(&self) -> Element<'_, Message> {
         // step 11: the '_ lifetime
-        let home = container(text("Encore").size(32)).center(Fill);
+        let hour = chrono::Local::now().hour();
+        let home = home::view(hour, &self.recents, &self.mixes);
 
         let center = container(column![
             top_bar::view(),
