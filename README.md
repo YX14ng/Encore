@@ -8,8 +8,10 @@ right.
 
 ## Status
 
-Phase 1 is done: the full main window with sample data, no network and no audio yet. Next is
-phase 2: searching YouTube Music and playing a track.
+Phase 2 is done: search YouTube Music from the sidebar and play songs (downloaded with yt-dlp,
+played with mpv). Next is phase 3: signing in, the library and playlists.
+
+Runtime requirements: `mpv` (libmpv) and `yt-dlp` installed on the system.
 
 - Design: [`docs/superpowers/specs/2026-11-12-encore-fase1-design.md`](docs/superpowers/specs/2026-11-12-encore-fase1-design.md)
 - Step plan: [`docs/superpowers/plans/2026-11-12-encore-fase1.md`](docs/superpowers/plans/2026-11-12-encore-fase1.md)
@@ -18,4 +20,4 @@ phase 2: searching YouTube Music and playing a track.
 
 - Rust (2024 edition)
 - iced for the interface
-- YouTube Music internal API client and audio engine: to be decided in the design
+- rustypipe for the YouTube Music catalog, yt-dlp for audio downloads, mpv (libmpv) for playback
