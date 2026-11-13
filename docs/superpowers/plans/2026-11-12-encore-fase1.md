@@ -296,7 +296,7 @@ left over from step 3.
 
 **Verification:** screenshot of the sidebar with one section collapsed; `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: build the sidebar from sample data`
+- [x] **Commit:** `feat: build the sidebar from sample data`
 
 ### Step 11: home with greeting, recents and mixes
 
