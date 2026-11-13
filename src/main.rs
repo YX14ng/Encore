@@ -12,7 +12,8 @@ use iced::widget::{column, container, row, text};
 use iced::{Element, Fill, Subscription, Theme, time};
 
 use clock::Playback;
-use mock::Track;
+use mock::{Playlist, Track};
+use sidebar::{NavItem, Section, SidebarState};
 
 fn main() -> iced::Result {
     iced::application(App::new, App::update, App::view)
@@ -25,9 +26,11 @@ fn main() -> iced::Result {
 
 struct App {
     tracks: Vec<Track>,
+    sidebar: SidebarState,
     playback: Playback,
     show_sidebar: bool,
     show_lyrics: bool,
+    playlists: Vec<Playlist>,
 }
 
 #[derive(Debug, Clone)] // step 10: derive
@@ -36,6 +39,8 @@ enum Message {
     Tick,
     ToggleSidebar,
     ToggleLyrics,
+    ToggleSection(Section),
+    Select(NavItem),
 }
 
 impl App {
@@ -45,6 +50,8 @@ impl App {
 
         Self {
             tracks,
+            playlists: mock::parse_playlists(include_str!("../assets/mock/playlists.tsv")),
+            sidebar: SidebarState::new(),
             playback: Playback {
                 elapsed: 93,
                 duration,
@@ -61,6 +68,8 @@ impl App {
             Message::Tick => self.playback.tick(),
             Message::ToggleSidebar => self.show_sidebar = !self.show_sidebar,
             Message::ToggleLyrics => self.show_lyrics = !self.show_lyrics,
+            Message::ToggleSection(section) => self.sidebar.toggle(section),
+            Message::Select(item) => self.sidebar.selected = item,
         }
     }
 
@@ -78,7 +87,10 @@ impl App {
         .style(|_| theme::panel(theme::CENTER));
 
         row![]
-            .push(self.show_sidebar.then(sidebar::view))
+            .push(
+                self.show_sidebar
+                    .then(|| sidebar::view(&self.sidebar, &self.playlists)),
+            )
             .push(center)
             .push(self.show_lyrics.then(lyrics::view))
             .into()

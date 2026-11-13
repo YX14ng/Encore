@@ -1,4 +1,5 @@
 //! Sample data for phase 1, read from the files in `assets/mock/`.
+use iced::Color;
 
 /// A track that can be played.
 pub struct Track {
@@ -37,6 +38,25 @@ fn parse_track(line: &str) -> Option<Track> {
         duration,
         cover: cover.to_string(),
         lyrics: (lyrics != "-").then(|| lyrics.to_string()),
+    })
+}
+
+/// A playlist in the sidebar, drawn with a colored square.
+pub struct Playlist {
+    pub name: String,
+    pub color: Color,
+}
+
+/// Reads `playlists.tsv`: a name and a `#rrggbb` color per line.
+pub fn parse_playlists(text: &str) -> Vec<Playlist> {
+    text.lines().filter_map(parse_playlist).collect()
+}
+
+fn parse_playlist(line: &str) -> Option<Playlist> {
+    let (name, color) = line.split_once('\t')?;
+    Some(Playlist {
+        name: name.to_string(),
+        color: color.parse().ok()?,
     })
 }
 
@@ -92,5 +112,27 @@ mod tests {
         let tracks = parse_tracks(include_str!("../assets/mock/tracks.tsv"));
         assert_eq!(tracks.len(), 5);
         assert_eq!(tracks[0].title, "Luz de neón");
+    }
+
+    #[test]
+    fn parses_a_playlist_with_its_color() {
+        let playlists = parse_playlists("Study\t#ff5f6d");
+        assert_eq!(playlists.len(), 1);
+        assert_eq!(playlists[0].name, "Study");
+        assert_eq!(playlists[0].color, Color::from_rgb8(0xff, 0x5f, 0x6d));
+    }
+
+    #[test]
+    fn skips_playlists_with_a_bad_color() {
+        assert!(parse_playlists("Study\tred-ish").is_empty());
+        assert!(parse_playlists("Study").is_empty());
+    }
+
+    #[test]
+    fn reads_the_sample_playlists() {
+        assert_eq!(
+            parse_playlists(include_str!("../assets/mock/playlists.tsv")).len(),
+            5
+        );
     }
 }
