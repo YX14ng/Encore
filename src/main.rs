@@ -7,9 +7,11 @@ mod clock;
 mod collection;
 mod download;
 mod home;
+mod immersive;
 mod layout;
 mod library;
 mod lyrics;
+mod lyrics_source;
 mod mock;
 mod offline;
 mod online;
@@ -33,7 +35,7 @@ use iced::{Element, Fill, Subscription, Task, Theme, time, window};
 use account::Browser;
 use clock::Playback;
 use library::{Account, LibraryData, Shelf};
-use lyrics::LyricLine;
+use lyrics::Lyrics;
 use mock::{Card, Playlist, Track};
 use offline::Offline;
 use online::{Online, Poll};
@@ -68,7 +70,7 @@ struct App {
     backdrop: Option<image::Handle>,
     liked: bool,
     current: usize,
-    lyrics: Vec<LyricLine>,
+    lyrics: Lyrics,
     window_width: f32,
     /// When the app started; the background zoom is measured from here.
     started: Instant,
@@ -90,6 +92,8 @@ struct App {
     default_browser: Option<Browser>,
     /// Downloaded collections and the download in progress.
     offline: Offline,
+    /// Whether the immersive (full screen) view is showing.
+    immersive: bool,
 }
 
 /// The screens of the center column.
@@ -142,6 +146,9 @@ enum Message {
     OfflineTrackDone(Result<std::path::PathBuf, String>),
     RemoveDownload(String),
     OpenOffline(String),
+    LyricsLoaded(String, Lyrics),
+    ToggleImmersive,
+    ExitImmersive,
 }
 
 impl App {
@@ -177,7 +184,7 @@ impl App {
         let backdrop = load_backdrop(first);
         let lyrics = load_lyrics(first);
         let elapsed = 93;
-        let first_line = lyrics::current_line(&lyrics, elapsed).unwrap_or(0);
+        let first_line = lyrics::current_line(lyrics.synced(), elapsed * 1000).unwrap_or(0);
         let now = Instant::now();
         let now_playing = Song::from_mock(first);
 
@@ -211,6 +218,7 @@ impl App {
             cookie_path: String::new(),
             default_browser: account::default_browser(),
             offline: Offline::load(),
+            immersive: false,
         }
     }
 
@@ -240,7 +248,13 @@ impl App {
                 }
                 self.follow_lyrics();
             }
-            Message::Frame(now) => self.now = now,
+            Message::Frame(now) => {
+                self.now = now;
+                // Keep the lyrics on the beat between the one-second ticks.
+                if self.online.is_active() && self.playback.is_playing {
+                    self.follow_lyrics();
+                }
+            }
             Message::ToggleSidebar => self.show_sidebar = !self.show_sidebar,
             Message::ToggleLyrics => self.show_lyrics = !self.show_lyrics,
             Message::ToggleSection(section) => self.sidebar.toggle(section),
@@ -371,6 +385,18 @@ impl App {
                 return self.save_offline_covers(task);
             }
             Message::RemoveDownload(id) => self.offline.remove(&id),
+            Message::LyricsLoaded(id, lyrics) => {
+                if self
+                    .online
+                    .playing_track()
+                    .is_some_and(|track| track.id == id)
+                {
+                    self.lyrics = lyrics;
+                    self.follow_lyrics();
+                }
+            }
+            Message::ToggleImmersive => return self.set_immersive(!self.immersive),
+            Message::ExitImmersive => return self.set_immersive(false),
             Message::OpenOffline(id) => {
                 if let Some(collection) = self.offline.get(&id).cloned() {
                     self.screen = Screen::Collection;
@@ -407,9 +433,38 @@ impl App {
             duration,
             is_playing: true,
         };
-        self.lyrics = Vec::new();
+        self.lyrics = Lyrics::Loading;
         self.follow_lyrics();
-        prefetch
+        let id = track.id.clone();
+        let lyrics = Task::perform(
+            lyrics_source::fetch(track, self.online.client()),
+            move |lyrics| Message::LyricsLoaded(id.clone(), lyrics),
+        );
+        Task::batch([prefetch, lyrics])
+    }
+
+    /// Enters or leaves the immersive view, switching the window to full screen and back.
+    fn set_immersive(&mut self, immersive: bool) -> Task<Message> {
+        if self.immersive == immersive {
+            return Task::none();
+        }
+        self.immersive = immersive;
+        let mode = if immersive {
+            window::Mode::Fullscreen
+        } else {
+            window::Mode::Windowed
+        };
+        window::latest().and_then(move |id| window::set_mode(id, mode))
+    }
+
+    /// Milliseconds into the song: from mpv for real songs, from the clock for samples.
+    fn position_ms(&self) -> u32 {
+        let from_clock = self.playback.elapsed * 1000;
+        if self.online.is_active() {
+            self.online.position_ms().unwrap_or(from_clock)
+        } else {
+            from_clock
+        }
     }
 
     /// Once a download finishes, saves its covers so they show without a connection. Covers that
@@ -517,7 +572,8 @@ impl App {
 
     /// Starts scrolling the lyrics panel when the current line changes.
     fn follow_lyrics(&mut self) {
-        let line = lyrics::current_line(&self.lyrics, self.playback.elapsed).unwrap_or(0) as f32;
+        let line =
+            lyrics::current_line(self.lyrics.synced(), self.position_ms()).unwrap_or(0) as f32;
         if line != self.lyrics_scroll.value() {
             self.lyrics_scroll.go_mut(line, self.now);
         }
@@ -525,6 +581,17 @@ impl App {
 
     fn view(&self) -> Element<'_, Message> {
         use chrono::Timelike;
+
+        if self.immersive {
+            let seconds = self.now.duration_since(self.started).as_secs_f32();
+            return immersive::view(
+                &self.now_playing,
+                self.backdrop.as_ref(),
+                backdrop::zoom_at(seconds),
+                self.lyrics_view(lyrics::IMMERSIVE),
+                player::view(&self.now_playing, &self.playback, self.liked),
+            );
+        }
 
         let hour = chrono::Local::now().hour();
         let columns =
@@ -603,16 +670,32 @@ impl App {
                 )
             }))
             .push(center)
-            .push(columns.lyrics.then(|| {
-                let current = lyrics::current_line(&self.lyrics, self.playback.elapsed);
-                let scroll = self.lyrics_scroll.interpolate_with(|line| line, self.now);
-                lyrics::view(&self.lyrics, current, scroll)
-            }))
+            .push(columns.lyrics.then(|| self.lyrics_view(lyrics::PANEL)))
             .into()
+    }
+
+    /// The lyrics in `style`, scrolled to the current line.
+    fn lyrics_view(&self, style: lyrics::Style) -> Element<'_, Message> {
+        let current = lyrics::current_line(self.lyrics.synced(), self.position_ms());
+        let scroll = self.lyrics_scroll.interpolate_with(|line| line, self.now);
+        lyrics::view(&self.lyrics, current, scroll, style)
     }
 
     fn subscription(&self) -> Subscription<Message> {
         let resize = window::resize_events().map(|(_id, size)| Message::WindowResized(size.width));
+        // Escape leaves the immersive view.
+        let escape = if self.immersive {
+            iced::keyboard::listen().filter_map(|event| match event {
+                iced::keyboard::Event::KeyPressed {
+                    key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape),
+                    ..
+                } => Some(Message::ExitImmersive),
+                _ => None,
+            })
+        } else {
+            Subscription::none()
+        };
+        let resize = Subscription::batch([resize, escape]);
 
         // About 30 frames per second, only while something is moving.
         let frames = time::every(Duration::from_millis(33)).map(Message::Frame);
@@ -636,11 +719,11 @@ fn load_backdrop(track: &Track) -> Option<image::Handle> {
 
 /// Reads and parses the track's lyrics. A track without lyrics, or with a file that cannot be
 /// read, gets no lines.
-fn load_lyrics(track: &Track) -> Vec<LyricLine> {
+fn load_lyrics(track: &Track) -> Lyrics {
     let Some(file) = &track.lyrics else {
-        return Vec::new();
+        return Lyrics::Missing;
     };
     fs::read_to_string(mock::lyrics_path(file))
-        .map(|text| lyrics::parse_lrc(&text))
-        .unwrap_or_default()
+        .map(|text| Lyrics::Synced(lyrics::parse_lrc(&text)))
+        .unwrap_or(Lyrics::Missing)
 }

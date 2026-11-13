@@ -115,7 +115,7 @@ fn controls<'a>(song: &'a Song, playback: &'a Playback, liked: bool) -> Element<
             include_bytes!("../assets/icons/fullscreen.svg"),
             theme::TEXT_SECONDARY,
             18.0,
-            None
+            Some(Message::ToggleImmersive)
         ),
     ]
     .spacing(8)

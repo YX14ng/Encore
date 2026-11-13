@@ -383,6 +383,12 @@ impl Online {
         Poll::Waiting
     }
 
+    /// Milliseconds into the playing song, for keeping lyrics in sync between ticks.
+    pub fn position_ms(&self) -> Option<u32> {
+        let seconds = self.audio.as_ref()?.position()?;
+        Some((seconds * 1000.0) as u32)
+    }
+
     /// The length of the playing song according to mpv, for lists that come without durations.
     pub fn duration(&self) -> Option<u32> {
         let seconds = self.audio.as_ref()?.duration()?;
