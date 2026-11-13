@@ -108,12 +108,28 @@ async fn audio_into(id: String, dir: PathBuf) -> Result<PathBuf, String> {
 }
 
 /// Downloads a small file, such as a cover image.
+///
+/// Images are kept here once downloaded, so they show at once on the next start.
 pub async fn bytes(url: String) -> Result<Vec<u8>, String> {
+    let cached = cache_dir()
+        .join("images")
+        .join(crate::offline::image_file_name(&url));
+    if let Ok(bytes) = tokio::fs::read(&cached).await {
+        return Ok(bytes);
+    }
+
     let response = reqwest::get(&url)
         .await
         .and_then(reqwest::Response::error_for_status)
         .map_err(|error| error.to_string())?;
     let bytes = response.bytes().await.map_err(|error| error.to_string())?;
+
+    // A failed write only means the image is downloaded again next time.
+    if let Some(dir) = cached.parent()
+        && tokio::fs::create_dir_all(dir).await.is_ok()
+    {
+        let _ = tokio::fs::write(&cached, &bytes).await;
+    }
     Ok(bytes.to_vec())
 }
 
