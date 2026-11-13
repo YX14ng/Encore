@@ -83,7 +83,7 @@ fn lyric(line: &LyricLine, is_current: bool) -> Element<'_, Message> {
     let font = if is_current {
         Font {
             weight: Weight::Bold,
-            ..Font::DEFAULT
+            ..theme::INTER
         }
     } else {
         Font {

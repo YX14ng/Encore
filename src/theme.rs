@@ -1,7 +1,10 @@
 //! Encore's colors and shared styles.
 
 use iced::widget::{button, container, svg};
-use iced::{Background, Color, border};
+use iced::{Background, Color, Font, border};
+
+/// The app's typeface, bundled in `assets/fonts/`.
+pub const INTER: Font = Font::with_name("Inter");
 
 pub const SIDEBAR: Color = Color::from_rgb8(0x13, 0x13, 0x15);
 pub const CENTER: Color = Color::from_rgb8(0x19, 0x19, 0x1c);

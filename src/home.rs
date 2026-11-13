@@ -2,6 +2,7 @@
 
 use iced::font::Weight;
 use iced::gradient::Linear;
+use iced::widget::text::Wrapping;
 use iced::widget::{Column, column, container, image, row, scrollable, space, stack, text};
 use iced::{ContentFit, Degrees, Element, Fill, Font};
 
@@ -105,7 +106,11 @@ fn recent_row(card: &Card) -> Element<'_, Message> {
 fn mixes_row(mixes: &[Card]) -> Element<'_, Message> {
     let cards = row(mixes.iter().map(mix_card)).spacing(16);
 
-    scrollable(cards).horizontal().into()
+    let scrollbar = scrollable::Scrollbar::new().spacing(10);
+
+    scrollable(cards)
+        .direction(scrollable::Direction::Horizontal(scrollbar))
+        .into()
 }
 
 fn mix_card(card: &Card) -> Element<'_, Message> {
@@ -113,9 +118,13 @@ fn mix_card(card: &Card) -> Element<'_, Message> {
         cover(card, 150.0),
         space().height(8),
         text(&card.title).size(13),
-        text(&card.subtitle).size(12).color(theme::TEXT_SECONDARY),
+        text(&card.subtitle)
+            .size(12)
+            .color(theme::TEXT_SECONDARY)
+            .wrapping(Wrapping::None),
     ]
     .width(150)
+    .clip(true)
     .into()
 }
 
@@ -130,7 +139,7 @@ fn cover(card: &Card, size: f32) -> Element<'_, Message> {
 fn bold() -> Font {
     Font {
         weight: Weight::Bold,
-        ..Font::DEFAULT
+        ..theme::INTER
     }
 }
 

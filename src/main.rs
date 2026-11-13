@@ -26,6 +26,10 @@ fn main() -> iced::Result {
         .title("Encore")
         .subscription(App::subscription)
         .theme(Theme::Dark)
+        .font(include_bytes!("../assets/fonts/Inter-Regular.ttf").as_slice())
+        .font(include_bytes!("../assets/fonts/Inter-SemiBold.ttf").as_slice())
+        .font(include_bytes!("../assets/fonts/Inter-Bold.ttf").as_slice())
+        .default_font(theme::INTER)
         .window_size((1280.0, 800.0))
         .run()
 }
@@ -116,7 +120,7 @@ impl App {
         let home = home::view(hour, self.backdrop.as_ref(), &self.recents, &self.mixes);
 
         let center = container(column![
-            top_bar::view(),
+            top_bar::view(self.show_sidebar, self.show_lyrics),
             home,
             player::view(&self.tracks[self.current], &self.playback, self.liked)
         ])
