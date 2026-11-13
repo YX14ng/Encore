@@ -221,7 +221,7 @@ center that takes the rest, and a 300 px lyrics panel. The button and the clock 
 
 **Verification:** screenshot with the three columns; `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: lay out the three columns`
+- [x] **Commit:** `feat: lay out the three columns`
 
 ### Step 8: top bar and hiding columns
 
@@ -243,20 +243,20 @@ lyrics buttons hide and show their column.
 
 **Verification:** both buttons hide and show their column (screenshot); `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: add top bar with collapsible columns`
+- [x] **Commit:** `feat: add top bar with collapsible columns`
 
 ### Step 9 (assistant): sample files
 
 The assistant adds:
 - `assets/mock/tracks.tsv`: the sample tracks, one per line, tab-separated: title, artist, album,
-  duration in seconds, cover file and lyrics file (empty if there are none).
+  duration in seconds, cover file and lyrics file (`-` if there are none, so editors that trim trailing whitespace cannot break the line).
 - `assets/mock/recents.tsv` and `assets/mock/mixes.tsv`: title, subtitle and cover.
 - `assets/mock/playlists.tsv`: name and hex color.
 - `assets/mock/luz-de-neon.lrc`: made-up lyrics in LRC format (`[mm:ss.cc] text`), with one
   `[ar:...]` metadata tag, one empty line and one line out of order on purpose (review focus 1).
 - `assets/covers/*.png`: five generated 300×300 covers.
 
-- [ ] **Commit (assistant):** `chore: add sample data and covers`
+- [x] **Commit (assistant):** `chore: add sample data and covers`
 
 ### Step 10: sample data and icons in the sidebar
 
