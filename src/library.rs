@@ -8,13 +8,15 @@ use rustypipe::client::RustyPipe;
 
 use crate::account::{self, BROWSERS, Browser};
 use crate::search::{self, Shared};
-use crate::youtube::{self, Collection, SearchTrack, Tile};
+use crate::youtube::{self, Collection, SearchTrack, Tile, TileKind};
 use crate::{Message, theme};
 
 /// Everything the library screens show.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LibraryData {
     pub history: Vec<SearchTrack>,
+    /// Radios built from the history, for the home screen.
+    pub mixes: Vec<Tile>,
     pub songs: Vec<SearchTrack>,
     pub liked: Vec<SearchTrack>,
     pub albums: Vec<Tile>,
@@ -62,10 +64,18 @@ pub enum Shelf {
     Downloads,
 }
 
-/// Loads every part of the library at once. Parts that fail come back empty.
+/// How many songs to load from long lists (history, saved songs, liked music).
+const SONG_LIMIT: usize = 500;
+/// How many albums, artists or playlists to load.
+const CARD_LIMIT: usize = 200;
+/// How many mixes the home screen offers.
+const MIX_COUNT: usize = 6;
+
+/// Loads every part of the library at once, following each list past its first page. Parts that
+/// fail come back empty; a part that fails on a later page keeps what it already had.
 pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
     let q = rp.query();
-    let (history, songs, liked, albums, artists, playlists) = tokio::join!(
+    let (mut history, mut songs, mut liked, mut albums, mut artists, mut playlists) = tokio::join!(
         q.music_history(),
         q.music_saved_tracks(),
         q.music_liked_tracks(),
@@ -79,15 +89,58 @@ pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
         return Err(error.to_string());
     }
 
+    // The history paginator only knows how to fetch one more page at a time.
+    let more_history = async {
+        if let Ok(page) = &mut history {
+            while page.items.len() < SONG_LIMIT && matches!(page.extend(&q).await, Ok(true)) {}
+        }
+    };
+    let more_songs = async {
+        if let Ok(page) = &mut songs {
+            let _ = page.extend_limit(&q, SONG_LIMIT).await;
+        }
+    };
+    let more_liked = async {
+        if let Ok(playlist) = &mut liked {
+            let _ = playlist.tracks.extend_limit(&q, SONG_LIMIT).await;
+        }
+    };
+    let more_albums = async {
+        if let Ok(page) = &mut albums {
+            let _ = page.extend_limit(&q, CARD_LIMIT).await;
+        }
+    };
+    let more_artists = async {
+        if let Ok(page) = &mut artists {
+            let _ = page.extend_limit(&q, CARD_LIMIT).await;
+        }
+    };
+    let more_playlists = async {
+        if let Ok(page) = &mut playlists {
+            let _ = page.extend_limit(&q, CARD_LIMIT).await;
+        }
+    };
+    tokio::join!(
+        more_history,
+        more_songs,
+        more_liked,
+        more_albums,
+        more_artists,
+        more_playlists
+    );
+
+    let history: Vec<SearchTrack> = history
+        .map(|page| {
+            page.items
+                .iter()
+                .map(|entry| youtube::track(&entry.item))
+                .collect()
+        })
+        .unwrap_or_default();
+
     Ok(LibraryData {
-        history: history
-            .map(|page| {
-                page.items
-                    .iter()
-                    .map(|entry| youtube::track(&entry.item))
-                    .collect()
-            })
-            .unwrap_or_default(),
+        mixes: mixes_from(&history, MIX_COUNT),
+        history,
         songs: songs
             .map(|page| page.items.iter().map(youtube::track).collect())
             .unwrap_or_default(),
@@ -111,6 +164,24 @@ pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
             })
             .unwrap_or_default(),
     })
+}
+
+/// Mixes for the home screen: a radio for each recent song by a different artist, so the mixes
+/// do not all sound alike. YouTube Music's own home feed is not available through rustypipe.
+pub fn mixes_from(history: &[SearchTrack], count: usize) -> Vec<Tile> {
+    let mut seen_artists = std::collections::HashSet::new();
+    history
+        .iter()
+        .filter(|track| seen_artists.insert(track.artist.clone()))
+        .take(count)
+        .map(|track| Tile {
+            kind: TileKind::Radio,
+            id: track.id.clone(),
+            title: format!("{} Mix", track.artist),
+            subtitle: format!("Based on {}", track.title),
+            image_url: track.cover_url.clone(),
+        })
+        .collect()
 }
 
 /// Signs in with cookies (from a browser or a file) and loads the library.
@@ -327,4 +398,36 @@ fn heading(label: &str) -> Element<'_, Message> {
 
 fn note<'a>(message: impl text::IntoFragment<'a>) -> Element<'a, Message> {
     text(message).color(theme::TEXT_SECONDARY).into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn song(id: &str, artist: &str) -> SearchTrack {
+        SearchTrack {
+            id: id.to_string(),
+            title: format!("Song {id}"),
+            artist: artist.to_string(),
+            album: String::new(),
+            duration: 0,
+            cover_url: None,
+        }
+    }
+
+    #[test]
+    fn mixes_use_one_song_per_artist() {
+        let history = [
+            song("a", "Ado"),
+            song("b", "Ado"),
+            song("c", "Daft Punk"),
+            song("d", "Aimer"),
+        ];
+        let mixes = mixes_from(&history, 2);
+        assert_eq!(mixes.len(), 2);
+        assert_eq!(mixes[0].id, "a");
+        assert_eq!(mixes[0].title, "Ado Mix");
+        assert_eq!(mixes[1].id, "c");
+        assert!(mixes.iter().all(|mix| mix.kind == TileKind::Radio));
+    }
 }

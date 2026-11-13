@@ -3,10 +3,12 @@
 use iced::font::Weight;
 use iced::gradient::Linear;
 use iced::widget::text::Wrapping;
-use iced::widget::{Column, column, container, image, row, scrollable, space, stack, text};
+use iced::widget::{Column, Row, column, container, image, row, scrollable, space, stack, text};
 use iced::{ContentFit, Degrees, Element, Fill, Font};
 
 use crate::mock::{self, Card};
+use crate::search::{self, Shared};
+use crate::youtube::{SearchTrack, Tile};
 use crate::{Message, theme};
 
 const HERO_HEIGHT: f32 = 330.0;
@@ -20,21 +22,80 @@ pub fn greeting(hour: u32) -> &'static str {
     }
 }
 
-/// The greeting over the blurred cover, then recently played and mixes.
+/// How many recently played songs the home screen shows (three rows of three).
+const RECENT_SONGS: usize = 9;
+
+/// What the home screen shows below the greeting.
+pub enum Sections<'a> {
+    /// Signed out: the sample data.
+    Sample {
+        recents: &'a [Card],
+        mixes: &'a [Card],
+    },
+    /// Signed in: the user's own music.
+    Personal {
+        history: &'a [SearchTrack],
+        mixes: &'a [Tile],
+        playlists: &'a [Tile],
+        albums: &'a [Tile],
+        shared: Shared<'a>,
+    },
+}
+
+/// The greeting over the blurred cover, then recently played, mixes and, when signed in, the
+/// user's playlists and albums.
 pub fn view<'a>(
     hour: u32,
     backdrop: Option<&'a image::Handle>,
     zoom: f32,
-    recents: &'a [Card],
-    mixes: &'a [Card],
+    sections: Sections<'a>,
 ) -> Element<'a, Message> {
-    let content = column![
-        hero(hour, backdrop, zoom),
-        section("Recently played", recents_grid(recents)),
-        section("Mixed for you", mixes_row(mixes)),
-    ];
+    let content = column![hero(hour, backdrop, zoom)];
+    let content = match sections {
+        Sections::Sample { recents, mixes } => content
+            .push(section("Recently played", recents_grid(recents)))
+            .push(section("Mixed for you", mixes_row(mixes))),
+        Sections::Personal {
+            history,
+            mixes,
+            playlists,
+            albums,
+            shared,
+        } => content
+            .push(
+                (!history.is_empty())
+                    .then(|| section("Recently played", personal_recents(history, shared))),
+            )
+            .push(
+                (!mixes.is_empty()).then(|| section("Mixed for you", search::shelf(mixes, shared))),
+            )
+            .push(
+                (!playlists.is_empty())
+                    .then(|| section("Your playlists", search::shelf(playlists, shared))),
+            )
+            .push(
+                (!albums.is_empty())
+                    .then(|| section("Saved albums", search::shelf(albums, shared))),
+            ),
+    };
 
     scrollable(content).height(Fill).into()
+}
+
+/// The latest songs of the history in rows of three; clicking one plays the history from there.
+fn personal_recents<'a>(history: &'a [SearchTrack], shared: Shared<'a>) -> Element<'a, Message> {
+    let shown = RECENT_SONGS.min(history.len());
+    let indexes: Vec<usize> = (0..shown).collect();
+    let rows = indexes.chunks(3).map(|chunk| {
+        Row::with_children(
+            chunk
+                .iter()
+                .map(|&index| search::track_row(history, index, shared)),
+        )
+        .spacing(18)
+        .into()
+    });
+    Column::with_children(rows).into()
 }
 
 fn hero(hour: u32, backdrop: Option<&image::Handle>, zoom: f32) -> Element<'_, Message> {

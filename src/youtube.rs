@@ -7,6 +7,9 @@ use rustypipe::model::{
 };
 use serde::{Deserialize, Serialize};
 
+/// How many songs of a playlist to load.
+const PLAYLIST_LIMIT: usize = 1000;
+
 /// The widest image worth downloading for covers and the blurred background.
 const COVER_MAX_WIDTH: u32 = 544;
 
@@ -27,6 +30,8 @@ pub enum TileKind {
     Album,
     Artist,
     Playlist,
+    /// A radio built from a song (its id is the song's id).
+    Radio,
 }
 
 /// An album, artist or playlist, shown as a card.
@@ -166,11 +171,28 @@ pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
                 tracks,
             })
         }
+        TileKind::Radio => {
+            let mut radio = q
+                .music_radio_track(&tile.id)
+                .await
+                .map_err(|error| error.to_string())?;
+            // A radio is endless; one more page is plenty for a session.
+            let _ = radio.extend(&q).await;
+            Ok(Collection {
+                id: tile.id.clone(),
+                kind: TileKind::Radio,
+                title: tile.title.clone(),
+                subtitle: tile.subtitle.clone(),
+                image_url: tile.image_url.clone(),
+                tracks: radio.items.iter().map(track).collect(),
+            })
+        }
         TileKind::Playlist => {
-            let playlist = q
+            let mut playlist = q
                 .music_playlist(&tile.id)
                 .await
                 .map_err(|error| error.to_string())?;
+            let _ = playlist.tracks.extend_limit(&q, PLAYLIST_LIMIT).await;
             Ok(Collection {
                 id: tile.id.clone(),
                 kind: TileKind::Playlist,
@@ -399,5 +421,20 @@ mod tests {
         let album = page.albums.first().cloned().expect("an album");
         let collection = open(rp, album).await.expect("open album");
         assert!(!collection.tracks.is_empty(), "the album has no songs");
+    }
+
+    /// Opens a radio built from a song: `cargo test -- --ignored opens_a_radio`.
+    #[tokio::test]
+    #[ignore = "needs the network"]
+    async fn opens_a_radio() {
+        let tile = Tile {
+            kind: TileKind::Radio,
+            id: "Rgrt_8mXrK8".to_string(),
+            title: "Daft Punk Mix".to_string(),
+            subtitle: String::new(),
+            image_url: None,
+        };
+        let radio = open(client().expect("client"), tile).await.expect("radio");
+        assert!(radio.tracks.len() > 10, "only {} songs", radio.tracks.len());
     }
 }

@@ -246,7 +246,8 @@ pub fn track_list<'a>(
     Column::with_children(rows).spacing(2).into()
 }
 
-fn track_row<'a>(
+/// One song row; clicking it plays `tracks` from `index`.
+pub fn track_row<'a>(
     tracks: &'a [SearchTrack],
     index: usize,
     shared: Shared<'a>,
@@ -283,7 +284,7 @@ fn track_row<'a>(
 }
 
 /// A horizontal row of cards.
-fn shelf<'a>(tiles: &'a [Tile], shared: Shared<'a>) -> Element<'a, Message> {
+pub fn shelf<'a>(tiles: &'a [Tile], shared: Shared<'a>) -> Element<'a, Message> {
     let cards = Row::with_children(tiles.iter().map(|tile| card(tile, shared))).spacing(16);
     let scrollbar = scrollable::Scrollbar::new().spacing(10);
     scrollable(cards)

@@ -31,6 +31,8 @@ pub struct Offline {
     collections: Vec<Collection>,
     job: Option<Job>,
     error: Option<String>,
+    /// A collection that just finished downloading, until the app saves its covers.
+    finished: Option<Collection>,
 }
 
 impl Offline {
@@ -44,6 +46,7 @@ impl Offline {
             collections,
             job: None,
             error: None,
+            finished: None,
         }
     }
 
@@ -130,6 +133,7 @@ impl Offline {
         }
         self.collections
             .retain(|collection| collection.id != job.collection.id);
+        self.finished = Some(job.collection.clone());
         self.collections.insert(0, job.collection);
         if let Err(error) = save(&self.collections) {
             self.error = Some(format!("could not save the downloads list: {error}"));
@@ -147,6 +151,10 @@ impl Offline {
             return;
         };
         let removed = self.collections.remove(position);
+        let still_used: HashSet<&str> = self.collections.iter().flat_map(image_urls).collect();
+        for url in image_urls(&removed).filter(|url| !still_used.contains(url)) {
+            let _ = std::fs::remove_file(images_dir().join(image_file_name(url)));
+        }
         let dir = download::offline_dir();
         for song in songs_to_delete(&removed, &self.collections) {
             if let Some(path) = download::find_cached(&dir, &song) {
@@ -158,6 +166,63 @@ impl Offline {
             self.error = Some(format!("could not save the downloads list: {error}"));
         }
     }
+}
+
+impl Offline {
+    /// The collection that just finished downloading, once.
+    pub fn take_finished(&mut self) -> Option<Collection> {
+        self.finished.take()
+    }
+
+    /// Every saved cover of the downloaded collections, to show them without a connection.
+    pub fn saved_images(&self) -> Vec<(String, Vec<u8>)> {
+        let urls: HashSet<&str> = self.collections.iter().flat_map(image_urls).collect();
+        urls.into_iter()
+            .filter_map(|url| {
+                let bytes = std::fs::read(images_dir().join(image_file_name(url))).ok()?;
+                Some((url.to_string(), bytes))
+            })
+            .collect()
+    }
+
+    /// Whether `url` is a cover of a downloaded collection that is not saved yet.
+    pub fn wants_image(&self, url: &str) -> bool {
+        let used = self
+            .collections
+            .iter()
+            .any(|collection| image_urls(collection).any(|image| image == url));
+        used && !images_dir().join(image_file_name(url)).exists()
+    }
+
+    /// Saves a cover next to the downloaded songs.
+    pub fn save_image(&self, url: &str, bytes: &[u8]) {
+        if std::fs::create_dir_all(images_dir()).is_ok() {
+            // A cover that fails to save only means a gray square offline.
+            let _ = std::fs::write(images_dir().join(image_file_name(url)), bytes);
+        }
+    }
+}
+
+/// The covers a collection shows: its own image and each song's cover.
+pub fn image_urls(collection: &Collection) -> impl Iterator<Item = &str> {
+    collection.image_url.as_deref().into_iter().chain(
+        collection
+            .tracks
+            .iter()
+            .filter_map(|track| track.cover_url.as_deref()),
+    )
+}
+
+fn images_dir() -> PathBuf {
+    download::offline_dir().join("images")
+}
+
+/// A file name for an image URL that is the same on every run (64-bit FNV-1a in hex).
+pub fn image_file_name(url: &str) -> String {
+    let hash = url.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |hash, byte| {
+        (hash ^ u64::from(byte)).wrapping_mul(0x0000_0100_0000_01b3)
+    });
+    format!("{hash:016x}")
 }
 
 fn index_path() -> PathBuf {
@@ -212,6 +277,16 @@ mod tests {
     }
 
     #[test]
+    fn image_names_are_stable_and_distinct() {
+        assert_eq!(image_file_name(""), "cbf29ce484222325");
+        assert_eq!(image_file_name("a"), "af63dc4c8601ec8c");
+        assert_ne!(
+            image_file_name("https://x/1"),
+            image_file_name("https://x/2")
+        );
+    }
+
+    #[test]
     fn keeps_songs_that_other_downloads_use() {
         let removed = collection("a", &["x", "y", "z"]);
         let others = [collection("b", &["y"])];
@@ -232,6 +307,7 @@ mod tests {
             collections: vec![collection("done", &["x"])],
             job: None,
             error: None,
+            finished: None,
         };
         assert_eq!(offline.state("done"), State::Downloaded);
         assert_eq!(offline.state("other"), State::NotDownloaded);

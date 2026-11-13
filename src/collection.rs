@@ -37,6 +37,7 @@ fn loaded<'a>(
         TileKind::Album => "ALBUM",
         TileKind::Artist => "ARTIST",
         TileKind::Playlist => "PLAYLIST",
+        TileKind::Radio => "MIX",
     };
 
     let play = button(text("Play").size(14).color(theme::TEXT))

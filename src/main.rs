@@ -147,6 +147,7 @@ impl App {
     /// The initial state, plus restoring a saved session in the background.
     fn boot() -> (Self, Task<Message>) {
         let mut app = Self::new();
+        app.online.seed_images(app.offline.saved_images());
         let restore = match app.online.client() {
             Some(client) => {
                 app.account = Account::Checking;
@@ -262,6 +263,11 @@ impl App {
                 if self.online.image_fetched(url.clone(), bytes) {
                     self.show_cover(&url);
                 }
+                if self.offline.wants_image(&url)
+                    && let Some(bytes) = self.online.image_bytes(&url)
+                {
+                    self.offline.save_image(&url, bytes);
+                }
             }
             Message::OpenTile(tile) => {
                 self.screen = Screen::Collection;
@@ -333,8 +339,14 @@ impl App {
                 }
             }
             Message::SignedOut => {}
-            Message::DownloadCollection(collection) => return self.offline.start(collection),
-            Message::OfflineTrackDone(result) => return self.offline.track_done(result),
+            Message::DownloadCollection(collection) => {
+                let task = self.offline.start(collection);
+                return self.save_offline_covers(task);
+            }
+            Message::OfflineTrackDone(result) => {
+                let task = self.offline.track_done(result);
+                return self.save_offline_covers(task);
+            }
             Message::RemoveDownload(id) => self.offline.remove(&id),
             Message::OpenOffline(id) => {
                 if let Some(collection) = self.offline.get(&id).cloned() {
@@ -375,6 +387,22 @@ impl App {
         self.lyrics = Vec::new();
         self.follow_lyrics();
         prefetch
+    }
+
+    /// Once a download finishes, saves its covers so they show without a connection. Covers that
+    /// are not in memory yet are downloaded again and saved when they arrive.
+    fn save_offline_covers(&mut self, task: Task<Message>) -> Task<Message> {
+        let Some(collection) = self.offline.take_finished() else {
+            return task;
+        };
+        let mut missing = Vec::new();
+        for url in offline::image_urls(&collection) {
+            match self.online.image_bytes(url) {
+                Some(bytes) => self.offline.save_image(url, bytes),
+                None => missing.push(url.to_string()),
+            }
+        }
+        Task::batch([task, self.online.refetch_images(missing)])
     }
 
     /// Highlights a sidebar entry and shows its screen.
@@ -473,13 +501,27 @@ impl App {
             layout::visible_columns(self.window_width, self.show_sidebar, self.show_lyrics);
         let seconds = self.now.duration_since(self.started).as_secs_f32();
         let content = match self.screen {
-            Screen::Home => home::view(
-                hour,
-                self.backdrop.as_ref(),
-                backdrop::zoom_at(seconds),
-                &self.recents,
-                &self.mixes,
-            ),
+            Screen::Home => {
+                let sections = match &self.account {
+                    Account::SignedIn(data) => home::Sections::Personal {
+                        history: &data.history,
+                        mixes: &data.mixes,
+                        playlists: &data.playlists,
+                        albums: &data.albums,
+                        shared: self.online.shared_view(),
+                    },
+                    _ => home::Sections::Sample {
+                        recents: &self.recents,
+                        mixes: &self.mixes,
+                    },
+                };
+                home::view(
+                    hour,
+                    self.backdrop.as_ref(),
+                    backdrop::zoom_at(seconds),
+                    sections,
+                )
+            }
             Screen::Search => search::view(self.online.results()),
             Screen::Collection => {
                 let (collection, status, shared) = self.online.collection();

@@ -173,6 +173,24 @@ impl Online {
         self.filter = filter;
     }
 
+    /// Adds images that are already on disk (covers of downloads).
+    pub fn seed_images(&mut self, images: Vec<(String, Vec<u8>)>) {
+        for (url, bytes) in images {
+            self.images
+                .insert(url.clone(), image::Handle::from_bytes(bytes.clone()));
+            self.image_bytes.insert(url.clone(), bytes);
+            self.requested_images.insert(url);
+        }
+    }
+
+    /// Downloads images again even if they were asked for before (their bytes went missing).
+    pub fn refetch_images(&mut self, urls: Vec<String>) -> Task<Message> {
+        for url in &urls {
+            self.requested_images.remove(url);
+        }
+        self.fetch_images(urls)
+    }
+
     /// Downloads images that were not asked for yet.
     pub fn fetch_images(&mut self, urls: Vec<String>) -> Task<Message> {
         let tasks: Vec<_> = urls
