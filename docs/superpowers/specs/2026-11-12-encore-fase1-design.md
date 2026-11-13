@@ -1,7 +1,7 @@
 # Encore: overall design and phase 1
 
 Date: 2026-11-12
-Status: approved (2026-11-12)
+Status: approved (2026-11-12); phase 1 closed (2026-11-13), see section 8
 
 ## 1. Intent
 
@@ -90,6 +90,10 @@ decided in phase 2); and LRCLIB for synced lyrics.
   hand.
 
 ## 5. Working mode (agreed with the user)
+
+> **Changed on 2026-11-13 (user's decision):** short on time, the user asked for speed. From the
+> end of phase 1 on, the assistant writes and applies the changes directly and summarizes them per
+> phase. The step-by-step tutoring below describes how phase 1 was built.
 
 Each step of the guide has five parts, in this order:
 
@@ -258,3 +262,20 @@ greeting for a given hour.
 - The order and size of the guide's steps, following section 5 and starting with: hello world with
   `cargo new`, an empty iced window, a Play/Pause button, the three columns as colored blocks, and
   then filling them in.
+
+## 8. Phase 1 outcome (2026-11-13)
+
+Everything in section 6.3 works, `scripts/check.sh` passes with 42 tests, and the window matches the
+mockup. Decisions made along the way:
+
+- **Code style:** the Google Rust Style Guide (section 4), applied in a dedicated refactor step.
+- **Lyrics:** every line has a fixed row height, the panel scrolls to the current line with a
+  500 ms ease-out animation and fades at the top and bottom. Dimmed lines use the system monospace
+  font in semibold (user's taste); the current line uses Inter bold.
+- **Background:** the blurred cover zooms slowly between 1.02x and 1.14x over 30 seconds while a
+  track plays. Animation frames run at about 30 per second, only while something moves.
+- **Typography:** Inter (Regular, SemiBold, Bold) is bundled in `assets/fonts/` with its OFL license.
+- **Verification without opening windows:** `iced_test` can render the whole view offscreen to a
+  PNG, which is how the animations were checked. It is not part of the repo yet.
+- **Skipped:** the definition-of-done item where the user explains `Message`, `update`, `view` and
+  the subscription in their own words, because of the change of working mode.

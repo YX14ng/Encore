@@ -8,7 +8,8 @@ right.
 
 ## Status
 
-Phase 1: building the visual skeleton with sample data.
+Phase 1 is done: the full main window with sample data, no network and no audio yet. Next is
+phase 2: searching YouTube Music and playing a track.
 
 - Design: [`docs/superpowers/specs/2026-11-12-encore-fase1-design.md`](docs/superpowers/specs/2026-11-12-encore-fase1-design.md)
 - Step plan: [`docs/superpowers/plans/2026-11-12-encore-fase1.md`](docs/superpowers/plans/2026-11-12-encore-fase1.md)

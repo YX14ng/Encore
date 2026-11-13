@@ -519,4 +519,5 @@ hide buttons still take effect when the window is wide.
   their own words what `Message`, `update`, `view` and the clock subscription do.
 - `scripts/check.sh` green and a push to `origin/main`.
 
-- [ ] **Push** when the phase is closed.
+- [x] **Push** when the phase is closed. The animations that the design marked optional were added
+  as `feat: animate the lyrics and the home background`.
