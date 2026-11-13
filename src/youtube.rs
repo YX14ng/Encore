@@ -188,10 +188,18 @@ pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
             })
         }
         TileKind::Playlist => {
-            let mut playlist = q
-                .music_playlist(&tile.id)
-                .await
-                .map_err(|error| error.to_string())?;
+            // Private playlists only exist for the signed-in user: if the anonymous request
+            // finds nothing, ask again with the session (which fails if there is none).
+            let (mut playlist, q) = match q.music_playlist(&tile.id).await {
+                Ok(playlist) => (playlist, q),
+                Err(anonymous) => {
+                    let signed_in = q.clone().authenticated();
+                    match signed_in.music_playlist(&tile.id).await {
+                        Ok(playlist) => (playlist, signed_in),
+                        Err(_) => return Err(anonymous.to_string()),
+                    }
+                }
+            };
             let _ = playlist.tracks.extend_limit(&q, PLAYLIST_LIMIT).await;
             Ok(Collection {
                 id: tile.id.clone(),
