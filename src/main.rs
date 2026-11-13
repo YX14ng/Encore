@@ -1,5 +1,5 @@
-use iced::widget::{container, text};
-use iced::{Element, Fill};
+use iced::widget::{button, column, container, text};
+use iced::{Center, Element, Fill};
 
 fn main() -> iced::Result {
     iced::application(App::default, App::update, App::view)
@@ -9,17 +9,32 @@ fn main() -> iced::Result {
 }
 
 #[derive(Default)]
-struct App;
+struct App {
+    is_playing: bool,
+}
 
 #[derive(Debug, Clone)]
-enum Message {}
+enum Message {
+    TogglePlay,
+}
 
 impl App {
     fn update(&mut self, message: Message) {
-        match message {}
+        match message {
+            Message::TogglePlay => self.is_playing = !self.is_playing,
+        }
     }
 
     fn view(&self) -> Element<'_, Message> {
-        container(text("Encore")).center(Fill).into()
+        let label = if self.is_playing { "Pause" } else { "Play" };
+
+        let content = column![
+            text("Encore").size(32),
+            button(label).on_press(Message::TogglePlay),
+        ]
+        .spacing(16)
+        .align_x(Center);
+
+        container(content).center(Fill).into()
     }
 }
