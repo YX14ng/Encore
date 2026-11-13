@@ -9,6 +9,15 @@ pub fn remaining(elapsed: u32, duration: u32) -> u32 {
     duration.saturating_sub(elapsed)
 }
 
+/// The index after `current` in a list of `len` items, wrapping back to the first.
+/// An empty list has no next item, so it stays at `0`.
+pub fn next_index(current: usize, len: usize) -> usize {
+    if len == 0 {
+        return 0;
+    }
+    (current + 1) % len
+}
+
 /// The fake playback clock: where we are in the track and whether it is running.
 pub struct Playback {
     pub elapsed: u32,
@@ -26,6 +35,12 @@ impl Playback {
         if self.elapsed >= self.duration {
             self.elapsed = 0;
         }
+    }
+
+    /// Starts a new track of `duration` seconds from the beginning, keeping play or pause.
+    pub fn restart(&mut self, duration: u32) {
+        self.elapsed = 0;
+        self.duration = duration;
     }
 
     /// Switches between playing and paused.
@@ -100,6 +115,27 @@ mod tests {
         playback.toggle();
         assert!(!playback.is_playing);
         playback.toggle();
+        assert!(playback.is_playing);
+    }
+
+    #[test]
+    fn next_index_moves_forward_and_wraps() {
+        assert_eq!(next_index(0, 5), 1);
+        assert_eq!(next_index(4, 5), 0);
+        assert_eq!(next_index(0, 1), 0);
+    }
+
+    #[test]
+    fn next_index_of_an_empty_list_is_zero() {
+        assert_eq!(next_index(0, 0), 0);
+    }
+
+    #[test]
+    fn restart_rewinds_and_keeps_playing() {
+        let mut playback = playing_at(93);
+        playback.restart(187);
+        assert_eq!(playback.elapsed, 0);
+        assert_eq!(playback.duration, 187);
         assert!(playback.is_playing);
     }
 }

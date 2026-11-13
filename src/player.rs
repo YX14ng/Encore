@@ -80,7 +80,7 @@ fn controls<'a>(track: &'a Track, playback: &'a Playback, liked: bool) -> Elemen
             include_bytes!("../assets/icons/next.svg"),
             theme::TEXT,
             18.0,
-            None
+            Some(Message::Next)
         ),
         icon_button(
             include_bytes!("../assets/icons/repeat.svg"),

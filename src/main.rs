@@ -41,6 +41,7 @@ struct App {
     mixes: Vec<Card>,
     backdrop: Option<image::Handle>,
     liked: bool,
+    current: usize,
 }
 
 /// Everything that can happen in the app.
@@ -53,6 +54,7 @@ enum Message {
     ToggleSection(Section),
     Select(NavItem),
     ToggleLike,
+    Next,
 }
 
 impl App {
@@ -77,6 +79,7 @@ impl App {
             show_sidebar: true,
             show_lyrics: true,
             liked: true,
+            current: 0,
         }
     }
 
@@ -89,7 +92,16 @@ impl App {
             Message::ToggleSection(section) => self.sidebar.toggle(section),
             Message::Select(item) => self.sidebar.selected = item,
             Message::ToggleLike => self.liked = !self.liked,
+            Message::Next => self.next_track(),
         }
+    }
+
+    /// Moves to the next sample track: new cover, new background and the clock back at zero.
+    fn next_track(&mut self) {
+        self.current = clock::next_index(self.current, self.tracks.len());
+        let track = &self.tracks[self.current];
+        self.playback.restart(track.duration);
+        self.backdrop = load_backdrop(track);
     }
 
     fn view(&self) -> Element<'_, Message> {
@@ -101,7 +113,7 @@ impl App {
         let center = container(column![
             top_bar::view(),
             home,
-            player::view(&self.tracks[0], &self.playback, self.liked)
+            player::view(&self.tracks[self.current], &self.playback, self.liked)
         ])
         .width(Fill)
         .height(Fill)
