@@ -5,15 +5,19 @@ use iced::font::Weight;
 use iced::widget::{Row, button, column, scrollable, text, text_input};
 use iced::{Element, Fill, Font, border};
 use rustypipe::client::RustyPipe;
+use serde::{Deserialize, Serialize};
 
 use crate::account::{self, BROWSERS, Browser};
+use crate::profile::{self, Profile};
 use crate::search::{self, Shared};
 use crate::youtube::{self, Collection, SearchTrack, Tile, TileKind};
 use crate::{Message, theme};
 
-/// Everything the library screens show.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// Everything the library screens show. Saved to disk so the next start shows it at once.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LibraryData {
+    /// Who is signed in.
+    pub profile: Option<Profile>,
     pub history: Vec<SearchTrack>,
     /// Radios built from the history, for the home screen.
     pub mixes: Vec<Tile>,
@@ -36,6 +40,11 @@ impl LibraryData {
         tracks
             .filter_map(|track| track.cover_url.clone())
             .chain(tiles.filter_map(|tile| tile.image_url.clone()))
+            .chain(
+                self.profile
+                    .iter()
+                    .filter_map(|profile| profile.photo_url.clone()),
+            )
             .collect()
     }
 }
@@ -49,7 +58,7 @@ pub enum Account {
     SigningIn,
     /// Waiting for the user to sign in in this browser.
     Waiting(Browser),
-    SignedIn(LibraryData),
+    SignedIn(Box<LibraryData>),
     Failed(String),
 }
 
@@ -75,14 +84,17 @@ const MIX_COUNT: usize = 6;
 /// fail come back empty; a part that fails on a later page keeps what it already had.
 pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
     let q = rp.query();
-    let (mut history, mut songs, mut liked, mut albums, mut artists, mut playlists) = tokio::join!(
-        q.music_history(),
-        q.music_saved_tracks(),
-        q.music_liked_tracks(),
-        q.music_saved_albums(),
-        q.music_saved_artists(),
-        q.music_saved_playlists(),
-    );
+    let (profile, (mut history, mut songs, mut liked, mut albums, mut artists, mut playlists)) =
+        tokio::join!(profile::fetch(&rp), async {
+            tokio::join!(
+                q.music_history(),
+                q.music_saved_tracks(),
+                q.music_liked_tracks(),
+                q.music_saved_albums(),
+                q.music_saved_artists(),
+                q.music_saved_playlists(),
+            )
+        });
     if let (Err(error), Err(_), Err(_), Err(_), Err(_), Err(_)) =
         (&history, &songs, &liked, &albums, &artists, &playlists)
     {
@@ -139,6 +151,7 @@ pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
         .unwrap_or_default();
 
     Ok(LibraryData {
+        profile,
         mixes: mixes_from(&history, MIX_COUNT),
         history,
         songs: songs
@@ -225,12 +238,52 @@ pub async fn wait_for_sign_in(rp: RustyPipe, browser: Browser) -> Result<Library
     ))
 }
 
-/// Restores the session saved by an earlier sign-in, if it is still valid.
-pub async fn restore(rp: RustyPipe) -> Result<LibraryData, String> {
-    rp.user_auth_check_cookie()
-        .await
-        .map_err(|error| error.to_string())?;
-    load(rp).await
+/// Why a saved session could not be restored.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RestoreError {
+    /// There is no saved session (never signed in, or signed out).
+    NoSession,
+    /// The session is saved but checking it failed, for example without a connection.
+    Failed(String),
+}
+
+/// Restores the session saved by an earlier sign-in and reloads the library.
+pub async fn restore(rp: RustyPipe) -> Result<LibraryData, RestoreError> {
+    use rustypipe::error::{AuthError, Error};
+
+    match rp.user_auth_check_cookie().await {
+        Err(Error::Auth(AuthError::NoLogin)) => return Err(RestoreError::NoSession),
+        Err(error) => return Err(RestoreError::Failed(error.to_string())),
+        Ok(()) => {}
+    }
+    load(rp).await.map_err(RestoreError::Failed)
+}
+
+fn cache_path() -> std::path::PathBuf {
+    account::data_dir().join("library.json")
+}
+
+/// The library saved by the last session, shown at startup while it reloads.
+pub fn load_cache() -> Option<LibraryData> {
+    let json = std::fs::read_to_string(cache_path()).ok()?;
+    serde_json::from_str(&json).ok()
+}
+
+/// Saves the library for the next start. It holds the history, so it goes in the private
+/// data folder.
+pub fn save_cache(data: &LibraryData) {
+    if account::private_dir(&account::data_dir()).is_err() {
+        return;
+    }
+    if let Ok(json) = serde_json::to_string(data) {
+        // Without the cache the next start just loads from the network.
+        let _ = std::fs::write(cache_path(), json);
+    }
+}
+
+/// Forgets the saved library (after signing out).
+pub fn clear_cache() {
+    let _ = std::fs::remove_file(cache_path());
 }
 
 /// Forgets the session.
@@ -288,6 +341,7 @@ pub fn account_view<'a>(
     account: &'a Account,
     cookie_path: &'a str,
     default_browser: Option<Browser>,
+    photo: Option<iced::widget::image::Handle>,
 ) -> Element<'a, Message> {
     let mut content = column![heading("Your YouTube Music account")]
         .spacing(18)
@@ -295,7 +349,37 @@ pub fn account_view<'a>(
         .max_width(720);
 
     match account {
-        Account::SignedIn(_) => {
+        Account::SignedIn(data) => {
+            if let Some(profile) = &data.profile {
+                let photo: Element<'a, Message> = match &photo {
+                    Some(handle) => iced::widget::image(handle.clone())
+                        .width(96)
+                        .height(96)
+                        .border_radius(48)
+                        .into(),
+                    None => iced::widget::container(iced::widget::space())
+                        .width(96)
+                        .height(96)
+                        .style(|_| theme::panel(theme::HERO).border(border::rounded(48)))
+                        .into(),
+                };
+                let names = column![text(&profile.name).size(22).font(Font {
+                    weight: Weight::Bold,
+                    ..theme::INTER
+                })]
+                .push(
+                    profile
+                        .handle
+                        .as_deref()
+                        .map(|handle| text(handle).color(theme::TEXT_SECONDARY)),
+                )
+                .spacing(4);
+                content = content.push(
+                    iced::widget::row![photo, names]
+                        .spacing(20)
+                        .align_y(iced::Center),
+                );
+            }
             content = content
                 .push(note(
                     "You are signed in. Your library and playlists are in the sidebar.",

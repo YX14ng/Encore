@@ -35,7 +35,7 @@ pub enum TileKind {
 }
 
 /// An album, artist or playlist, shown as a card.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tile {
     pub kind: TileKind,
     pub id: String,

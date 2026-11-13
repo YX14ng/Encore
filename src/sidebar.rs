@@ -4,6 +4,7 @@ use iced::widget::{Column, button, column, container, row, scrollable, space, te
 use iced::{Element, Fill, border};
 
 use crate::mock::Playlist;
+use crate::profile::Profile;
 use crate::youtube::Tile;
 use crate::{Message, theme};
 
@@ -216,22 +217,25 @@ pub fn view<'a>(
         }
     }
 
-    let label = if account.signed_in {
-        "Account"
-    } else {
-        "Sign in"
+    let label = match (account.signed_in, account.profile) {
+        (true, Some(profile)) => profile.name.as_str(),
+        (true, None) => "Account",
+        (false, _) => "Sign in",
     };
-    let footer = nav_button(
-        theme::icon(
+    let glyph: Element<'a, Message> = match account.photo {
+        Some(photo) => iced::widget::image(photo)
+            .width(22)
+            .height(22)
+            .border_radius(11)
+            .into(),
+        None => theme::icon(
             include_bytes!("../assets/icons/artists.svg"),
             theme::TEXT_SECONDARY,
             18.0,
         )
         .into(),
-        label,
-        NavItem::Account,
-        selected,
-    );
+    };
+    let footer = nav_button(glyph, label, NavItem::Account, selected);
 
     container(column![scrollable(content).height(Fill), footer].spacing(6))
         .width(WIDTH)
@@ -244,6 +248,10 @@ pub fn view<'a>(
 /// What the sidebar needs to know about the account.
 pub struct SidebarAccount<'a> {
     pub signed_in: bool,
+    /// Who is signed in, for the footer.
+    pub profile: Option<&'a Profile>,
+    /// The profile photo, once downloaded.
+    pub photo: Option<iced::widget::image::Handle>,
     /// The user's playlists once signed in; the sample ones are shown otherwise.
     pub playlists: Option<&'a [Tile]>,
     /// Whether the selected entry is on screen (Home or a library shelf).

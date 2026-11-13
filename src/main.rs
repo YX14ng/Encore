@@ -14,6 +14,7 @@ mod mock;
 mod offline;
 mod online;
 mod player;
+mod profile;
 mod search;
 mod sidebar;
 mod song;
@@ -134,7 +135,7 @@ enum Message {
     CookiePathChanged(String),
     ImportCookies,
     SignedIn(Result<LibraryData, String>),
-    Restored(Result<LibraryData, String>),
+    Restored(Result<LibraryData, library::RestoreError>),
     SignOut,
     SignedOut,
     DownloadCollection(Collection),
@@ -148,14 +149,25 @@ impl App {
     fn boot() -> (Self, Task<Message>) {
         let mut app = Self::new();
         app.online.seed_images(app.offline.saved_images());
+        // Show the library saved by the last session at once; it reloads in the background.
+        let cached_images = match library::load_cache() {
+            Some(cached) => {
+                let images = app.online.fetch_images(cached.image_urls());
+                app.account = Account::SignedIn(Box::new(cached));
+                images
+            }
+            None => Task::none(),
+        };
         let restore = match app.online.client() {
             Some(client) => {
-                app.account = Account::Checking;
+                if !matches!(app.account, Account::SignedIn(_)) {
+                    app.account = Account::Checking;
+                }
                 Task::perform(library::restore(client), Message::Restored)
             }
             None => Task::none(),
         };
-        (app, restore)
+        (app, Task::batch([cached_images, restore]))
     }
 
     fn new() -> Self {
@@ -330,10 +342,21 @@ impl App {
                 let cookies = account::read_from_file(&self.cookie_path);
                 return Task::perform(library::sign_in(client, cookies), Message::SignedIn);
             }
-            Message::SignedIn(result) => return self.library_loaded(result, true),
-            Message::Restored(result) => return self.library_loaded(result, false),
+            Message::SignedIn(result) => return self.library_loaded(result),
+            Message::Restored(Ok(data)) => return self.library_loaded(Ok(data)),
+            Message::Restored(Err(library::RestoreError::NoSession)) => {
+                self.account = Account::SignedOut;
+                library::clear_cache();
+            }
+            Message::Restored(Err(library::RestoreError::Failed(_))) => {
+                // Probably offline: keep showing the saved library if there is one.
+                if !matches!(self.account, Account::SignedIn(_)) {
+                    self.account = Account::SignedOut;
+                }
+            }
             Message::SignOut => {
                 self.account = Account::SignedOut;
+                library::clear_cache();
                 if let Some(client) = self.online.client() {
                     return Task::perform(library::sign_out(client), |()| Message::SignedOut);
                 }
@@ -430,28 +453,35 @@ impl App {
         Task::none()
     }
 
-    /// Shows the library after signing in or restoring a session, and downloads its images.
-    /// A failed restore at startup just means "signed out"; a failed sign-in shows the error.
-    fn library_loaded(
-        &mut self,
-        result: Result<LibraryData, String>,
-        from_sign_in: bool,
-    ) -> Task<Message> {
+    /// Shows the library after signing in or restoring a session, saves it for the next start
+    /// and downloads its images. A failed sign-in shows the error.
+    fn library_loaded(&mut self, result: Result<LibraryData, String>) -> Task<Message> {
         match result {
             Ok(data) => {
+                library::save_cache(&data);
                 let images = self.online.fetch_images(data.image_urls());
-                self.account = Account::SignedIn(data);
+                self.account = Account::SignedIn(Box::new(data));
                 images
             }
             Err(error) => {
-                self.account = if from_sign_in {
-                    Account::Failed(error)
-                } else {
-                    Account::SignedOut
-                };
+                self.account = Account::Failed(error);
                 Task::none()
             }
         }
+    }
+
+    /// Who is signed in, if the library knows.
+    fn profile(&self) -> Option<&profile::Profile> {
+        match &self.account {
+            Account::SignedIn(data) => data.profile.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// The profile photo, once downloaded.
+    fn profile_photo(&self) -> Option<image::Handle> {
+        let url = self.profile()?.photo_url.as_deref()?;
+        self.online.image(url)
     }
 
     /// Puts a freshly downloaded cover on the player and behind the home greeting.
@@ -533,9 +563,12 @@ impl App {
                 self.offline.collections(),
                 self.online.shared_view(),
             ),
-            Screen::Account => {
-                library::account_view(&self.account, &self.cookie_path, self.default_browser)
-            }
+            Screen::Account => library::account_view(
+                &self.account,
+                &self.cookie_path,
+                self.default_browser,
+                self.profile_photo(),
+            ),
         };
 
         let center = container(column![
@@ -556,6 +589,8 @@ impl App {
                     self.online.suggestions(),
                     SidebarAccount {
                         signed_in: matches!(self.account, Account::SignedIn(_)),
+                        profile: self.profile(),
+                        photo: self.profile_photo(),
                         playlists: match &self.account {
                             Account::SignedIn(data) => Some(&data.playlists),
                             _ => None,
