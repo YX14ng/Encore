@@ -371,7 +371,7 @@ a `container` with `Background::Gradient`.
 
 **Verification:** screenshot of the home page with the background; `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: blur the current cover behind home`
+- [x] **Commit:** `feat: blur the current cover behind home`
 
 ### Step 13: bottom player
 
