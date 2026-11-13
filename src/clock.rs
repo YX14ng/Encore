@@ -28,7 +28,7 @@ impl Playback {
         }
     }
 
-    /// Switches between playing and paused
+    /// Switches between playing and paused.
     pub fn toggle(&mut self) {
         self.is_playing = !self.is_playing;
     }

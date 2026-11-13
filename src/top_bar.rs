@@ -5,6 +5,7 @@ use iced::widget::{button, row, space};
 
 use crate::Message;
 
+/// Back and forward, the panel toggles and the shortcuts on the right.
 pub fn view() -> Element<'static, Message> {
     row![
         button("‹"),

@@ -1,3 +1,5 @@
+//! Encore: a YouTube Music desktop player written with iced.
+
 mod backdrop;
 mod clock;
 mod home;
@@ -8,9 +10,9 @@ mod sidebar;
 mod theme;
 mod top_bar;
 
+use std::fs;
 use std::time::Duration;
 
-use chrono::Timelike;
 use iced::widget::{column, container, image, row};
 use iced::{Element, Fill, Subscription, Theme, time};
 
@@ -27,6 +29,7 @@ fn main() -> iced::Result {
         .run()
 }
 
+/// Everything the app remembers between frames.
 struct App {
     tracks: Vec<Track>,
     sidebar: SidebarState,
@@ -40,7 +43,8 @@ struct App {
     liked: bool,
 }
 
-#[derive(Debug, Clone)] // step 10: derive
+/// Everything that can happen in the app.
+#[derive(Debug, Clone)]
 enum Message {
     TogglePlay,
     Tick,
@@ -54,8 +58,9 @@ enum Message {
 impl App {
     fn new() -> Self {
         let tracks = mock::parse_tracks(include_str!("../assets/mock/tracks.tsv"));
-        let duration = tracks[0].duration;
-        let backdrop = load_backdrop(&tracks[0]);
+        let first = tracks.first().expect("tracks.tsv lists at least one track");
+        let duration = first.duration;
+        let backdrop = load_backdrop(first);
 
         Self {
             tracks,
@@ -88,7 +93,8 @@ impl App {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        // step 11: the '_ lifetime
+        use chrono::Timelike;
+
         let hour = chrono::Local::now().hour();
         let home = home::view(hour, self.backdrop.as_ref(), &self.recents, &self.mixes);
 
@@ -122,6 +128,6 @@ impl App {
 
 /// Reads the track's cover from disk and blurs it for the home background.
 fn load_backdrop(track: &Track) -> Option<image::Handle> {
-    let bytes = std::fs::read(mock::cover_path(&track.cover)).ok()?;
+    let bytes = fs::read(mock::cover_path(&track.cover)).ok()?;
     backdrop::blurred_backdrop(&bytes)
 }

@@ -9,7 +9,7 @@ pub struct Track {
     pub album: String,
     pub duration: u32,
     pub cover: String,
-    #[allow(dead_code)]
+    #[allow(dead_code)] // shown in step 15
     pub lyrics: Option<String>,
 }
 
@@ -24,7 +24,7 @@ fn parse_track(line: &str) -> Option<Track> {
     let title = fields.next()?;
     let artist = fields.next()?;
     let album = fields.next()?;
-    let duration = fields.next()?.parse().ok()?;
+    let duration = fields.next()?.parse::<u32>().ok()?;
     let cover = fields.next()?;
     let lyrics = fields.next()?;
     if fields.next().is_some() {
@@ -56,7 +56,7 @@ fn parse_playlist(line: &str) -> Option<Playlist> {
     let (name, color) = line.split_once('\t')?;
     Some(Playlist {
         name: name.to_string(),
-        color: color.parse().ok()?,
+        color: color.parse::<Color>().ok()?,
     })
 }
 

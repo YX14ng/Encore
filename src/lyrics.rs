@@ -7,6 +7,7 @@ use crate::{Message, theme};
 
 pub const WIDTH: f32 = 300.0;
 
+/// A placeholder until the synced lyrics arrive in step 15.
 pub fn view() -> Element<'static, Message> {
     container(text("Lyrics"))
         .width(WIDTH)

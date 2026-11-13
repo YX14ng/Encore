@@ -42,6 +42,7 @@ pub struct SidebarState {
 }
 
 impl SidebarState {
+    /// Starts on Home with every section open.
     pub fn new() -> Self {
         Self {
             selected: NavItem::Home,
@@ -51,6 +52,7 @@ impl SidebarState {
         }
     }
 
+    /// Whether the entries of `section` are shown.
     pub fn is_open(&self, section: Section) -> bool {
         match section {
             Section::Music => self.music_open,
@@ -59,6 +61,7 @@ impl SidebarState {
         }
     }
 
+    /// Opens `section` if it is closed, and closes it if it is open.
     pub fn toggle(&mut self, section: Section) {
         match section {
             Section::Music => self.music_open = !self.music_open,
@@ -68,72 +71,84 @@ impl SidebarState {
     }
 }
 
-type Entry = (NavItem, &'static str, &'static [u8]);
+impl Default for SidebarState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// One fixed entry of the sidebar: what it selects, its label and its icon.
+struct Entry {
+    item: NavItem,
+    label: &'static str,
+    icon: &'static [u8],
+}
 
 const MUSIC: [Entry; 3] = [
-    (
-        NavItem::Home,
-        "Home",
-        include_bytes!("../assets/icons/home.svg"),
-    ),
-    (
-        NavItem::Explore,
-        "Explore",
-        include_bytes!("../assets/icons/explore.svg"),
-    ),
-    (
-        NavItem::Radio,
-        "Radio & mixes",
-        include_bytes!("../assets/icons/radio.svg"),
-    ),
+    Entry {
+        item: NavItem::Home,
+        label: "Home",
+        icon: include_bytes!("../assets/icons/home.svg"),
+    },
+    Entry {
+        item: NavItem::Explore,
+        label: "Explore",
+        icon: include_bytes!("../assets/icons/explore.svg"),
+    },
+    Entry {
+        item: NavItem::Radio,
+        label: "Radio & mixes",
+        icon: include_bytes!("../assets/icons/radio.svg"),
+    },
 ];
 
 const LIBRARY: [Entry; 6] = [
-    (
-        NavItem::History,
-        "History",
-        include_bytes!("../assets/icons/history.svg"),
-    ),
-    (
-        NavItem::Songs,
-        "Songs",
-        include_bytes!("../assets/icons/songs.svg"),
-    ),
-    (
-        NavItem::Albums,
-        "Albums",
-        include_bytes!("../assets/icons/albums.svg"),
-    ),
-    (
-        NavItem::Artists,
-        "Artists",
-        include_bytes!("../assets/icons/artists.svg"),
-    ),
-    (
-        NavItem::Subscriptions,
-        "Subscriptions",
-        include_bytes!("../assets/icons/subscriptions.svg"),
-    ),
-    (
-        NavItem::Podcasts,
-        "Podcasts",
-        include_bytes!("../assets/icons/podcasts.svg"),
-    ),
+    Entry {
+        item: NavItem::History,
+        label: "History",
+        icon: include_bytes!("../assets/icons/history.svg"),
+    },
+    Entry {
+        item: NavItem::Songs,
+        label: "Songs",
+        icon: include_bytes!("../assets/icons/songs.svg"),
+    },
+    Entry {
+        item: NavItem::Albums,
+        label: "Albums",
+        icon: include_bytes!("../assets/icons/albums.svg"),
+    },
+    Entry {
+        item: NavItem::Artists,
+        label: "Artists",
+        icon: include_bytes!("../assets/icons/artists.svg"),
+    },
+    Entry {
+        item: NavItem::Subscriptions,
+        label: "Subscriptions",
+        icon: include_bytes!("../assets/icons/subscriptions.svg"),
+    },
+    Entry {
+        item: NavItem::Podcasts,
+        label: "Podcasts",
+        icon: include_bytes!("../assets/icons/podcasts.svg"),
+    },
 ];
 
 const PLAYLIST_ACTIONS: [Entry; 2] = [
-    (
-        NavItem::NewPlaylist,
-        "New playlist",
-        include_bytes!("../assets/icons/plus.svg"),
-    ),
-    (
-        NavItem::LikedMusic,
-        "Liked music",
-        include_bytes!("../assets/icons/like.svg"),
-    ),
+    Entry {
+        item: NavItem::NewPlaylist,
+        label: "New playlist",
+        icon: include_bytes!("../assets/icons/plus.svg"),
+    },
+    Entry {
+        item: NavItem::LikedMusic,
+        label: "Liked music",
+        icon: include_bytes!("../assets/icons/like.svg"),
+    },
 ];
 
+/// The search box and the three foldable sections, with the selected entry highlighted.
 pub fn view<'a>(state: &'a SidebarState, playlists: &'a [Playlist]) -> Element<'a, Message> {
     let mut content = column![search_box()].spacing(2);
 
@@ -211,9 +226,9 @@ fn section_header(label: &'static str, section: Section) -> Element<'static, Mes
 
 fn entries(list: &[Entry], selected: NavItem) -> Column<'static, Message> {
     let mut entries = column![].spacing(1);
-    for (item, label, icon_bytes) in list {
-        let glyph = theme::icon(icon_bytes, theme::ACCENT, 18.0);
-        entries = entries.push(nav_button(glyph.into(), label, *item, selected));
+    for entry in list {
+        let glyph = theme::icon(entry.icon, theme::ACCENT, 18.0);
+        entries = entries.push(nav_button(glyph.into(), entry.label, entry.item, selected));
     }
     entries
 }

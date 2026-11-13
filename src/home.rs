@@ -19,6 +19,7 @@ pub fn greeting(hour: u32) -> &'static str {
     }
 }
 
+/// The greeting over the blurred cover, then recently played and mixes.
 pub fn view<'a>(
     hour: u32,
     backdrop: Option<&'a image::Handle>,

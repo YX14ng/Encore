@@ -7,6 +7,7 @@ use crate::clock::{self, Playback};
 use crate::mock::{self, Track};
 use crate::{Message, theme};
 
+/// The progress bar, the transport buttons and the card of the track that is playing.
 pub fn view<'a>(track: &'a Track, playback: &'a Playback, liked: bool) -> Element<'a, Message> {
     let divider = container(space())
         .width(Fill)
