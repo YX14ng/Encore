@@ -1,15 +1,20 @@
 //! Encore: a YouTube Music desktop player written with iced.
 
+mod audio;
 mod backdrop;
 mod clock;
 mod home;
 mod layout;
 mod lyrics;
 mod mock;
+mod online;
 mod player;
+mod search;
 mod sidebar;
+mod song;
 mod theme;
 mod top_bar;
+mod youtube;
 
 use std::fs;
 use std::time::Duration;
@@ -17,12 +22,15 @@ use std::time::Duration;
 use iced::animation::{Animation, Easing};
 use iced::time::Instant;
 use iced::widget::{column, container, image, row};
-use iced::{Element, Fill, Subscription, Theme, time, window};
+use iced::{Element, Fill, Subscription, Task, Theme, time, window};
 
 use clock::Playback;
 use lyrics::LyricLine;
 use mock::{Card, Playlist, Track};
+use online::{Online, Poll};
 use sidebar::{NavItem, Section, SidebarState};
+use song::Song;
+use youtube::SearchTrack;
 
 fn main() -> iced::Result {
     iced::application(App::new, App::update, App::view)
@@ -58,6 +66,19 @@ struct App {
     now: Instant,
     /// The lyric line the panel is scrolled to, animated when it changes.
     lyrics_scroll: Animation<f32>,
+    /// What the center column shows.
+    screen: Screen,
+    /// Search, downloads and audio.
+    online: Online,
+    /// The track shown in the player bar.
+    now_playing: Song,
+}
+
+/// The screens of the center column.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Screen {
+    Home,
+    Search,
 }
 
 /// Everything that can happen in the app.
@@ -73,6 +94,13 @@ enum Message {
     ToggleLike,
     Next,
     WindowResized(f32),
+    SearchChanged(String),
+    Search,
+    SearchFinished(Result<Vec<SearchTrack>, String>),
+    CoverFetched(String, Result<Vec<u8>, String>),
+    Play(usize),
+    AudioReady(usize, Result<std::path::PathBuf, String>),
+    Prefetched,
 }
 
 impl App {
@@ -85,6 +113,7 @@ impl App {
         let elapsed = 93;
         let first_line = lyrics::current_line(&lyrics, elapsed).unwrap_or(0);
         let now = Instant::now();
+        let now_playing = Song::from_mock(first);
 
         Self {
             tracks,
@@ -109,25 +138,107 @@ impl App {
             lyrics_scroll: Animation::new(first_line as f32)
                 .duration(Duration::from_millis(500))
                 .easing(Easing::EaseOutCubic),
+            screen: Screen::Home,
+            online: Online::new(),
+            now_playing,
         }
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::TogglePlay => self.playback.toggle(),
+            Message::TogglePlay => {
+                self.playback.toggle();
+                if self.online.is_active() {
+                    self.online.set_paused(!self.playback.is_playing);
+                }
+            }
             Message::Tick(now) => {
                 self.now = now;
-                self.playback.tick();
+                if self.online.is_active() {
+                    match self.online.poll() {
+                        Poll::Position(seconds) => self.playback.elapsed = seconds,
+                        Poll::Finished => return self.play_next_online(),
+                        Poll::Waiting => {}
+                    }
+                } else {
+                    self.playback.tick();
+                }
                 self.follow_lyrics();
             }
             Message::Frame(now) => self.now = now,
             Message::ToggleSidebar => self.show_sidebar = !self.show_sidebar,
             Message::ToggleLyrics => self.show_lyrics = !self.show_lyrics,
             Message::ToggleSection(section) => self.sidebar.toggle(section),
-            Message::Select(item) => self.sidebar.selected = item,
+            Message::Select(item) => {
+                self.sidebar.selected = item;
+                if item == NavItem::Home {
+                    self.screen = Screen::Home;
+                }
+            }
             Message::ToggleLike => self.liked = !self.liked,
-            Message::Next => self.next_track(),
+            Message::Next => {
+                if self.online.is_active() {
+                    return self.play_next_online();
+                }
+                self.next_track();
+            }
             Message::WindowResized(width) => self.window_width = width,
+            Message::SearchChanged(query) => self.online.query = query,
+            Message::Search => {
+                self.screen = Screen::Search;
+                return self.online.search();
+            }
+            Message::SearchFinished(result) => return self.online.search_finished(result),
+            Message::CoverFetched(id, bytes) => {
+                if self.online.cover_fetched(id.clone(), bytes) {
+                    self.now_playing.cover = self.online.cover(&id);
+                    self.backdrop = self
+                        .online
+                        .cover_bytes(&id)
+                        .and_then(backdrop::blurred_backdrop);
+                }
+            }
+            Message::Play(index) => return self.online.play(index),
+            Message::AudioReady(index, path) => return self.start_online(index, path),
+            Message::Prefetched => {}
+        }
+        Task::none()
+    }
+
+    /// Shows a YouTube track in the player once its audio has started.
+    fn start_online(
+        &mut self,
+        index: usize,
+        path: Result<std::path::PathBuf, String>,
+    ) -> Task<Message> {
+        let (started, prefetch) = self.online.audio_ready(index, path);
+        let Some(track) = started else {
+            return prefetch;
+        };
+        let (id, duration) = (track.id.clone(), track.duration);
+        self.now_playing = Song::from_search(&track, self.online.cover(&id));
+        self.backdrop = self
+            .online
+            .cover_bytes(&id)
+            .and_then(backdrop::blurred_backdrop);
+        self.playback = Playback {
+            elapsed: 0,
+            duration,
+            is_playing: true,
+        };
+        self.lyrics = Vec::new();
+        self.follow_lyrics();
+        prefetch
+    }
+
+    /// Plays the next search result, if there is one.
+    fn play_next_online(&mut self) -> Task<Message> {
+        match self.online.next_index() {
+            Some(next) => self.online.play(next),
+            None => {
+                self.playback.is_playing = false;
+                Task::none()
+            }
         }
     }
 
@@ -138,6 +249,7 @@ impl App {
         self.playback.restart(track.duration);
         self.backdrop = load_backdrop(track);
         self.lyrics = load_lyrics(track);
+        self.now_playing = Song::from_mock(track);
         self.follow_lyrics();
     }
 
@@ -156,18 +268,21 @@ impl App {
         let columns =
             layout::visible_columns(self.window_width, self.show_sidebar, self.show_lyrics);
         let seconds = self.now.duration_since(self.started).as_secs_f32();
-        let home = home::view(
-            hour,
-            self.backdrop.as_ref(),
-            backdrop::zoom_at(seconds),
-            &self.recents,
-            &self.mixes,
-        );
+        let content = match self.screen {
+            Screen::Home => home::view(
+                hour,
+                self.backdrop.as_ref(),
+                backdrop::zoom_at(seconds),
+                &self.recents,
+                &self.mixes,
+            ),
+            Screen::Search => search::view(self.online.results()),
+        };
 
         let center = container(column![
             top_bar::view(columns.sidebar, columns.lyrics),
-            home,
-            player::view(&self.tracks[self.current], &self.playback, self.liked)
+            content,
+            player::view(&self.now_playing, &self.playback, self.liked)
         ])
         .width(Fill)
         .height(Fill)
@@ -177,7 +292,7 @@ impl App {
             .push(
                 columns
                     .sidebar
-                    .then(|| sidebar::view(&self.sidebar, &self.playlists)),
+                    .then(|| sidebar::view(&self.sidebar, &self.playlists, &self.online.query)),
             )
             .push(center)
             .push(columns.lyrics.then(|| {

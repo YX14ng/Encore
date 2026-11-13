@@ -1,6 +1,6 @@
 //! The library sidebar on the left.
 
-use iced::widget::{Column, button, column, container, row, space, text};
+use iced::widget::{Column, button, column, container, row, space, text, text_input};
 use iced::{Element, Fill, border};
 
 use crate::mock::Playlist;
@@ -149,8 +149,12 @@ const PLAYLIST_ACTIONS: [Entry; 2] = [
 ];
 
 /// The search box and the three foldable sections, with the selected entry highlighted.
-pub fn view<'a>(state: &'a SidebarState, playlists: &'a [Playlist]) -> Element<'a, Message> {
-    let mut content = column![search_box()].spacing(2);
+pub fn view<'a>(
+    state: &'a SidebarState,
+    playlists: &'a [Playlist],
+    query: &'a str,
+) -> Element<'a, Message> {
+    let mut content = column![search_box(query)].spacing(2);
 
     content = content.push(section_header("YouTube Music", Section::Music));
     if state.is_open(Section::Music) {
@@ -188,16 +192,34 @@ pub fn view<'a>(state: &'a SidebarState, playlists: &'a [Playlist]) -> Element<'
         .into()
 }
 
-fn search_box() -> Element<'static, Message> {
-    container(row![
-        text("Search").color(theme::TEXT_DIM),
-        space::horizontal(),
-        theme::icon(
-            include_bytes!("../assets/icons/search.svg"),
-            theme::TEXT_DIM,
-            18.0,
-        )
-    ])
+/// The search field: typing updates the query and Enter runs the search.
+fn search_box(query: &str) -> Element<'_, Message> {
+    let input = text_input("Search", query)
+        .on_input(Message::SearchChanged)
+        .on_submit(Message::Search)
+        .padding(0)
+        .size(14)
+        .style(|_, _| text_input::Style {
+            background: iced::Background::Color(iced::Color::TRANSPARENT),
+            border: iced::Border::default(),
+            icon: theme::TEXT_DIM,
+            placeholder: theme::TEXT_DIM,
+            value: theme::TEXT,
+            selection: theme::ACCENT.scale_alpha(0.4),
+        });
+
+    container(
+        row![
+            input,
+            theme::icon(
+                include_bytes!("../assets/icons/search.svg"),
+                theme::TEXT_DIM,
+                18.0,
+            )
+        ]
+        .spacing(8)
+        .align_y(iced::Center),
+    )
     .padding([7, 10])
     .style(|_| {
         container::background(iced::Color::from_rgba8(255, 255, 255, 0.05))

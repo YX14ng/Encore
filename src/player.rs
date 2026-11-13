@@ -4,17 +4,17 @@ use iced::widget::{button, column, container, image, progress_bar, row, space, t
 use iced::{Background, Center, Color, Element, Fill, border};
 
 use crate::clock::{self, Playback};
-use crate::mock::{self, Track};
+use crate::song::Song;
 use crate::{Message, theme};
 
 /// The progress bar, the transport buttons and the card of the track that is playing.
-pub fn view<'a>(track: &'a Track, playback: &'a Playback, liked: bool) -> Element<'a, Message> {
+pub fn view<'a>(song: &'a Song, playback: &'a Playback, liked: bool) -> Element<'a, Message> {
     let divider = container(space())
         .width(Fill)
         .height(1)
         .style(|_| container::background(theme::LINE));
 
-    let content = column![progress(playback), controls(track, playback, liked)]
+    let content = column![progress(playback), controls(song, playback, liked)]
         .spacing(10)
         .padding([10, 20]);
 
@@ -50,7 +50,7 @@ fn time_label(label: String) -> Element<'static, Message> {
     text(label).size(11).color(theme::TEXT_SECONDARY).into()
 }
 
-fn controls<'a>(track: &'a Track, playback: &'a Playback, liked: bool) -> Element<'a, Message> {
+fn controls<'a>(song: &'a Song, playback: &'a Playback, liked: bool) -> Element<'a, Message> {
     let play_icon: &'static [u8] = if playback.is_playing {
         include_bytes!("../assets/icons/pause.svg")
     } else {
@@ -121,21 +121,29 @@ fn controls<'a>(track: &'a Track, playback: &'a Playback, liked: bool) -> Elemen
     .spacing(8)
     .align_y(Center);
 
-    row![transport, now_playing(track), extras]
+    row![transport, now_playing(song), extras]
         .spacing(14)
         .align_y(Center)
         .into()
 }
 
-fn now_playing(track: &Track) -> Element<'_, Message> {
-    let cover = image(mock::cover_path(&track.cover))
-        .width(40)
-        .height(40)
-        .border_radius(5);
+fn now_playing(song: &Song) -> Element<'_, Message> {
+    let cover: Element<'_, Message> = match &song.cover {
+        Some(handle) => image(handle.clone())
+            .width(40)
+            .height(40)
+            .border_radius(5)
+            .into(),
+        None => container(space())
+            .width(40)
+            .height(40)
+            .style(|_| theme::panel(theme::HERO))
+            .into(),
+    };
 
     let details = column![
-        text(&track.title).size(14),
-        text(format!("{} \u{b7} {}", track.artist, track.album))
+        text(&song.title).size(14),
+        text(format!("{} \u{b7} {}", song.artist, song.album))
             .size(12)
             .color(theme::TEXT_SECONDARY),
     ]

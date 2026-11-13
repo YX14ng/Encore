@@ -1,0 +1,36 @@
+//! The track shown in the player bar, whether it is sample data or a real search result.
+
+use iced::widget::image;
+
+use crate::mock::{self, Track};
+use crate::youtube::SearchTrack;
+
+/// What the player bar needs to show a track.
+pub struct Song {
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub cover: Option<image::Handle>,
+}
+
+impl Song {
+    /// A sample track, with its cover from `assets/covers/`.
+    pub fn from_mock(track: &Track) -> Self {
+        Self {
+            title: track.title.clone(),
+            artist: track.artist.clone(),
+            album: track.album.clone(),
+            cover: Some(image::Handle::from_path(mock::cover_path(&track.cover))),
+        }
+    }
+
+    /// A track from YouTube Music, with its cover if it was already downloaded.
+    pub fn from_search(track: &SearchTrack, cover: Option<image::Handle>) -> Self {
+        Self {
+            title: track.title.clone(),
+            artist: track.artist.clone(),
+            album: track.album.clone(),
+            cover,
+        }
+    }
+}
