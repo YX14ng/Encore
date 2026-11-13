@@ -3,6 +3,7 @@
 mod backdrop;
 mod clock;
 mod home;
+mod layout;
 mod lyrics;
 mod mock;
 mod player;
@@ -14,7 +15,7 @@ use std::fs;
 use std::time::Duration;
 
 use iced::widget::{column, container, image, row};
-use iced::{Element, Fill, Subscription, Theme, time};
+use iced::{Element, Fill, Subscription, Theme, time, window};
 
 use clock::Playback;
 use lyrics::LyricLine;
@@ -48,6 +49,7 @@ struct App {
     liked: bool,
     current: usize,
     lyrics: Vec<LyricLine>,
+    window_width: f32,
 }
 
 /// Everything that can happen in the app.
@@ -61,6 +63,7 @@ enum Message {
     Select(NavItem),
     ToggleLike,
     Next,
+    WindowResized(f32),
 }
 
 impl App {
@@ -88,6 +91,7 @@ impl App {
             liked: true,
             current: 0,
             lyrics,
+            window_width: 1280.0,
         }
     }
 
@@ -101,6 +105,7 @@ impl App {
             Message::Select(item) => self.sidebar.selected = item,
             Message::ToggleLike => self.liked = !self.liked,
             Message::Next => self.next_track(),
+            Message::WindowResized(width) => self.window_width = width,
         }
     }
 
@@ -117,10 +122,12 @@ impl App {
         use chrono::Timelike;
 
         let hour = chrono::Local::now().hour();
+        let columns =
+            layout::visible_columns(self.window_width, self.show_sidebar, self.show_lyrics);
         let home = home::view(hour, self.backdrop.as_ref(), &self.recents, &self.mixes);
 
         let center = container(column![
-            top_bar::view(self.show_sidebar, self.show_lyrics),
+            top_bar::view(columns.sidebar, columns.lyrics),
             home,
             player::view(&self.tracks[self.current], &self.playback, self.liked)
         ])
@@ -130,11 +137,12 @@ impl App {
 
         row![]
             .push(
-                self.show_sidebar
+                columns
+                    .sidebar
                     .then(|| sidebar::view(&self.sidebar, &self.playlists)),
             )
             .push(center)
-            .push(self.show_lyrics.then(|| {
+            .push(columns.lyrics.then(|| {
                 let current = lyrics::current_line(&self.lyrics, self.playback.elapsed);
                 lyrics::view(&self.lyrics, current)
             }))
@@ -142,10 +150,13 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
+        let resize = window::resize_events().map(|(_id, size)| Message::WindowResized(size.width));
+
         if self.playback.is_playing {
-            time::every(Duration::from_secs(1)).map(|_| Message::Tick)
+            let tick = time::every(Duration::from_secs(1)).map(|_| Message::Tick);
+            Subscription::batch([tick, resize])
         } else {
-            Subscription::none()
+            resize
         }
     }
 }
