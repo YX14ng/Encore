@@ -395,7 +395,7 @@ play/pause, next, repeat and like; the track card with a 40 px cover, title, art
 
 **Verification:** screenshot of the player; play, pause and like work; `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: add player bar`
+- [x] **Commit:** `feat: add player bar`
 
 ### Step 14: next track
 
