@@ -22,7 +22,11 @@ Status: built (2026-11-13)
 
 - Sidebar: History, Songs, Albums, Artists, Liked music, Downloads, and the user's playlists
   (replacing the sample ones; the duplicate "Liked Music" playlist, id `LM`, is hidden).
-- Only the first page of each list is loaded for now.
+- Lists are followed past their first page: up to 500 songs (history, saved songs, liked music),
+  200 albums, artists or playlists, and 1000 songs per opened playlist.
+- Signed in, Home shows the user's music: the last 9 songs of the history, "Mixed for you" (a
+  radio from a recent song of each different artist, opened with `music_radio_track`), the user's
+  playlists and saved albums. YouTube Music's own personalized home feed is not in rustypipe.
 
 ## Downloads
 
@@ -31,4 +35,5 @@ Status: built (2026-11-13)
 - `index.json` in that folder lists the downloaded collections with their songs. No database.
 - Playback always prefers the offline copy, so downloaded music plays without a connection.
 - "Downloaded · Remove" deletes the collection and the songs no other download uses.
-- Not yet: offline covers (images still come from the network) and paging past the first page.
+- Covers of downloaded collections are saved in `offline/images/<FNV-1a of the URL>` and loaded at
+  startup, so downloads look right without a connection.
