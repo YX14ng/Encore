@@ -1,10 +1,14 @@
 mod clock;
+mod lyrics;
+mod player;
+mod sidebar;
 mod theme;
+mod top_bar;
 
 use std::time::Duration;
 
-use iced::widget::{button, column, container, row, text};
-use iced::{Center, Element, Fill, Subscription, Theme, time};
+use iced::widget::{column, container, row, text};
+use iced::{Element, Fill, Subscription, Theme, time};
 
 use clock::Playback;
 
@@ -19,12 +23,16 @@ fn main() -> iced::Result {
 
 struct App {
     playback: Playback,
+    show_sidebar: bool,
+    show_lyrics: bool,
 }
 
 #[derive(Debug, Clone)] // step 10: derive
 enum Message {
     TogglePlay,
     Tick,
+    ToggleSidebar,
+    ToggleLyrics,
 }
 
 impl App {
@@ -35,6 +43,8 @@ impl App {
                 duration: 214,
                 is_playing: false,
             },
+            show_sidebar: true,
+            show_lyrics: true,
         }
     }
 
@@ -42,48 +52,25 @@ impl App {
         match message {
             Message::TogglePlay => self.playback.toggle(),
             Message::Tick => self.playback.tick(),
+            Message::ToggleSidebar => self.show_sidebar = !self.show_sidebar,
+            Message::ToggleLyrics => self.show_lyrics = !self.show_lyrics,
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
         // step 11: the '_ lifetime
-        let label = if self.playback.is_playing {
-            "Pause"
-        } else {
-            "Play"
-        };
-        let elapsed = self.playback.elapsed;
-        let left = clock::remaining(elapsed, self.playback.duration);
+        let home = container(text("Encore").size(32)).center(Fill);
 
-        let content = column![
-            text("Encore").size(32),
-            text(format!(
-                "{} / -{}",
-                clock::format_time(elapsed),
-                clock::format_time(left)
-            )),
-            button(label).on_press(Message::TogglePlay),
-        ]
-        .spacing(16)
-        .align_x(Center);
-
-        let sidebar = container(text("Sidebar"))
-            .width(236)
+        let center = container(column![top_bar::view(), home, player::view(&self.playback)])
+            .width(Fill)
             .height(Fill)
-            .padding(16)
-            .style(|_| theme::panel(theme::SIDEBAR));
-
-        let center = container(content)
-            .center(Fill)
             .style(|_| theme::panel(theme::CENTER));
 
-        let lyrics = container(text("Lyrics"))
-            .width(300)
-            .height(Fill)
-            .padding(16)
-            .style(|_| theme::panel(theme::LYRICS));
-
-        row![sidebar, center, lyrics].into()
+        row![]
+            .push(self.show_sidebar.then(sidebar::view))
+            .push(center)
+            .push(self.show_lyrics.then(lyrics::view))
+            .into()
     }
 
     fn subscription(&self) -> Subscription<Message> {
