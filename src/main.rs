@@ -1,3 +1,5 @@
+mod clock;
+
 use iced::widget::{button, column, container, text};
 use iced::{Center, Element, Fill};
 
@@ -30,6 +32,11 @@ impl App {
 
         let content = column![
             text("Encore").size(32),
+            text(format!(
+                "{} / -{}",
+                clock::format_time(93),
+                clock::format_time(clock::remaining(93, 214))
+            )),
             button(label).on_press(Message::TogglePlay),
         ]
         .spacing(16)
