@@ -508,7 +508,7 @@ hide buttons still take effect when the window is wide.
 
 **Verification:** screenshots at full and narrow width; `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: load Inter and adapt to narrow windows`
+- [x] **Commit:** `feat: use Inter and icons in the top bar` and `feat: adapt to narrow windows` (step 16 was split in two)
 
 ### Step 17: closing phase 1
 
