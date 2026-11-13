@@ -441,7 +441,7 @@ background is recomputed in `update`, not in `view`.
 **Verification:** pressing next changes the card and the background (two screenshots);
 `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: skip to the next track`
+- [x] **Commit:** `feat: skip to the next track`
 
 ### Step 15: lyrics panel
 
