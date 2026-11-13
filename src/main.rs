@@ -17,6 +17,7 @@ use iced::widget::{column, container, image, row};
 use iced::{Element, Fill, Subscription, Theme, time};
 
 use clock::Playback;
+use lyrics::LyricLine;
 use mock::{Card, Playlist, Track};
 use sidebar::{NavItem, Section, SidebarState};
 
@@ -42,6 +43,7 @@ struct App {
     backdrop: Option<image::Handle>,
     liked: bool,
     current: usize,
+    lyrics: Vec<LyricLine>,
 }
 
 /// Everything that can happen in the app.
@@ -63,6 +65,7 @@ impl App {
         let first = tracks.first().expect("tracks.tsv lists at least one track");
         let duration = first.duration;
         let backdrop = load_backdrop(first);
+        let lyrics = load_lyrics(first);
 
         Self {
             tracks,
@@ -80,6 +83,7 @@ impl App {
             show_lyrics: true,
             liked: true,
             current: 0,
+            lyrics,
         }
     }
 
@@ -102,6 +106,7 @@ impl App {
         let track = &self.tracks[self.current];
         self.playback.restart(track.duration);
         self.backdrop = load_backdrop(track);
+        self.lyrics = load_lyrics(track);
     }
 
     fn view(&self) -> Element<'_, Message> {
@@ -125,7 +130,10 @@ impl App {
                     .then(|| sidebar::view(&self.sidebar, &self.playlists)),
             )
             .push(center)
-            .push(self.show_lyrics.then(lyrics::view))
+            .push(self.show_lyrics.then(|| {
+                let current = lyrics::current_line(&self.lyrics, self.playback.elapsed);
+                lyrics::view(&self.lyrics, current)
+            }))
             .into()
     }
 
@@ -142,4 +150,15 @@ impl App {
 fn load_backdrop(track: &Track) -> Option<image::Handle> {
     let bytes = fs::read(mock::cover_path(&track.cover)).ok()?;
     backdrop::blurred_backdrop(&bytes)
+}
+
+/// Reads and parses the track's lyrics. A track without lyrics, or with a file that cannot be
+/// read, gets no lines.
+fn load_lyrics(track: &Track) -> Vec<LyricLine> {
+    let Some(file) = &track.lyrics else {
+        return Vec::new();
+    };
+    fs::read_to_string(mock::lyrics_path(file))
+        .map(|text| lyrics::parse_lrc(&text))
+        .unwrap_or_default()
 }

@@ -9,7 +9,6 @@ pub struct Track {
     pub album: String,
     pub duration: u32,
     pub cover: String,
-    #[allow(dead_code)] // shown in step 15
     pub lyrics: Option<String>,
 }
 
@@ -86,6 +85,13 @@ fn parse_card(line: &str) -> Option<Card> {
         subtitle: subtitle.to_string(),
         cover: cover.to_string(),
     })
+}
+
+/// Where a sample lyrics file lives on disk.
+pub fn lyrics_path(file: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("assets/mock")
+        .join(file)
 }
 
 /// Where a cover image lives on disk, no matter where the app is started from.
