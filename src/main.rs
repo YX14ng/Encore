@@ -12,6 +12,7 @@ mod layout;
 mod library;
 mod lyrics;
 mod lyrics_source;
+mod media_keys;
 mod mock;
 mod offline;
 mod online;
@@ -96,6 +97,8 @@ struct App {
     offline: Offline,
     /// Whether the immersive (full screen) view is showing.
     immersive: bool,
+    /// Encore's entry in the desktop's media controls, if there is a session bus.
+    media: Option<media_keys::MediaKeys>,
 }
 
 /// The screens of the center column.
@@ -151,6 +154,7 @@ enum Message {
     LyricsLoaded(String, Lyrics),
     ToggleImmersive,
     ExitImmersive,
+    MediaKey(media_keys::MediaKey),
 }
 
 impl App {
@@ -221,6 +225,7 @@ impl App {
             default_browser: account::default_browser(),
             offline: Offline::load(),
             immersive: false,
+            media: media_keys::MediaKeys::start(),
         }
     }
 }

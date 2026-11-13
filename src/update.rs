@@ -5,6 +5,7 @@ use iced::{Task, window};
 use crate::clock::Playback;
 use crate::library::{Account, LibraryData, Shelf};
 use crate::lyrics::Lyrics;
+use crate::media_keys::MediaKey;
 use crate::online::Poll;
 use crate::sidebar::NavItem;
 use crate::song::Song;
@@ -14,8 +15,32 @@ use crate::{
 };
 
 impl App {
-    /// Applies one message to the state and returns the work it starts (downloads, requests).
+    /// Applies one message to the state and returns the work it starts (downloads, requests),
+    /// then tells the desktop's media controls what is playing.
     pub(crate) fn update(&mut self, message: Message) -> Task<Message> {
+        let task = self.handle(message);
+        self.publish_media();
+        task
+    }
+
+    /// Tells the desktop's media controls (MPRIS) about the song and the playback state.
+    fn publish_media(&mut self) {
+        let Some(media) = &mut self.media else {
+            return;
+        };
+        let song = &self.now_playing;
+        media.publish(
+            &song.title,
+            &song.artist,
+            &song.album,
+            song.art_url.as_deref(),
+            self.playback.duration,
+            self.playback.elapsed,
+            self.playback.is_playing,
+        );
+    }
+
+    fn handle(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::TogglePlay => {
                 self.playback.toggle();
@@ -187,6 +212,16 @@ impl App {
                     self.lyrics = lyrics;
                     self.follow_lyrics();
                 }
+            }
+            Message::MediaKey(key) => {
+                let playing = self.playback.is_playing;
+                return match key {
+                    MediaKey::Toggle => self.handle(Message::TogglePlay),
+                    MediaKey::Play if !playing => self.handle(Message::TogglePlay),
+                    MediaKey::Pause if playing => self.handle(Message::TogglePlay),
+                    MediaKey::Next => self.handle(Message::Next),
+                    MediaKey::Play | MediaKey::Pause => Task::none(),
+                };
             }
             Message::ToggleImmersive => return self.set_immersive(!self.immersive),
             Message::ExitImmersive => return self.set_immersive(false),

@@ -8,8 +8,8 @@ use iced::{Element, Fill, Subscription, time, window};
 use crate::library::Account;
 use crate::sidebar::SidebarAccount;
 use crate::{
-    App, Message, Screen, backdrop, collection, home, immersive, layout, library, lyrics, player,
-    profile, search, sidebar, theme, top_bar,
+    App, Message, Screen, backdrop, collection, home, immersive, layout, library, lyrics,
+    media_keys, player, profile, search, sidebar, theme, top_bar,
 };
 
 impl App {
@@ -146,7 +146,7 @@ impl App {
         } else {
             Subscription::none()
         };
-        let resize = Subscription::batch([resize, escape]);
+        let resize = Subscription::batch([resize, escape, Subscription::run(media_keys::events)]);
 
         // About 30 frames per second, only while something is moving.
         let frames = time::every(Duration::from_millis(33)).map(Message::Frame);
