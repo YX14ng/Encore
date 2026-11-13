@@ -333,7 +333,7 @@ Covers go through `image(image::Handle::from_bytes(...))`; for now you can read 
 
 **Verification:** screenshot of the home page; `scripts/check.sh` passes.
 
-- [ ] **Commit:** `feat: add home greeting, recents and mixes`
+- [x] **Commit:** `feat: add home greeting, recents and mixes`
 
 ### Step 12: blurred cover background
 
