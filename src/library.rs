@@ -8,7 +8,7 @@ use rustypipe::client::RustyPipe;
 
 use crate::account::{self, BROWSERS, Browser};
 use crate::search::{self, Shared};
-use crate::youtube::{self, SearchTrack, Tile};
+use crate::youtube::{self, Collection, SearchTrack, Tile};
 use crate::{Message, theme};
 
 /// Everything the library screens show.
@@ -59,6 +59,7 @@ pub enum Shelf {
     Liked,
     Albums,
     Artists,
+    Downloads,
 }
 
 /// Loads every part of the library at once. Parts that fail come back empty.
@@ -99,8 +100,15 @@ pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
         artists: artists
             .map(|page| page.items.iter().map(youtube::artist_tile).collect())
             .unwrap_or_default(),
+        // "LM" is Liked Music, which already has its own entry in the sidebar.
         playlists: playlists
-            .map(|page| page.items.iter().map(youtube::playlist_tile).collect())
+            .map(|page| {
+                page.items
+                    .iter()
+                    .filter(|playlist| playlist.id != "LM")
+                    .map(youtube::playlist_tile)
+                    .collect()
+            })
             .unwrap_or_default(),
     })
 }
@@ -164,6 +172,7 @@ pub async fn sign_out(rp: RustyPipe) {
 pub fn shelf_view<'a>(
     shelf: Shelf,
     account: &'a Account,
+    downloads: &'a [Collection],
     shared: Shared<'a>,
 ) -> Element<'a, Message> {
     let title = match shelf {
@@ -172,15 +181,19 @@ pub fn shelf_view<'a>(
         Shelf::Liked => "Liked music",
         Shelf::Albums => "Albums",
         Shelf::Artists => "Artists",
+        Shelf::Downloads => "Downloads",
     };
 
     let body: Element<'a, Message> = match account {
+        // Downloads work signed in or not, and without a connection.
+        _ if shelf == Shelf::Downloads => search::offline_grid(downloads, shared),
         Account::SignedIn(data) => match shelf {
             Shelf::History => search::track_list(&data.history, None, shared),
             Shelf::Songs => search::track_list(&data.songs, None, shared),
             Shelf::Liked => search::track_list(&data.liked, None, shared),
             Shelf::Albums => search::card_grid(&data.albums, shared),
             Shelf::Artists => search::card_grid(&data.artists, shared),
+            Shelf::Downloads => search::offline_grid(downloads, shared),
         },
         Account::Checking | Account::SigningIn | Account::Waiting(_) => {
             note("Loading your library\u{2026}")

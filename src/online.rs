@@ -213,6 +213,12 @@ impl Online {
         Task::perform(youtube::open(client, tile), Message::CollectionLoaded)
     }
 
+    /// Shows a collection that is already known (a download), without asking YouTube.
+    pub fn show_collection(&mut self, collection: Collection) -> Task<Message> {
+        self.play_when_loaded = false;
+        self.collection_loaded(Ok(collection))
+    }
+
     /// Shows an opened collection and downloads its images.
     pub fn collection_loaded(&mut self, result: Result<Collection, String>) -> Task<Message> {
         match result {

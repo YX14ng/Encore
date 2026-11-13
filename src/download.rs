@@ -46,9 +46,42 @@ pub fn ytdlp_args(id: &str, dir: &Path) -> Vec<String> {
     ]
 }
 
-/// Downloads the audio of `id` into the cache, or returns the cached file.
+/// Where downloaded (offline) songs live: kept until the user removes them.
+pub fn offline_dir() -> PathBuf {
+    crate::account::data_dir().join("offline")
+}
+
+/// Returns the audio of `id`: the offline copy if there is one, else the cache, else a new
+/// download into the cache.
 pub async fn audio(id: String) -> Result<PathBuf, String> {
-    let dir = cache_dir().join("audio");
+    if let Some(path) = find_cached(&offline_dir(), &id) {
+        return Ok(path);
+    }
+    audio_into(id, cache_dir().join("audio")).await
+}
+
+/// Keeps a song offline: copies it from the cache if it is there, else downloads it.
+pub async fn keep_offline(id: String) -> Result<PathBuf, String> {
+    let offline = offline_dir();
+    if let Some(path) = find_cached(&offline, &id) {
+        return Ok(path);
+    }
+    tokio::fs::create_dir_all(&offline)
+        .await
+        .map_err(|error| error.to_string())?;
+    if let Some(cached) = find_cached(&cache_dir().join("audio"), &id) {
+        let name = cached.file_name().ok_or("bad cache file name")?;
+        let target = offline.join(name);
+        tokio::fs::copy(&cached, &target)
+            .await
+            .map_err(|error| error.to_string())?;
+        return Ok(target);
+    }
+    audio_into(id, offline).await
+}
+
+/// Downloads the audio of `id` into `dir` unless it is already there.
+async fn audio_into(id: String, dir: PathBuf) -> Result<PathBuf, String> {
     tokio::fs::create_dir_all(&dir)
         .await
         .map_err(|error| error.to_string())?;
@@ -108,5 +141,35 @@ mod tests {
         std::fs::write(dir.join("abc.webm"), b"done").expect("final file");
         assert_eq!(find_cached(&dir, "abc"), Some(dir.join("abc.webm")));
         std::fs::remove_dir_all(&dir).expect("cleanup");
+    }
+
+    /// Copies a cached song into the offline folder and removes it again:
+    /// `cargo test -- --ignored keeps_a_cached_song_offline`.
+    #[tokio::test]
+    #[ignore = "needs a song in the cache"]
+    async fn keeps_a_cached_song_offline() {
+        let cached = std::fs::read_dir(cache_dir().join("audio"))
+            .expect("cache dir")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| path.extension().is_some_and(|ext| ext == "webm"))
+            .expect("a cached song");
+        let id = cached
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .expect("id")
+            .to_string();
+        let already_offline = find_cached(&offline_dir(), &id).is_some();
+
+        let path = keep_offline(id.clone()).await.expect("keep offline");
+        assert!(path.starts_with(offline_dir()));
+        assert_eq!(
+            audio(id).await.expect("audio"),
+            path,
+            "offline copy is not preferred"
+        );
+        if !already_offline {
+            std::fs::remove_file(path).expect("cleanup");
+        }
     }
 }

@@ -4,6 +4,7 @@ use iced::font::Weight;
 use iced::widget::{button, column, row, scrollable, space, text};
 use iced::{Center, Element, Fill, Font, border};
 
+use crate::offline::{Offline, State};
 use crate::search::{self, Shared, Status};
 use crate::youtube::{Collection, TileKind};
 use crate::{Message, theme};
@@ -13,10 +14,11 @@ pub fn view<'a>(
     collection: Option<&'a Collection>,
     status: &'a Status,
     shared: Shared<'a>,
+    offline: &'a Offline,
 ) -> Element<'a, Message> {
     let content = match (status, collection) {
         (Status::Failed(error), _) => column![note(format!("Could not open it: {error}"))],
-        (_, Some(collection)) => loaded(collection, shared),
+        (_, Some(collection)) => loaded(collection, shared, offline),
         _ => column![note("Loading\u{2026}")],
     };
 
@@ -25,7 +27,11 @@ pub fn view<'a>(
         .into()
 }
 
-fn loaded<'a>(collection: &'a Collection, shared: Shared<'a>) -> iced::widget::Column<'a, Message> {
+fn loaded<'a>(
+    collection: &'a Collection,
+    shared: Shared<'a>,
+    offline: &'a Offline,
+) -> iced::widget::Column<'a, Message> {
     let round = collection.kind == TileKind::Artist;
     let kind = match collection.kind {
         TileKind::Album => "ALBUM",
@@ -59,8 +65,13 @@ fn loaded<'a>(collection: &'a Collection, shared: Shared<'a>) -> iced::widget::C
             .size(13)
             .color(theme::TEXT_SECONDARY),
         space().height(8),
-        play,
+        row![play, download_button(collection, offline)].spacing(10),
     ]
+    .push(
+        offline
+            .error()
+            .map(|error| text(error).size(12).color(theme::ACCENT)),
+    )
     .spacing(4);
 
     let header = row![
@@ -81,4 +92,41 @@ fn loaded<'a>(collection: &'a Collection, shared: Shared<'a>) -> iced::widget::C
 
 fn note<'a>(message: impl text::IntoFragment<'a>) -> Element<'a, Message> {
     text(message).color(theme::TEXT_SECONDARY).into()
+}
+
+/// Download, the progress while downloading, or Remove download once it is on disk.
+fn download_button<'a>(collection: &'a Collection, offline: &'a Offline) -> Element<'a, Message> {
+    let (label, message) = match offline.state(&collection.id) {
+        State::NotDownloaded => (
+            "Download".to_string(),
+            (!collection.tracks.is_empty())
+                .then(|| Message::DownloadCollection(collection.clone())),
+        ),
+        State::Downloading { done, total } => (format!("Downloading {done}/{total}\u{2026}"), None),
+        State::Downloaded => (
+            "Downloaded \u{b7} Remove".to_string(),
+            Some(Message::RemoveDownload(collection.id.clone())),
+        ),
+    };
+
+    button(
+        row![
+            theme::icon(
+                include_bytes!("../assets/icons/download.svg"),
+                theme::TEXT,
+                16.0
+            ),
+            text(label).size(14),
+        ]
+        .spacing(8)
+        .align_y(Center),
+    )
+    .on_press_maybe(message)
+    .padding([8, 18])
+    .style(|_, status| {
+        let mut style = theme::flat_button(status, false);
+        style.border = border::rounded(18).color(theme::LINE).width(1);
+        style
+    })
+    .into()
 }

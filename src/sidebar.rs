@@ -29,6 +29,7 @@ pub enum NavItem {
     Artists,
     Subscriptions,
     Podcasts,
+    Downloads,
     NewPlaylist,
     LikedMusic,
     Playlist(usize),
@@ -107,7 +108,7 @@ const MUSIC: [Entry; 3] = [
     },
 ];
 
-const LIBRARY: [Entry; 6] = [
+const LIBRARY: [Entry; 7] = [
     Entry {
         item: NavItem::History,
         label: "History",
@@ -137,6 +138,11 @@ const LIBRARY: [Entry; 6] = [
         item: NavItem::Podcasts,
         label: "Podcasts",
         icon: include_bytes!("../assets/icons/podcasts.svg"),
+    },
+    Entry {
+        item: NavItem::Downloads,
+        label: "Downloads",
+        icon: include_bytes!("../assets/icons/download.svg"),
     },
 ];
 

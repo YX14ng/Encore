@@ -7,7 +7,7 @@ use iced::font::Weight;
 use iced::widget::{Column, Row, button, column, container, image, row, scrollable, space, text};
 use iced::{Center, Element, Fill, Font, border};
 
-use crate::youtube::{SearchPage, SearchTrack, Tile, TileKind, TopResult};
+use crate::youtube::{Collection, SearchPage, SearchTrack, Tile, TileKind, TopResult};
 use crate::{Message, clock, theme};
 
 /// How many songs or videos the "All" view shows before "Show all".
@@ -306,13 +306,31 @@ pub fn card_grid<'a>(tiles: &'a [Tile], shared: Shared<'a>) -> Element<'a, Messa
 
 fn card<'a>(tile: &'a Tile, shared: Shared<'a>) -> Element<'a, Message> {
     let round = tile.kind == TileKind::Artist;
+    card_parts(
+        tile.image_url.as_deref(),
+        &tile.title,
+        tile.subtitle.clone(),
+        round,
+        Message::OpenTile(tile.clone()),
+        shared,
+    )
+}
+
+fn card_parts<'a>(
+    image_url: Option<&str>,
+    title: &'a str,
+    subtitle: String,
+    round: bool,
+    on_press: Message,
+    shared: Shared<'a>,
+) -> Element<'a, Message> {
     let content = column![
-        picture(tile.image_url.as_deref(), CARD_SIZE, round, shared),
+        picture(image_url, CARD_SIZE, round, shared),
         space().height(6),
-        text(&tile.title)
+        text(title)
             .size(13)
             .wrapping(iced::widget::text::Wrapping::None),
-        text(&tile.subtitle)
+        text(subtitle)
             .size(12)
             .color(theme::TEXT_SECONDARY)
             .wrapping(iced::widget::text::Wrapping::None),
@@ -321,10 +339,31 @@ fn card<'a>(tile: &'a Tile, shared: Shared<'a>) -> Element<'a, Message> {
     .clip(true);
 
     button(content)
-        .on_press(Message::OpenTile(tile.clone()))
+        .on_press(on_press)
         .padding(6)
         .style(|_, status| theme::flat_button(status, false))
         .into()
+}
+
+/// Downloaded collections as cards that open without a connection.
+pub fn offline_grid<'a>(collections: &'a [Collection], shared: Shared<'a>) -> Element<'a, Message> {
+    if collections.is_empty() {
+        return note("Nothing downloaded yet. Open an album or playlist and press Download.");
+    }
+    let rows = collections.chunks(GRID_COLUMNS).map(|chunk| {
+        let cards = chunk.iter().map(|collection| {
+            card_parts(
+                collection.image_url.as_deref(),
+                &collection.title,
+                format!("{} songs", collection.tracks.len()),
+                collection.kind == TileKind::Artist,
+                Message::OpenOffline(collection.id.clone()),
+                shared,
+            )
+        });
+        Row::with_children(cards).spacing(16).into()
+    });
+    Column::with_children(rows).spacing(20).into()
 }
 
 /// An image from the network, or a placeholder until it arrives. Round for artists.

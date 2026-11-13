@@ -11,6 +11,7 @@ mod layout;
 mod library;
 mod lyrics;
 mod mock;
+mod offline;
 mod online;
 mod player;
 mod search;
@@ -33,6 +34,7 @@ use clock::Playback;
 use library::{Account, LibraryData, Shelf};
 use lyrics::LyricLine;
 use mock::{Card, Playlist, Track};
+use offline::Offline;
 use online::{Online, Poll};
 use search::Filter;
 use sidebar::{NavItem, Section, SidebarAccount, SidebarState};
@@ -85,6 +87,8 @@ struct App {
     cookie_path: String,
     /// The system's default browser, for "Sign in with your browser".
     default_browser: Option<Browser>,
+    /// Downloaded collections and the download in progress.
+    offline: Offline,
 }
 
 /// The screens of the center column.
@@ -133,6 +137,10 @@ enum Message {
     Restored(Result<LibraryData, String>),
     SignOut,
     SignedOut,
+    DownloadCollection(Collection),
+    OfflineTrackDone(Result<std::path::PathBuf, String>),
+    RemoveDownload(String),
+    OpenOffline(String),
 }
 
 impl App {
@@ -189,6 +197,7 @@ impl App {
             account: Account::SignedOut,
             cookie_path: String::new(),
             default_browser: account::default_browser(),
+            offline: Offline::load(),
         }
     }
 
@@ -324,6 +333,15 @@ impl App {
                 }
             }
             Message::SignedOut => {}
+            Message::DownloadCollection(collection) => return self.offline.start(collection),
+            Message::OfflineTrackDone(result) => return self.offline.track_done(result),
+            Message::RemoveDownload(id) => self.offline.remove(&id),
+            Message::OpenOffline(id) => {
+                if let Some(collection) = self.offline.get(&id).cloned() {
+                    self.screen = Screen::Collection;
+                    return self.online.show_collection(collection);
+                }
+            }
         }
         Task::none()
     }
@@ -368,6 +386,7 @@ impl App {
             NavItem::LikedMusic => Screen::Library(Shelf::Liked),
             NavItem::Albums => Screen::Library(Shelf::Albums),
             NavItem::Artists => Screen::Library(Shelf::Artists),
+            NavItem::Downloads => Screen::Library(Shelf::Downloads),
             NavItem::Account => Screen::Account,
             NavItem::Playlist(index) => {
                 if let Account::SignedIn(data) = &self.account
@@ -464,11 +483,14 @@ impl App {
             Screen::Search => search::view(self.online.results()),
             Screen::Collection => {
                 let (collection, status, shared) = self.online.collection();
-                collection::view(collection, status, shared)
+                collection::view(collection, status, shared, &self.offline)
             }
-            Screen::Library(shelf) => {
-                library::shelf_view(shelf, &self.account, self.online.shared_view())
-            }
+            Screen::Library(shelf) => library::shelf_view(
+                shelf,
+                &self.account,
+                self.offline.collections(),
+                self.online.shared_view(),
+            ),
             Screen::Account => {
                 library::account_view(&self.account, &self.cookie_path, self.default_browser)
             }

@@ -5,12 +5,13 @@ use rustypipe::client::RustyPipe;
 use rustypipe::model::{
     AlbumItem, AlbumType, ArtistItem, MusicItem, MusicPlaylistItem, Thumbnail, TrackItem,
 };
+use serde::{Deserialize, Serialize};
 
 /// The widest image worth downloading for covers and the blurred background.
 const COVER_MAX_WIDTH: u32 = 544;
 
 /// A song that can be played.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SearchTrack {
     pub id: String,
     pub title: String,
@@ -21,7 +22,7 @@ pub struct SearchTrack {
 }
 
 /// What a card opens.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TileKind {
     Album,
     Artist,
@@ -57,8 +58,10 @@ pub struct SearchPage {
 }
 
 /// An opened album, playlist or artist with its songs.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Collection {
+    /// The id of the album, playlist or artist on YouTube Music.
+    pub id: String,
     pub kind: TileKind,
     pub title: String,
     pub subtitle: String,
@@ -151,6 +154,7 @@ pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
                 })
                 .collect();
             Ok(Collection {
+                id: tile.id.clone(),
                 kind: TileKind::Album,
                 title: album.name.clone(),
                 subtitle: album_subtitle(
@@ -168,6 +172,7 @@ pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
                 .await
                 .map_err(|error| error.to_string())?;
             Ok(Collection {
+                id: tile.id.clone(),
                 kind: TileKind::Playlist,
                 title: playlist.name.clone(),
                 subtitle: tile.subtitle,
@@ -181,6 +186,7 @@ pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
                 .await
                 .map_err(|error| error.to_string())?;
             Ok(Collection {
+                id: tile.id.clone(),
                 kind: TileKind::Artist,
                 title: artist.name.clone(),
                 subtitle: artist_subtitle(artist.subscriber_count),

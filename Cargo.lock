@@ -1079,6 +1079,8 @@ dependencies = [
  "libmpv2",
  "reqwest",
  "rustypipe",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 
