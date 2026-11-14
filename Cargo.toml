@@ -26,3 +26,6 @@ webkit2gtk = { version = "2", features = ["v2_40"] }
 
 [lints.clippy]
 unwrap_used = "deny"
+
+[patch.crates-io]
+rustypipe = { path = "vendor/rustypipe" }
