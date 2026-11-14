@@ -8,10 +8,11 @@ right.
 
 ## Status
 
-Phases 1 to 5 are done: search and playback (downloaded with yt-dlp, played with mpv), signing
+Phases 1 to 6 are done: search and playback (downloaded with yt-dlp, played with mpv), signing
 in with your browser's YouTube Music session, the library and playlists, offline downloads, synced
-lyrics and the immersive view, media keys (MPRIS), Discord Rich Presence and Last.fm scrobbling.
-Next is phase 6: audio extras such as an equalizer and crossfade.
+lyrics and the immersive view, media keys (MPRIS), Discord Rich Presence, Last.fm scrobbling, and
+the audio extras: seek, volume, shuffle and repeat, a 10-band equalizer with presets, volume
+normalization, playback speed and crossfade. Next is phase 7: themes and plugins.
 
 Runtime requirements: `mpv` (libmpv) and `yt-dlp` installed on the system.
 
