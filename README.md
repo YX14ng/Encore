@@ -9,12 +9,18 @@ right.
 ## Status
 
 Phases 1 to 7 are done: search and playback (downloaded with yt-dlp, played with mpv), signing
-in with your browser's YouTube Music session, the library and playlists, offline downloads, synced
+in to YouTube Music, the library and playlists, offline downloads, synced
 lyrics and the immersive view, media keys (MPRIS), Discord Rich Presence, Last.fm scrobbling, and
 the audio extras: seek, volume, shuffle and repeat, a 10-band equalizer with presets, volume
 normalization, playback speed and crossfade. Phase 7 added themes (built-in, custom JSON files and
 an accent color taken from the cover) and Pear-style plugins: desktop notifications and
 SponsorBlock, plus switches for Discord and Last.fm. Settings are under the gear in the top bar.
+
+Signing in happens in a small window of Encore's own (WebKitGTK), the way Pear Desktop does it:
+you sign in to Google there, and the session belongs to Encore alone. A session read from your
+browser stops working as soon as that browser renews its cookies, often within minutes, so reading
+it from a browser or a cookies.txt is only offered as another way. The window keeps nothing on
+disk; Encore keeps only the YouTube cookies, in `~/.local/share/encore/rustypipe/`.
 
 The queue button in the top bar swaps the lyrics panel for the queue: the song that is playing and
 the ones up next, which you can jump to, move up to play next or take out. The + on any song row
@@ -75,4 +81,5 @@ by you.
 
 - Rust (2024 edition)
 - iced for the interface
+- WebKitGTK (webkit2gtk 4.1) for the sign-in window
 - rustypipe for the YouTube Music catalog, yt-dlp for audio downloads, mpv (libmpv) for playback
