@@ -38,7 +38,6 @@ pub fn view(
             false
         ),
         tool(include_bytes!("../assets/icons/together.svg"), None, false),
-        tool(include_bytes!("../assets/icons/cast.svg"), None, false),
         tool(
             include_bytes!("../assets/icons/lyrics.svg"),
             Some(Message::TogglePanel(Panel::Lyrics)),
