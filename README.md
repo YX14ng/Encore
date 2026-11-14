@@ -26,6 +26,13 @@ already hold under "Autoplay", where they play after the ones you picked. Songs 
 before them. Clearing the queue brings new similar songs; turning autoplay off (or repeat) makes
 the queue stop at its end. A guest in a listen-together session follows the host instead.
 
+Signed in, "New playlist" in the sidebar makes a playlist on your YouTube Music account (private,
+unlisted or public). The playlist button on any song row adds it to one of your playlists, or to a
+new one; in your own playlists the ✕ takes a song out. Any playlist can have a cover of your own
+(the Cover button on its page): YouTube Music has no way to change it, so the picture is kept on
+this computer, as a 600 px square in `~/.local/share/encore/covers/`, and shows in the sidebar, the
+cards and the playlist page.
+
 Songs follow each other with no gap: once the next song is downloaded, it is queued in mpv, which
 goes on into it without reopening the sound output. With crossfade on, the fade takes over.
 
