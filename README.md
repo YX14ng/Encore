@@ -20,6 +20,12 @@ The queue button in the top bar swaps the lyrics panel for the queue: the song t
 the ones up next, which you can jump to, move up to play next or take out. The + on any song row
 adds it to the end of the queue (or plays it when nothing is queued).
 
+With autoplay on (the switch in the queue panel, on by default), the queue does not end: when
+the last song starts, Encore asks YouTube Music for that song's radio and adds the songs it does not
+already hold under "Autoplay", where they play after the ones you picked. Songs you add with + go
+before them. Clearing the queue brings new similar songs; turning autoplay off (or repeat) makes
+the queue stop at its end. A guest in a listen-together session follows the host instead.
+
 Songs follow each other with no gap: once the next song is downloaded, it is queued in mpv, which
 goes on into it without reopening the sound output. With crossfade on, the fade takes over.
 
