@@ -331,6 +331,7 @@ mod tests {
             album: "Kyougen".to_string(),
             duration,
             cover_url: None,
+            entry: None,
         }
     }
 

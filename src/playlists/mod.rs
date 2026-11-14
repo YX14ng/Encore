@@ -101,11 +101,13 @@ pub enum Event {
         id: String,
         title: String,
         song: SearchTrack,
-        result: Result<(), String>,
+        /// Where the song sits in the playlist, if YouTube said.
+        result: Result<Option<String>, String>,
     },
     Remove {
         id: String,
         song_id: String,
+        entry: Option<String>,
     },
     Removed {
         id: String,
@@ -174,9 +176,9 @@ impl App {
                 song,
                 result,
             } => match result {
-                Ok(()) => {
+                Ok(entry) => {
                     self.dialog = None;
-                    self.online.song_added(&id, song);
+                    self.online.song_added(&id, SearchTrack { entry, ..song });
                     return self.show_toast(format!("Added to {title}"));
                 }
                 Err(error) => match &mut self.dialog {
@@ -184,12 +186,12 @@ impl App {
                     _ => return self.show_toast(error),
                 },
             },
-            Event::Remove { id, song_id } => {
+            Event::Remove { id, song_id, entry } => {
                 let Some(client) = self.account_client() else {
                     return self.show_toast("Sign in to change your playlists.".to_string());
                 };
                 return Task::perform(
-                    edit::remove(client, id.clone(), song_id.clone()),
+                    edit::remove(client, id.clone(), song_id.clone(), entry),
                     move |result| {
                         Message::Playlist(Event::Removed {
                             id: id.clone(),

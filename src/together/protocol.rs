@@ -72,6 +72,7 @@ impl Track {
                 .as_ref()
                 .filter(|url| url.starts_with("https://") && url.len() <= 1000)
                 .cloned(),
+            entry: None,
         })
     }
 }

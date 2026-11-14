@@ -22,6 +22,10 @@ pub struct SearchTrack {
     pub album: String,
     pub duration: u32,
     pub cover_url: Option<String>,
+    /// Where the song sits in a playlist (YouTube's `setVideoId`), which taking it out needs:
+    /// YouTube Music may hold a song under another id than the one it was added with.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entry: Option<String>,
 }
 
 /// What a card opens.
@@ -260,6 +264,7 @@ pub(crate) fn track(item: &TrackItem) -> SearchTrack {
             .unwrap_or_default(),
         duration: item.duration.unwrap_or(0),
         cover_url: best_image(&item.cover),
+        entry: item.playlist_set_video_id.clone(),
     }
 }
 

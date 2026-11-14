@@ -52,22 +52,51 @@ pub async fn create(
 }
 
 /// Adds song `video_id` at the end of playlist `playlist_id`. A song already in it is skipped.
-pub async fn add(rp: RustyPipe, playlist_id: String, video_id: String) -> Result<(), String> {
+/// Returns where the song sits in the playlist (its `setVideoId`), if YouTube says.
+pub async fn add(
+    rp: RustyPipe,
+    playlist_id: String,
+    video_id: String,
+) -> Result<Option<String>, String> {
     let action = json!({
         "action": "ACTION_ADD_VIDEO",
         "addedVideoId": video_id,
         "dedupeOption": "DEDUPE_OPTION_SKIP",
     });
-    edit(&rp, &playlist_id, action).await
+    let response = edit(&rp, &playlist_id, action).await?;
+    Ok(added_entry(&response))
 }
 
-/// Takes song `video_id` out of playlist `playlist_id`.
-pub async fn remove(rp: RustyPipe, playlist_id: String, video_id: String) -> Result<(), String> {
-    let action = json!({
-        "action": "ACTION_REMOVE_VIDEO_BY_VIDEO_ID",
-        "removedVideoId": video_id,
-    });
-    edit(&rp, &playlist_id, action).await
+/// Takes song `video_id` out of playlist `playlist_id`. `entry` is where it sits in the
+/// playlist: YouTube Music may hold a song under another id than the one it was added with (a
+/// music video becomes its song), and then only the entry finds it.
+pub async fn remove(
+    rp: RustyPipe,
+    playlist_id: String,
+    video_id: String,
+    entry: Option<String>,
+) -> Result<(), String> {
+    edit(
+        &rp,
+        &playlist_id,
+        remove_action(&video_id, entry.as_deref()),
+    )
+    .await
+    .map(|_| ())
+}
+
+fn remove_action(video_id: &str, entry: Option<&str>) -> Value {
+    match entry {
+        Some(entry) => json!({
+            "action": "ACTION_REMOVE_VIDEO",
+            "setVideoId": entry,
+            "removedVideoId": video_id,
+        }),
+        None => json!({
+            "action": "ACTION_REMOVE_VIDEO_BY_VIDEO_ID",
+            "removedVideoId": video_id,
+        }),
+    }
 }
 
 /// Deletes playlist `playlist_id`. Only the live test uses it, to clean up after itself.
@@ -77,10 +106,26 @@ pub async fn delete(rp: RustyPipe, playlist_id: String) -> Result<(), String> {
     send(&rp, "playlist/delete", &body).await.map(|_| ())
 }
 
-async fn edit(rp: &RustyPipe, playlist_id: &str, action: Value) -> Result<(), String> {
+/// Sends one change to playlist `playlist_id`. Returns YouTube's answer once it says it was made.
+async fn edit(rp: &RustyPipe, playlist_id: &str, action: Value) -> Result<Value, String> {
     let body = json!({ "playlistId": bare_id(playlist_id), "actions": [action] });
     let response = send(rp, "browse/edit_playlist", &body).await?;
-    succeeded(&response)
+    succeeded(&response)?;
+    Ok(response)
+}
+
+/// Where an added song sits in the playlist, from an `edit_playlist` answer.
+fn added_entry(response: &Value) -> Option<String> {
+    response
+        .get("playlistEditResults")?
+        .as_array()?
+        .iter()
+        .find_map(|result| {
+            result
+                .pointer("/playlistEditVideoAddedResultData/setVideoId")?
+                .as_str()
+        })
+        .map(str::to_string)
 }
 
 async fn send(rp: &RustyPipe, endpoint: &str, body: &Value) -> Result<Value, String> {
@@ -170,6 +215,34 @@ mod tests {
     }
 
     #[test]
+    fn reads_where_an_added_song_sits() {
+        let answer = json!({
+            "status": "STATUS_SUCCEEDED",
+            "playlistEditResults": [{
+                "playlistEditVideoAddedResultData": {"videoId": "dQw4w9WgXcQ", "setVideoId": "56B44F6D10557CC6"}
+            }]
+        });
+        assert_eq!(added_entry(&answer).as_deref(), Some("56B44F6D10557CC6"));
+        assert_eq!(added_entry(&json!({"status": "STATUS_SUCCEEDED"})), None);
+    }
+
+    #[test]
+    fn removes_by_entry_when_there_is_one() {
+        assert_eq!(
+            remove_action("lYBUbBu4W08", Some("56B44F6D10557CC6")),
+            json!({
+                "action": "ACTION_REMOVE_VIDEO",
+                "setVideoId": "56B44F6D10557CC6",
+                "removedVideoId": "lYBUbBu4W08",
+            })
+        );
+        assert_eq!(
+            remove_action("lYBUbBu4W08", None)["action"],
+            "ACTION_REMOVE_VIDEO_BY_VIDEO_ID"
+        );
+    }
+
+    #[test]
     fn an_expired_session_says_so() {
         use rustypipe::error::Error;
         let expired = Error::HttpStatus(401, "You must be signed in".into());
@@ -205,25 +278,38 @@ mod tests {
         .expect("create");
         let result = async {
             // A music video: YouTube Music keeps the song version of it instead
-            // (dQw4w9WgXcQ shows as lYBUbBu4W08).
-            add(rp.clone(), id.clone(), "dQw4w9WgXcQ".to_string()).await?;
+            // (dQw4w9WgXcQ shows as lYBUbBu4W08), so only its entry finds it again.
+            let entry = add(rp.clone(), id.clone(), "dQw4w9WgXcQ".to_string()).await?;
             let after_add = settled_songs(&rp, &id, 2).await?;
-            let shown = after_add.get(1).cloned().unwrap_or_default();
-            remove(rp.clone(), id.clone(), shown).await?;
+            let (shown, shown_entry) = after_add.get(1).cloned().unwrap_or_default();
+            remove(rp.clone(), id.clone(), shown, shown_entry.clone()).await?;
             let after_remove = settled_songs(&rp, &id, 1).await?;
-            Ok::<_, String>((after_add, after_remove))
+            Ok::<_, String>((entry, shown_entry, after_add, after_remove))
         }
         .await;
         delete(rp, id).await.expect("delete");
-        let (after_add, after_remove) = result.expect("edit");
+        let (entry, shown_entry, after_add, after_remove) = result.expect("edit");
+        let ids = |songs: &[(String, Option<String>)]| -> Vec<String> {
+            songs.iter().map(|(id, _)| id.clone()).collect()
+        };
         assert_eq!(after_add.len(), 2, "after adding: {after_add:?}");
-        assert_eq!(after_add[0], "Rgrt_8mXrK8", "after adding: {after_add:?}");
-        assert_eq!(after_remove, ["Rgrt_8mXrK8"], "after removing");
+        assert_eq!(after_add[0].0, "Rgrt_8mXrK8", "after adding: {after_add:?}");
+        assert!(entry.is_some(), "adding gave no entry");
+        assert_eq!(
+            entry, shown_entry,
+            "the added entry is the one the playlist shows"
+        );
+        assert_eq!(ids(&after_remove), ["Rgrt_8mXrK8"], "after removing");
     }
 
-    /// The songs in playlist `id`, read again for a few seconds until there are `count` of them:
+    /// The songs in playlist `id` with their entries, read again for a few seconds until there
+    /// are `count` of them:
     /// YouTube can answer with the playlist as it was a moment before.
-    async fn settled_songs(rp: &RustyPipe, id: &str, count: usize) -> Result<Vec<String>, String> {
+    async fn settled_songs(
+        rp: &RustyPipe,
+        id: &str,
+        count: usize,
+    ) -> Result<Vec<(String, Option<String>)>, String> {
         let mut songs = Vec::new();
         for _ in 0..5 {
             let playlist = rp
@@ -236,7 +322,7 @@ mod tests {
                 .tracks
                 .items
                 .into_iter()
-                .map(|track| track.id)
+                .map(|track| (track.id, track.playlist_set_video_id))
                 .collect();
             if songs.len() == count {
                 break;

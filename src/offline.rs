@@ -271,6 +271,7 @@ mod tests {
                     album: String::new(),
                     duration: 0,
                     cover_url: None,
+                    entry: None,
                 })
                 .collect(),
         }

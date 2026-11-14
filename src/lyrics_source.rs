@@ -270,6 +270,7 @@ mod tests {
             album: String::new(),
             duration: 248,
             cover_url: None,
+            entry: None,
         };
         let lyrics = from_lrclib(&track).await.expect("lyrics");
         assert!(lyrics.synced().len() > 10, "got {lyrics:?}");

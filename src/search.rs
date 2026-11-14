@@ -320,6 +320,7 @@ fn song_row<'a>(
             Message::Playlist(playlists::Event::Remove {
                 id: id.to_string(),
                 song_id: track.id.clone(),
+                entry: track.entry.clone(),
             }),
         )
     });
@@ -504,6 +505,7 @@ mod tests {
             album: album.to_string(),
             duration: 200,
             cover_url: None,
+            entry: None,
         }
     }
 
