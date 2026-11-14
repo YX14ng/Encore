@@ -27,6 +27,19 @@ impl App {
         self.online.image(url)
     }
 
+    /// The state of the player bar's buttons and sliders.
+    fn player_controls(&self) -> player::Controls {
+        let settings = &self.audio_settings;
+        player::Controls {
+            liked: self.liked,
+            seeking: self.seeking,
+            volume: settings.volume,
+            muted: settings.muted,
+            shuffle: settings.shuffle,
+            repeat: settings.repeat,
+        }
+    }
+
     /// The whole window: sidebar, center column and lyrics, or the immersive view.
     pub(crate) fn view(&self) -> Element<'_, Message> {
         use chrono::Timelike;
@@ -38,7 +51,7 @@ impl App {
                 self.backdrop.as_ref(),
                 backdrop::zoom_at(seconds),
                 self.lyrics_view(lyrics::IMMERSIVE),
-                player::view(&self.now_playing, &self.playback, self.liked),
+                player::view(&self.now_playing, &self.playback, self.player_controls()),
             );
         }
 
@@ -94,7 +107,7 @@ impl App {
         let center = container(column![
             top_bar::view(columns.sidebar, columns.lyrics, self.screen != Screen::Home),
             content,
-            player::view(&self.now_playing, &self.playback, self.liked)
+            player::view(&self.now_playing, &self.playback, self.player_controls())
         ])
         .width(Fill)
         .height(Fill)

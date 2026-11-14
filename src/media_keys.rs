@@ -19,16 +19,18 @@ pub enum MediaKey {
     Pause,
     Toggle,
     Next,
+    Previous,
 }
 
 impl MediaKey {
-    /// The keys Encore handles; the rest (previous, seek, raise...) are ignored for now.
+    /// The keys Encore handles; the rest (seek, raise...) are ignored for now.
     pub fn from_event(event: &MediaControlEvent) -> Option<Self> {
         match event {
             MediaControlEvent::Play => Some(MediaKey::Play),
             MediaControlEvent::Pause | MediaControlEvent::Stop => Some(MediaKey::Pause),
             MediaControlEvent::Toggle => Some(MediaKey::Toggle),
             MediaControlEvent::Next => Some(MediaKey::Next),
+            MediaControlEvent::Previous => Some(MediaKey::Previous),
             _ => None,
         }
     }

@@ -1,22 +1,43 @@
 //! The player bar at the bottom of the center column.
 
-use iced::widget::{button, column, container, image, progress_bar, row, space, text};
-use iced::{Background, Center, Color, Element, Fill, border};
+use iced::widget::{button, column, container, image, row, slider, space, text};
+use iced::{Center, Color, Element, Fill, border};
 
 use crate::clock::{self, Playback};
+use crate::queue::Repeat;
 use crate::song::Song;
 use crate::{Message, theme};
 
+/// The state of the player's buttons and sliders.
+#[derive(Debug, Clone, Copy)]
+pub struct Controls {
+    pub liked: bool,
+    /// Where the progress bar is being dragged to, in seconds.
+    pub seeking: Option<f32>,
+    /// From 0 to 100.
+    pub volume: f32,
+    pub muted: bool,
+    pub shuffle: bool,
+    pub repeat: Repeat,
+}
+
 /// The progress bar, the transport buttons and the card of the track that is playing.
-pub fn view<'a>(song: &'a Song, playback: &'a Playback, liked: bool) -> Element<'a, Message> {
+pub fn view<'a>(
+    song: &'a Song,
+    playback: &'a Playback,
+    controls: Controls,
+) -> Element<'a, Message> {
     let divider = container(space())
         .width(Fill)
         .height(1)
         .style(|_| container::background(theme::LINE));
 
-    let content = column![progress(playback), controls(song, playback, liked)]
-        .spacing(10)
-        .padding([10, 20]);
+    let content = column![
+        progress(playback, controls.seeking),
+        buttons(song, playback, controls)
+    ]
+    .spacing(10)
+    .padding([10, 20]);
 
     container(column![divider, content])
         .width(Fill)
@@ -24,17 +45,19 @@ pub fn view<'a>(song: &'a Song, playback: &'a Playback, liked: bool) -> Element<
         .into()
 }
 
-fn progress(playback: &Playback) -> Element<'_, Message> {
-    let elapsed = playback.elapsed;
+/// The progress bar: drag or click it to jump through the song.
+fn progress(playback: &Playback, seeking: Option<f32>) -> Element<'static, Message> {
+    let length = playback.duration.max(1) as f32;
+    let position = seeking
+        .unwrap_or(playback.elapsed as f32)
+        .clamp(0.0, length);
+    let elapsed = position as u32;
     let left = clock::remaining(elapsed, playback.duration);
 
-    let bar = progress_bar(0.0..=playback.duration as f32, elapsed as f32)
-        .girth(4)
-        .style(|_| progress_bar::Style {
-            background: Background::Color(Color::from_rgba8(255, 255, 255, 0.14)),
-            bar: Background::Color(theme::TEXT),
-            border: border::rounded(4),
-        });
+    let bar = slider(0.0..=length, position, Message::Seeking)
+        .on_release(Message::SeekDone)
+        .height(14)
+        .style(|_, status| thin_slider(status, theme::TEXT));
 
     row![
         time_label(clock::format_time(elapsed)),
@@ -50,30 +73,62 @@ fn time_label(label: String) -> Element<'static, Message> {
     text(label).size(11).color(theme::TEXT_SECONDARY).into()
 }
 
-fn controls<'a>(song: &'a Song, playback: &'a Playback, liked: bool) -> Element<'a, Message> {
+/// A slim slider like Cider's: a thin rail whose handle shows on hover and while dragging.
+fn thin_slider(status: slider::Status, fill: Color) -> slider::Style {
+    let radius = match status {
+        slider::Status::Active => 0.0,
+        slider::Status::Hovered | slider::Status::Dragged => 6.0,
+    };
+    slider::Style {
+        rail: slider::Rail {
+            backgrounds: (fill.into(), Color::from_rgba8(255, 255, 255, 0.14).into()),
+            width: 4.0,
+            border: border::rounded(4),
+        },
+        handle: slider::Handle {
+            shape: slider::HandleShape::Circle { radius },
+            background: theme::TEXT.into(),
+            border_width: 0.0,
+            border_color: Color::TRANSPARENT,
+        },
+    }
+}
+
+fn buttons<'a>(song: &'a Song, playback: &'a Playback, controls: Controls) -> Element<'a, Message> {
     let play_icon: &'static [u8] = if playback.is_playing {
         include_bytes!("../assets/icons/pause.svg")
     } else {
         include_bytes!("../assets/icons/play.svg")
     };
-    let like_color = if liked {
+    let like_color = if controls.liked {
         theme::ACCENT
     } else {
         theme::TEXT_SECONDARY
     };
 
+    let repeat_icon: &'static [u8] = if controls.repeat == Repeat::One {
+        include_bytes!("../assets/icons/repeat-one.svg")
+    } else {
+        include_bytes!("../assets/icons/repeat.svg")
+    };
+    let volume_icon: &'static [u8] = if controls.muted {
+        include_bytes!("../assets/icons/volume-muted.svg")
+    } else {
+        include_bytes!("../assets/icons/volume.svg")
+    };
+
     let transport = row![
         icon_button(
             include_bytes!("../assets/icons/shuffle.svg"),
-            theme::TEXT_SECONDARY,
+            toggle_color(controls.shuffle),
             18.0,
-            None
+            Some(Message::ToggleShuffle)
         ),
         icon_button(
             include_bytes!("../assets/icons/previous.svg"),
             theme::TEXT,
             18.0,
-            None
+            Some(Message::Previous)
         ),
         icon_button(play_icon, theme::TEXT, 26.0, Some(Message::TogglePlay)),
         icon_button(
@@ -83,10 +138,10 @@ fn controls<'a>(song: &'a Song, playback: &'a Playback, liked: bool) -> Element<
             Some(Message::Next)
         ),
         icon_button(
-            include_bytes!("../assets/icons/repeat.svg"),
-            theme::TEXT_SECONDARY,
+            repeat_icon,
+            toggle_color(controls.repeat != Repeat::Off),
             18.0,
-            None
+            Some(Message::CycleRepeat)
         ),
         icon_button(
             include_bytes!("../assets/icons/like.svg"),
@@ -99,12 +154,13 @@ fn controls<'a>(song: &'a Song, playback: &'a Playback, liked: bool) -> Element<
     .align_y(Center);
 
     let extras = row![
-        theme::icon(
-            include_bytes!("../assets/icons/volume.svg"),
+        icon_button(
+            volume_icon,
             theme::TEXT_SECONDARY,
-            18.0
+            18.0,
+            Some(Message::ToggleMute)
         ),
-        volume_bar(),
+        volume_bar(controls),
         icon_button(
             include_bytes!("../assets/icons/miniplayer.svg"),
             theme::TEXT_SECONDARY,
@@ -167,16 +223,23 @@ fn now_playing(song: &Song) -> Element<'_, Message> {
     container(card).center_x(Fill).into()
 }
 
-fn volume_bar() -> Element<'static, Message> {
-    progress_bar(0.0..=1.0, 0.62)
-        .length(90)
-        .girth(4)
-        .style(|_| progress_bar::Style {
-            background: Background::Color(Color::from_rgba8(255, 255, 255, 0.14)),
-            bar: Background::Color(theme::TEXT_SECONDARY),
-            border: border::rounded(4),
-        })
+fn volume_bar(controls: Controls) -> Element<'static, Message> {
+    let volume = if controls.muted { 0.0 } else { controls.volume };
+    slider(0.0..=100.0, volume, Message::VolumeChanged)
+        .on_release(Message::VolumeDone)
+        .width(90)
+        .height(14)
+        .style(|_, status| thin_slider(status, theme::TEXT_SECONDARY))
         .into()
+}
+
+/// The accent color for a button that is switched on.
+fn toggle_color(on: bool) -> Color {
+    if on {
+        theme::ACCENT
+    } else {
+        theme::TEXT_SECONDARY
+    }
 }
 
 /// A round button with an icon. Without a message it is drawn but does nothing.

@@ -2,6 +2,7 @@
 
 mod account;
 mod audio;
+mod audio_settings;
 mod backdrop;
 mod clock;
 mod collection;
@@ -15,11 +16,13 @@ mod library;
 mod lyrics;
 mod lyrics_source;
 mod media_keys;
+mod mixer;
 mod mock;
 mod offline;
 mod online;
 mod player;
 mod profile;
+mod queue;
 mod scrobbler;
 mod search;
 mod sidebar;
@@ -106,6 +109,10 @@ struct App {
     discord: discord::Discord,
     /// Scrobbling to Last.fm.
     lastfm: scrobbler::LastFm,
+    /// Volume, shuffle and repeat, remembered between sessions.
+    audio_settings: audio_settings::AudioSettings,
+    /// Where the progress bar is being dragged to, in seconds.
+    seeking: Option<f32>,
 }
 
 /// The screens of the center column.
@@ -167,6 +174,14 @@ enum Message {
     LastFmDisconnect,
     LastFmAnswered(Result<(), lastfm::ApiError>),
     Scrobbled(Result<(), lastfm::ApiError>),
+    Previous,
+    Seeking(f32),
+    SeekDone,
+    VolumeChanged(f32),
+    VolumeDone,
+    ToggleMute,
+    ToggleShuffle,
+    CycleRepeat,
 }
 
 impl App {
@@ -205,6 +220,7 @@ impl App {
         let first_line = lyrics::current_line(lyrics.synced(), elapsed * 1000).unwrap_or(0);
         let now = Instant::now();
         let now_playing = Song::from_mock(first);
+        let audio_settings = audio_settings::AudioSettings::load();
 
         Self {
             tracks,
@@ -230,7 +246,7 @@ impl App {
                 .duration(Duration::from_millis(500))
                 .easing(Easing::EaseOutCubic),
             screen: Screen::Home,
-            online: Online::new(),
+            online: Online::new(audio_settings.effective_volume(), audio_settings.shuffle),
             now_playing,
             account: Account::SignedOut,
             cookie_path: String::new(),
@@ -240,6 +256,8 @@ impl App {
             media: media_keys::MediaKeys::start(),
             discord: discord::Discord::start(),
             lastfm: scrobbler::LastFm::load(),
+            audio_settings,
+            seeking: None,
         }
     }
 }

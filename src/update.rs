@@ -7,6 +7,7 @@ use crate::library::{Account, LibraryData, Shelf};
 use crate::lyrics::Lyrics;
 use crate::media_keys::MediaKey;
 use crate::online::Poll;
+use crate::queue::Repeat;
 use crate::sidebar::NavItem;
 use crate::song::Song;
 use crate::{
@@ -72,7 +73,7 @@ impl App {
                             }
                             scrobble = self.lastfm.progress(seconds);
                         }
-                        Poll::Finished => return self.play_next_online(),
+                        Poll::Finished => return self.song_finished(),
                         Poll::Waiting => {}
                     }
                 } else {
@@ -235,6 +236,7 @@ impl App {
                     MediaKey::Play if !playing => self.handle(Message::TogglePlay),
                     MediaKey::Pause if playing => self.handle(Message::TogglePlay),
                     MediaKey::Next => self.handle(Message::Next),
+                    MediaKey::Previous => self.handle(Message::Previous),
                     MediaKey::Play | MediaKey::Pause => Task::none(),
                 };
             }
@@ -245,6 +247,34 @@ impl App {
             Message::LastFmDisconnect => self.lastfm.disconnect(),
             Message::LastFmAnswered(result) => self.lastfm.answered(result),
             Message::Scrobbled(result) => return self.lastfm.scrobbled(result),
+            Message::Previous => return self.previous(),
+            Message::Seeking(seconds) => self.seeking = Some(seconds),
+            Message::SeekDone => {
+                if let Some(seconds) = self.seeking.take() {
+                    self.seek(seconds);
+                }
+            }
+            Message::VolumeChanged(volume) => {
+                self.audio_settings.volume = volume;
+                self.audio_settings.muted = false;
+                self.online.set_volume(volume);
+            }
+            Message::VolumeDone => self.audio_settings.save(),
+            Message::ToggleMute => {
+                self.audio_settings.muted = !self.audio_settings.muted;
+                self.online
+                    .set_volume(self.audio_settings.effective_volume());
+                self.audio_settings.save();
+            }
+            Message::ToggleShuffle => {
+                self.audio_settings.shuffle = !self.audio_settings.shuffle;
+                self.audio_settings.save();
+                return self.online.set_shuffle(self.audio_settings.shuffle);
+            }
+            Message::CycleRepeat => {
+                self.audio_settings.repeat = self.audio_settings.repeat.next();
+                self.audio_settings.save();
+            }
             Message::OpenOffline(id) => {
                 if let Some(collection) = self.offline.get(&id).cloned() {
                     self.screen = Screen::Collection;
@@ -383,9 +413,50 @@ impl App {
             .and_then(backdrop::blurred_backdrop);
     }
 
-    /// Plays the next song of the queue, if there is one.
+    /// A song ended: plays it again with repeat one, else the next one.
+    fn song_finished(&mut self) -> Task<Message> {
+        if self.audio_settings.repeat == Repeat::One
+            && let Some(index) = self.online.playing_index()
+        {
+            return self.online.play(index);
+        }
+        self.play_next_online()
+    }
+
+    /// The previous button: back to the start of the song, or to the previous song when the
+    /// current one has just begun.
+    fn previous(&mut self) -> Task<Message> {
+        const RESTART_AFTER: u32 = 3;
+        let wrap = self.audio_settings.repeat == Repeat::All;
+        if self.position_ms() / 1000 < RESTART_AFTER {
+            if self.online.is_active() {
+                if let Some(index) = self.online.previous_index(wrap) {
+                    return self.online.play(index);
+                }
+            } else {
+                let count = self.tracks.len();
+                self.show_sample((self.current + count - 1) % count);
+                return Task::none();
+            }
+        }
+        self.seek(0.0);
+        Task::none()
+    }
+
+    /// Jumps to `seconds` into the song.
+    fn seek(&mut self, seconds: f32) {
+        let seconds = seconds.max(0.0);
+        if self.online.is_active() {
+            self.online.seek(f64::from(seconds));
+        }
+        self.playback.elapsed = seconds as u32;
+        self.follow_lyrics();
+    }
+
+    /// Plays the next song of the queue, if there is one (after the last one only with repeat).
     pub(crate) fn play_next_online(&mut self) -> Task<Message> {
-        match self.online.next_index() {
+        let wrap = self.audio_settings.repeat != Repeat::Off;
+        match self.online.next_index(wrap) {
             Some(next) => self.online.play(next),
             None => {
                 self.playback.is_playing = false;
@@ -396,7 +467,12 @@ impl App {
 
     /// Moves to the next sample track: new cover, new background and the clock back at zero.
     pub(crate) fn next_track(&mut self) {
-        self.current = clock::next_index(self.current, self.tracks.len());
+        self.show_sample(clock::next_index(self.current, self.tracks.len()));
+    }
+
+    /// Shows sample track `index` from the start.
+    fn show_sample(&mut self, index: usize) {
+        self.current = index;
         let track = &self.tracks[self.current];
         self.playback.restart(track.duration);
         self.backdrop = load_backdrop(track);
