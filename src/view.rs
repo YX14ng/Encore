@@ -10,8 +10,8 @@ use crate::library::Account;
 use crate::sidebar::SidebarAccount;
 use crate::{
     App, Message, Screen, audio_view, backdrop, collection, discord, home, immersive, layout,
-    library, lyrics, media_keys, player, profile, queue_view, search, settings_view, sidebar,
-    theme, together, top_bar,
+    library, lyrics, media_keys, mini_player, player, profile, queue_view, search, settings_view,
+    sidebar, theme, together, top_bar,
 };
 
 impl App {
@@ -45,6 +45,15 @@ impl App {
     /// The whole window: sidebar, center column and lyrics, or the immersive view.
     pub(crate) fn view(&self) -> Element<'_, Message> {
         use chrono::Timelike;
+
+        if self.mini.is_some() {
+            return mini_player::view(
+                &self.now_playing,
+                &self.playback,
+                self.player_controls(),
+                self.backdrop.as_ref(),
+            );
+        }
 
         if self.immersive {
             let seconds = self.now.duration_since(self.started).as_secs_f32();

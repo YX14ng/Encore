@@ -16,8 +16,8 @@ use iced::widget::image;
 
 use crate::{
     App, Message, Screen, account, audio_settings, clock, cover_looks, discord, library,
-    load_cover, load_lyrics, lyrics, lyrics_source, notifications, offline, sponsorblock, theme,
-    themes,
+    load_cover, load_lyrics, lyrics, lyrics_source, mini_player, notifications, offline,
+    sponsorblock, theme, themes,
 };
 
 impl App {
@@ -177,6 +177,14 @@ impl App {
             Message::OpenTogether => self.screen = Screen::Together,
             Message::Together(event) => return self.together_event(event),
             Message::Discord(event) => return self.discord_event(event),
+            Message::ToggleMini => return self.toggle_mini(),
+            Message::MiniEntered(id, size) => {
+                self.mini = Some((id, size));
+                return Task::batch([
+                    window::resize(id, mini_player::SIZE),
+                    window::set_level(id, window::Level::AlwaysOnTop),
+                ]);
+            }
             Message::PlayTop => {
                 let (opens, task) = self.online.play_top();
                 if opens {
@@ -489,6 +497,20 @@ impl App {
             window::Mode::Windowed
         };
         window::latest().and_then(move |id| window::set_mode(id, mode))
+    }
+
+    /// Shrinks the window into the mini player (above other windows), or gives it back its size.
+    fn toggle_mini(&mut self) -> Task<Message> {
+        if let Some((id, size)) = self.mini.take() {
+            return Task::batch([
+                window::set_level(id, window::Level::Normal),
+                window::resize(id, size),
+            ]);
+        }
+        let leave_immersive = self.set_immersive(false);
+        let shrink = window::latest()
+            .and_then(|id| window::size(id).map(move |size| Message::MiniEntered(id, size)));
+        Task::batch([leave_immersive, shrink])
     }
 
     /// Milliseconds into the song: from mpv for real songs, from the clock for samples.

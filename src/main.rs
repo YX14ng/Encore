@@ -18,6 +18,7 @@ mod library;
 mod lyrics;
 mod lyrics_source;
 mod media_keys;
+mod mini_player;
 mod mixer;
 mod mock;
 mod notifications;
@@ -85,6 +86,8 @@ struct App {
     panel: Option<layout::Panel>,
     /// The playing file's format for the player bar, like "OPUS 152".
     audio_format: Option<String>,
+    /// In the mini player: the window and the size it had before.
+    mini: Option<(iced::window::Id, iced::Size)>,
     /// The listen-together session, if any.
     together: together::Together,
     playlists: Vec<Playlist>,
@@ -187,6 +190,9 @@ enum Message {
     OpenTogether,
     Together(together::Event),
     Discord(discord_ipc::Event),
+    ToggleMini,
+    /// The window to shrink into the mini player, and its size to go back to.
+    MiniEntered(iced::window::Id, iced::Size),
     PlayTop,
     AudioReady(usize, Result<std::path::PathBuf, String>),
     Prefetched(String, Result<std::path::PathBuf, String>),
@@ -296,6 +302,7 @@ impl App {
             show_sidebar: true,
             together: together::Together::load(),
             audio_format: None,
+            mini: None,
             panel: Some(layout::Panel::Lyrics),
             liked: true,
             current: 0,

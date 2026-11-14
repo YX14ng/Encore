@@ -48,7 +48,7 @@ pub fn view<'a>(
 }
 
 /// The progress bar: drag or click it to jump through the song.
-fn progress(playback: &Playback, seeking: Option<f32>) -> Element<'static, Message> {
+pub(crate) fn progress(playback: &Playback, seeking: Option<f32>) -> Element<'static, Message> {
     let length = playback.duration.max(1) as f32;
     let position = seeking
         .unwrap_or(playback.elapsed as f32)
@@ -75,12 +75,8 @@ fn time_label(label: String) -> Element<'static, Message> {
     text(label).size(11).color(theme::text_secondary()).into()
 }
 
-fn buttons<'a>(
-    song: &'a Song,
-    playback: &'a Playback,
-    controls: Controls,
-    format: Option<&'a str>,
-) -> Element<'a, Message> {
+/// Shuffle, previous, play or pause, next, repeat and like.
+pub(crate) fn transport(playback: &Playback, controls: Controls) -> Element<'static, Message> {
     let play_icon: &'static [u8] = if playback.is_playing {
         include_bytes!("../assets/icons/pause.svg")
     } else {
@@ -97,13 +93,7 @@ fn buttons<'a>(
     } else {
         include_bytes!("../assets/icons/repeat.svg")
     };
-    let volume_icon: &'static [u8] = if controls.muted {
-        include_bytes!("../assets/icons/volume-muted.svg")
-    } else {
-        include_bytes!("../assets/icons/volume.svg")
-    };
-
-    let transport = row![
+    row![
         icon_button(
             include_bytes!("../assets/icons/shuffle.svg"),
             toggle_color(controls.shuffle),
@@ -142,7 +132,23 @@ fn buttons<'a>(
         ),
     ]
     .spacing(2)
-    .align_y(Center);
+    .align_y(Center)
+    .into()
+}
+
+fn buttons<'a>(
+    song: &'a Song,
+    playback: &'a Playback,
+    controls: Controls,
+    format: Option<&'a str>,
+) -> Element<'a, Message> {
+    let volume_icon: &'static [u8] = if controls.muted {
+        include_bytes!("../assets/icons/volume-muted.svg")
+    } else {
+        include_bytes!("../assets/icons/volume.svg")
+    };
+
+    let transport = transport(playback, controls);
 
     let extras = row![
         icon_button(
@@ -162,7 +168,7 @@ fn buttons<'a>(
             include_bytes!("../assets/icons/miniplayer.svg"),
             theme::text_secondary(),
             18.0,
-            None
+            Some(Message::ToggleMini)
         ),
         icon_button(
             include_bytes!("../assets/icons/fullscreen.svg"),
@@ -242,7 +248,7 @@ fn toggle_color(on: bool) -> Color {
 }
 
 /// A round button with an icon. Without a message it is drawn but does nothing.
-fn icon_button(
+pub(crate) fn icon_button(
     bytes: &'static [u8],
     color: Color,
     size: f32,
