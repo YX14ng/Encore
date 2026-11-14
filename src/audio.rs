@@ -82,6 +82,24 @@ impl Audio {
             .command("seek", &[&format!("{seconds:.3}"), "absolute"]);
     }
 
+    /// Stops and unloads the current file.
+    pub fn stop(&self) {
+        let _ = self.mpv.command("stop", &[]);
+    }
+
+    /// Sets mpv's audio filter chain (the `af` option); an empty text removes every filter.
+    pub fn set_filters(&self, chain: &str) -> Result<(), String> {
+        self.mpv
+            .set_property("af", chain)
+            .map_err(|error| format!("mpv refused the audio filters {chain:?}: {error}"))
+    }
+
+    /// Sets the playback speed (1.0 is normal) and whether the pitch stays the same.
+    pub fn set_speed(&self, speed: f64, keep_pitch: bool) {
+        let _ = self.mpv.set_property("audio-pitch-correction", keep_pitch);
+        let _ = self.mpv.set_property("speed", speed);
+    }
+
     /// Whether mpv has nothing loaded, which after a file was playing means it ended.
     pub fn is_idle(&self) -> bool {
         self.mpv.get_property("idle-active").unwrap_or(false)

@@ -3,6 +3,7 @@
 mod account;
 mod audio;
 mod audio_settings;
+mod audio_view;
 mod backdrop;
 mod clock;
 mod collection;
@@ -113,6 +114,8 @@ struct App {
     audio_settings: audio_settings::AudioSettings,
     /// Where the progress bar is being dragged to, in seconds.
     seeking: Option<f32>,
+    /// What mpv said when it refused the audio filters, shown on the audio screen.
+    audio_error: Option<String>,
 }
 
 /// The screens of the center column.
@@ -123,6 +126,7 @@ enum Screen {
     Collection,
     Library(Shelf),
     Account,
+    Audio,
 }
 
 /// Everything that can happen in the app.
@@ -150,7 +154,7 @@ enum Message {
     PlayQueue(Vec<SearchTrack>, usize),
     PlayTop,
     AudioReady(usize, Result<std::path::PathBuf, String>),
-    Prefetched,
+    Prefetched(String, Result<std::path::PathBuf, String>),
     Back,
     OpenAccount,
     SignInDefault,
@@ -182,6 +186,9 @@ enum Message {
     ToggleMute,
     ToggleShuffle,
     CycleRepeat,
+    OpenAudio,
+    AudioChanged(audio_settings::AudioChange),
+    AudioChangeDone,
 }
 
 impl App {
@@ -246,7 +253,7 @@ impl App {
                 .duration(Duration::from_millis(500))
                 .easing(Easing::EaseOutCubic),
             screen: Screen::Home,
-            online: Online::new(audio_settings.effective_volume(), audio_settings.shuffle),
+            online: Online::new(&audio_settings),
             now_playing,
             account: Account::SignedOut,
             cookie_path: String::new(),
@@ -258,6 +265,7 @@ impl App {
             lastfm: scrobbler::LastFm::load(),
             audio_settings,
             seeking: None,
+            audio_error: None,
         }
     }
 }

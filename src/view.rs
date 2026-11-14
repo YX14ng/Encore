@@ -8,8 +8,8 @@ use iced::{Element, Fill, Subscription, time, window};
 use crate::library::Account;
 use crate::sidebar::SidebarAccount;
 use crate::{
-    App, Message, Screen, backdrop, collection, home, immersive, layout, library, lyrics,
-    media_keys, player, profile, search, sidebar, theme, top_bar,
+    App, Message, Screen, audio_view, backdrop, collection, home, immersive, layout, library,
+    lyrics, media_keys, player, profile, search, sidebar, theme, top_bar,
 };
 
 impl App {
@@ -92,6 +92,7 @@ impl App {
                 self.offline.collections(),
                 self.online.shared_view(),
             ),
+            Screen::Audio => audio_view::view(&self.audio_settings, self.audio_error.as_deref()),
             Screen::Account => column![
                 library::account_view(
                     &self.account,

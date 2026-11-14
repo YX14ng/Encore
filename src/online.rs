@@ -9,6 +9,7 @@ use iced::widget::image;
 use rustypipe::client::RustyPipe;
 
 use crate::Message;
+use crate::audio_settings::AudioSettings;
 use crate::download;
 use crate::mixer::Mixer;
 use crate::queue::Queue;
@@ -48,18 +49,20 @@ pub struct Online {
     shuffle: bool,
     rng: fastrand::Rng,
     loading: Option<String>,
+    /// The next song's audio once it is downloaded, ready to crossfade into.
+    next_file: Option<(String, PathBuf)>,
     /// Whether mpv reported a position for the current song; until then idle means "opening".
     heard: bool,
     error: Option<String>,
 }
 
 impl Online {
-    /// Starts the YouTube client and mpv at `volume`. If either fails, searching or playing
-    /// shows an error.
-    pub fn new(volume: f32, shuffle: bool) -> Self {
+    /// Starts the YouTube client and mpv with `settings`. If either fails, searching or
+    /// playing shows an error.
+    pub fn new(settings: &AudioSettings) -> Self {
         Self {
             client: youtube::client().ok(),
-            mixer: Mixer::new(volume).ok(),
+            mixer: Mixer::new(settings).ok(),
             query: String::new(),
             suggestions: Vec::new(),
             suggestion_request: 0,
@@ -73,9 +76,10 @@ impl Online {
             image_bytes: HashMap::new(),
             requested_images: HashSet::new(),
             queue: Queue::default(),
-            shuffle,
+            shuffle: settings.shuffle,
             rng: fastrand::Rng::new(),
             loading: None,
+            next_file: None,
             heard: false,
             error: None,
         }
@@ -308,13 +312,73 @@ impl Online {
         self.prefetch_next()
     }
 
+    /// Downloads the song that plays next, so it starts at once (or can fade in).
     fn prefetch_next(&self) -> Task<Message> {
         self.queue
-            .next(false)
+            .next(true)
             .and_then(|next| self.queue.get(next))
             .map_or_else(Task::none, |next| {
-                Task::perform(download::audio(next.id.clone()), |_| Message::Prefetched)
+                let id = next.id.clone();
+                Task::perform(download::audio(id.clone()), move |path| {
+                    Message::Prefetched(id.clone(), path)
+                })
             })
+    }
+
+    /// Keeps a downloaded next song for crossfading.
+    pub fn prefetched(&mut self, id: String, path: Result<PathBuf, String>) {
+        if let Ok(path) = path {
+            self.next_file = Some((id, path));
+        }
+    }
+
+    /// Fades into the next song when the current one is `seconds` from its end (in real time,
+    /// so at the playing `speed`) and the next song is downloaded. Returns the song that
+    /// started and the download of the one after it.
+    pub fn crossfade(
+        &mut self,
+        seconds: u32,
+        speed: f32,
+        wrap: bool,
+    ) -> Option<(SearchTrack, Task<Message>)> {
+        let mixer = self.mixer.as_mut()?;
+        if seconds == 0 || mixer.is_fading() || self.loading.is_some() {
+            return None;
+        }
+        let left = (mixer.duration()? - mixer.position()?) / f64::from(speed.max(0.1));
+        if left > f64::from(seconds) {
+            return None;
+        }
+        let next = self.queue.next(wrap)?;
+        let track = self.queue.get(next)?.clone();
+        let (id, path) = self.next_file.as_ref()?;
+        if *id != track.id {
+            return None;
+        }
+        let length = std::time::Duration::from_secs_f64(left.max(1.0));
+        if let Err(error) = mixer.crossfade_to(path, length) {
+            self.error = Some(error);
+            return None;
+        }
+        self.next_file = None;
+        self.queue.set_playing(next);
+        self.heard = false;
+        Some((track, self.prefetch_next()))
+    }
+
+    /// Moves a running crossfade along.
+    pub fn step_fade(&mut self) {
+        if let Some(mixer) = &mut self.mixer {
+            mixer.step();
+        }
+    }
+
+    /// Applies the audio screen's settings to mpv.
+    pub fn apply_audio(&mut self, settings: &AudioSettings) -> Result<(), String> {
+        match &mut self.mixer {
+            Some(mixer) => mixer.apply(settings),
+            None => Ok(()),
+        }
     }
 
     /// Downloads song `index` of the queue (or takes it from the cache) so it can play.
@@ -387,8 +451,8 @@ impl Online {
     }
 
     /// Pauses or resumes the audio.
-    pub fn set_paused(&self, paused: bool) {
-        if let Some(mixer) = &self.mixer {
+    pub fn set_paused(&mut self, paused: bool) {
+        if let Some(mixer) = &mut self.mixer {
             mixer.set_paused(paused);
         }
     }
@@ -401,8 +465,8 @@ impl Online {
     }
 
     /// Jumps to `seconds` into the song.
-    pub fn seek(&self, seconds: f64) {
-        if let Some(mixer) = &self.mixer {
+    pub fn seek(&mut self, seconds: f64) {
+        if let Some(mixer) = &mut self.mixer {
             mixer.seek(seconds);
         }
     }

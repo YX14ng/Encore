@@ -1,7 +1,7 @@
 //! Encore's colors and shared styles.
 
-use iced::widget::{button, container, svg};
-use iced::{Background, Color, Font, border};
+use iced::widget::{button, container, slider, svg, toggler};
+use iced::{Background, Color, Font, Theme, border};
 
 /// The app's typeface, bundled in `assets/fonts/`.
 pub const INTER: Font = Font::with_name("Inter");
@@ -45,4 +45,36 @@ pub fn icon(bytes: &'static [u8], color: Color, size: f32) -> svg::Svg<'static> 
         .width(size)
         .height(size)
         .style(move |_, _| svg::Style { color: Some(color) })
+}
+
+/// A slim slider like Cider's: a thin rail whose handle shows on hover and while dragging.
+pub fn thin_slider(status: slider::Status, fill: Color) -> slider::Style {
+    let radius = match status {
+        slider::Status::Active => 0.0,
+        slider::Status::Hovered | slider::Status::Dragged => 6.0,
+    };
+    slider::Style {
+        rail: slider::Rail {
+            backgrounds: (fill.into(), Color::from_rgba8(255, 255, 255, 0.14).into()),
+            width: 4.0,
+            border: border::rounded(4),
+        },
+        handle: slider::Handle {
+            shape: slider::HandleShape::Circle { radius },
+            background: TEXT.into(),
+            border_width: 0.0,
+            border_color: Color::TRANSPARENT,
+        },
+    }
+}
+
+/// An on/off switch in the accent color.
+pub fn switch(theme: &Theme, status: toggler::Status) -> toggler::Style {
+    let mut style = toggler::default(theme, status);
+    if let toggler::Status::Active { is_toggled: true }
+    | toggler::Status::Hovered { is_toggled: true } = status
+    {
+        style.background = ACCENT.into();
+    }
+    style
 }

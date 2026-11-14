@@ -10,9 +10,10 @@ use crate::online::Poll;
 use crate::queue::Repeat;
 use crate::sidebar::NavItem;
 use crate::song::Song;
+use crate::youtube::SearchTrack;
 use crate::{
-    App, Message, Screen, account, backdrop, clock, discord, library, load_backdrop, load_lyrics,
-    lyrics, lyrics_source, offline,
+    App, Message, Screen, account, audio_settings, backdrop, clock, discord, library,
+    load_backdrop, load_lyrics, lyrics, lyrics_source, offline,
 };
 
 impl App {
@@ -64,6 +65,17 @@ impl App {
             Message::Tick(now) => {
                 self.now = now;
                 let mut scrobble = Task::none();
+                if self.playback.is_playing
+                    && self.audio_settings.repeat != Repeat::One
+                    && let Some((track, prefetch)) = self.online.crossfade(
+                        self.audio_settings.crossfade,
+                        self.audio_settings.speed,
+                        self.audio_settings.repeat == Repeat::All,
+                    )
+                {
+                    let started = self.song_started(track);
+                    return Task::batch([prefetch, started]);
+                }
                 if self.online.is_active() {
                     match self.online.poll() {
                         Poll::Position(seconds) => {
@@ -86,6 +98,7 @@ impl App {
                 self.now = now;
                 // Keep the lyrics on the beat between the one-second ticks.
                 if self.online.is_active() && self.playback.is_playing {
+                    self.online.step_fade();
                     self.follow_lyrics();
                 }
             }
@@ -143,7 +156,7 @@ impl App {
                 return task;
             }
             Message::AudioReady(index, path) => return self.start_online(index, path),
-            Message::Prefetched => {}
+            Message::Prefetched(id, path) => self.online.prefetched(id, path),
             Message::Back => {
                 self.screen = match self.screen {
                     Screen::Collection => Screen::Search,
@@ -275,6 +288,16 @@ impl App {
                 self.audio_settings.repeat = self.audio_settings.repeat.next();
                 self.audio_settings.save();
             }
+            Message::OpenAudio => self.screen = Screen::Audio,
+            Message::AudioChanged(change) => {
+                if self.audio_settings.change(change) {
+                    self.apply_audio();
+                } else if let audio_settings::AudioChange::Speed(_) = change {
+                    // Speed is cheap to change, so it follows the slider while dragging.
+                    self.apply_audio();
+                }
+            }
+            Message::AudioChangeDone => self.apply_audio(),
             Message::OpenOffline(id) => {
                 if let Some(collection) = self.offline.get(&id).cloned() {
                     self.screen = Screen::Collection;
@@ -295,6 +318,19 @@ impl App {
         let Some(track) = started else {
             return prefetch;
         };
+        let started = self.song_started(track);
+        Task::batch([prefetch, started])
+    }
+
+    /// Applies the audio screen's settings to mpv and saves them.
+    fn apply_audio(&mut self) {
+        self.audio_error = self.online.apply_audio(&self.audio_settings).err();
+        self.audio_settings.save();
+    }
+
+    /// Shows a song that just started (by itself or by crossfading into it): the player bar,
+    /// the background and the lyrics, and tells Last.fm.
+    fn song_started(&mut self, track: SearchTrack) -> Task<Message> {
         let cover = track
             .cover_url
             .as_deref()
@@ -319,7 +355,7 @@ impl App {
             lyrics_source::fetch(track, self.online.client()),
             move |lyrics| Message::LyricsLoaded(id.clone(), lyrics),
         );
-        Task::batch([prefetch, lyrics, now_playing])
+        Task::batch([lyrics, now_playing])
     }
 
     /// Enters or leaves the immersive view, switching the window to full screen and back.

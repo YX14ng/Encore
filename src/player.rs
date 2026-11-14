@@ -57,7 +57,7 @@ fn progress(playback: &Playback, seeking: Option<f32>) -> Element<'static, Messa
     let bar = slider(0.0..=length, position, Message::Seeking)
         .on_release(Message::SeekDone)
         .height(14)
-        .style(|_, status| thin_slider(status, theme::TEXT));
+        .style(|_, status| theme::thin_slider(status, theme::TEXT));
 
     row![
         time_label(clock::format_time(elapsed)),
@@ -71,27 +71,6 @@ fn progress(playback: &Playback, seeking: Option<f32>) -> Element<'static, Messa
 
 fn time_label(label: String) -> Element<'static, Message> {
     text(label).size(11).color(theme::TEXT_SECONDARY).into()
-}
-
-/// A slim slider like Cider's: a thin rail whose handle shows on hover and while dragging.
-fn thin_slider(status: slider::Status, fill: Color) -> slider::Style {
-    let radius = match status {
-        slider::Status::Active => 0.0,
-        slider::Status::Hovered | slider::Status::Dragged => 6.0,
-    };
-    slider::Style {
-        rail: slider::Rail {
-            backgrounds: (fill.into(), Color::from_rgba8(255, 255, 255, 0.14).into()),
-            width: 4.0,
-            border: border::rounded(4),
-        },
-        handle: slider::Handle {
-            shape: slider::HandleShape::Circle { radius },
-            background: theme::TEXT.into(),
-            border_width: 0.0,
-            border_color: Color::TRANSPARENT,
-        },
-    }
 }
 
 fn buttons<'a>(song: &'a Song, playback: &'a Playback, controls: Controls) -> Element<'a, Message> {
@@ -162,6 +141,12 @@ fn buttons<'a>(song: &'a Song, playback: &'a Playback, controls: Controls) -> El
         ),
         volume_bar(controls),
         icon_button(
+            include_bytes!("../assets/icons/equalizer.svg"),
+            theme::TEXT_SECONDARY,
+            18.0,
+            Some(Message::OpenAudio)
+        ),
+        icon_button(
             include_bytes!("../assets/icons/miniplayer.svg"),
             theme::TEXT_SECONDARY,
             18.0,
@@ -229,7 +214,7 @@ fn volume_bar(controls: Controls) -> Element<'static, Message> {
         .on_release(Message::VolumeDone)
         .width(90)
         .height(14)
-        .style(|_, status| thin_slider(status, theme::TEXT_SECONDARY))
+        .style(|_, status| theme::thin_slider(status, theme::TEXT_SECONDARY))
         .into()
 }
 
