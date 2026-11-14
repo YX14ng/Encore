@@ -210,6 +210,8 @@ enum Message {
     Back,
     OpenAccount,
     SignInWindow,
+    /// The sign-in window closed: the session's cookies, or why there are none.
+    SignInWindowClosed(Result<String, String>),
     SignInWith(Browser),
     CookiePathChanged(String),
     ImportCookies,

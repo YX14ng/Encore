@@ -17,7 +17,7 @@ use iced::widget::image;
 use crate::{
     App, Message, Screen, account, audio_settings, clock, cover_looks, discord, library,
     load_cover, load_lyrics, lyrics, lyrics_source, mini_player, notifications, offline,
-    sponsorblock, theme, themes,
+    sign_in_window, sponsorblock, theme, themes,
 };
 
 impl App {
@@ -224,11 +224,20 @@ impl App {
                 );
             }
             Message::SignInWindow => {
+                self.account = Account::Waiting;
+                return Task::perform(sign_in_window::sign_in(), Message::SignInWindowClosed);
+            }
+            Message::SignInWindowClosed(Err(error)) => self.account = Account::Failed(error),
+            Message::SignInWindowClosed(Ok(cookie)) => {
                 let Some(client) = self.online.client() else {
                     return Task::none();
                 };
-                self.account = Account::Waiting;
-                return Task::perform(library::sign_in_with_window(client), Message::SignedIn);
+                // Loading the library takes a few seconds; say so as soon as the window is gone.
+                self.account = Account::SigningIn;
+                return Task::perform(
+                    library::sign_in_with_cookie(client, cookie),
+                    Message::SignedIn,
+                );
             }
             Message::CookiePathChanged(path) => self.cookie_path = path,
             Message::ImportCookies => {

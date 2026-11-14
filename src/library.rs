@@ -12,7 +12,7 @@ use crate::playlists::edit;
 use crate::profile::{self, Profile};
 use crate::search::{self, Shared};
 use crate::youtube::{self, Collection, SearchTrack, Tile, TileKind};
-use crate::{Message, sign_in_window, theme};
+use crate::{Message, theme};
 
 /// Everything the library screens show. Saved to disk so the next start shows it at once.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -250,9 +250,8 @@ pub async fn sign_in_with_browser(rp: RustyPipe, browser: Browser) -> Result<Lib
     sign_in(rp, cookies).await
 }
 
-/// Opens Encore's own sign-in window and signs in with the session made there.
-pub async fn sign_in_with_window(rp: RustyPipe) -> Result<LibraryData, String> {
-    let cookie = sign_in_window::sign_in().await?;
+/// Signs in with the session made in Encore's sign-in window (a `Cookie` header line).
+pub async fn sign_in_with_cookie(rp: RustyPipe, cookie: String) -> Result<LibraryData, String> {
     rp.user_auth_set_cookie(cookie)
         .await
         .map_err(|error| error.to_string())?;
@@ -407,7 +406,7 @@ pub fn account_view<'a>(
                 .push(accent_button("Sign out", Message::SignOut));
         }
         Account::Checking | Account::SigningIn => {
-            content = content.push(note("Signing in\u{2026}"));
+            content = content.push(note("Signing in and loading your library\u{2026}"));
         }
         Account::Waiting => {
             content = content.push(note(
