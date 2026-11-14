@@ -188,8 +188,9 @@ mod tests {
         assert!(!is_own("RDCLAK5uy", false), "made by YouTube");
     }
 
-    /// Creates a private playlist on the signed-in account, adds and removes a song and
-    /// deletes it again: `cargo test -- --ignored edits_a_real_playlist`.
+    /// Creates a private playlist on the signed-in account, adds a music video, takes it out by
+    /// the id the playlist shows (as the ✕ does) and deletes the playlist:
+    /// `cargo test -- --ignored edits_a_real_playlist`.
     #[tokio::test]
     #[ignore = "changes the signed-in YouTube Music account"]
     async fn edits_a_real_playlist() {
@@ -203,26 +204,26 @@ mod tests {
         .await
         .expect("create");
         let result = async {
+            // A music video: YouTube Music keeps the song version of it instead
+            // (dQw4w9WgXcQ shows as lYBUbBu4W08).
             add(rp.clone(), id.clone(), "dQw4w9WgXcQ".to_string()).await?;
-            let after_add = settled_songs(&rp, &id, &["Rgrt_8mXrK8", "dQw4w9WgXcQ"]).await?;
-            remove(rp.clone(), id.clone(), "Rgrt_8mXrK8".to_string()).await?;
-            let after_remove = settled_songs(&rp, &id, &["dQw4w9WgXcQ"]).await?;
+            let after_add = settled_songs(&rp, &id, 2).await?;
+            let shown = after_add.get(1).cloned().unwrap_or_default();
+            remove(rp.clone(), id.clone(), shown).await?;
+            let after_remove = settled_songs(&rp, &id, 1).await?;
             Ok::<_, String>((after_add, after_remove))
         }
         .await;
         delete(rp, id).await.expect("delete");
         let (after_add, after_remove) = result.expect("edit");
-        assert_eq!(after_add, ["Rgrt_8mXrK8", "dQw4w9WgXcQ"], "after adding");
-        assert_eq!(after_remove, ["dQw4w9WgXcQ"], "after removing");
+        assert_eq!(after_add.len(), 2, "after adding: {after_add:?}");
+        assert_eq!(after_add[0], "Rgrt_8mXrK8", "after adding: {after_add:?}");
+        assert_eq!(after_remove, ["Rgrt_8mXrK8"], "after removing");
     }
 
-    /// The songs in playlist `id`, read again for a few seconds until they are `expected`:
+    /// The songs in playlist `id`, read again for a few seconds until there are `count` of them:
     /// YouTube can answer with the playlist as it was a moment before.
-    async fn settled_songs(
-        rp: &RustyPipe,
-        id: &str,
-        expected: &[&str],
-    ) -> Result<Vec<String>, String> {
+    async fn settled_songs(rp: &RustyPipe, id: &str, count: usize) -> Result<Vec<String>, String> {
         let mut songs = Vec::new();
         for _ in 0..5 {
             let playlist = rp
@@ -237,7 +238,7 @@ mod tests {
                 .into_iter()
                 .map(|track| track.id)
                 .collect();
-            if songs == expected {
+            if songs.len() == count {
                 break;
             }
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
