@@ -61,9 +61,11 @@ impl Mixer {
         self.deck().play(path)
     }
 
-    /// Starts `path` on the other deck and fades over to it in `length`.
+    /// Starts `path` on the other deck and fades over to it in `length`. The outgoing deck
+    /// forgets the song it had queued, which the incoming deck now plays.
     pub fn crossfade_to(&mut self, path: &Path, length: Duration) -> Result<(), String> {
         self.finish_fade();
+        self.deck().clear_queued();
         let incoming = &self.decks[1 - self.active];
         incoming.set_volume(0.0);
         incoming.play(path)?;
@@ -96,6 +98,21 @@ impl Mixer {
             self.other().stop();
             self.deck().set_volume(f64::from(self.volume));
         }
+    }
+
+    /// Queues `path` to play with no gap after the current song.
+    pub fn queue_next(&self, path: &Path) -> Result<(), String> {
+        self.deck().queue_next(path)
+    }
+
+    /// Forgets the queued song.
+    pub fn clear_queued(&self) {
+        self.deck().clear_queued();
+    }
+
+    /// Whether mpv went on into the queued song.
+    pub fn went_on(&self) -> bool {
+        self.deck().playlist_pos() == Some(1)
     }
 
     /// Whether a crossfade is running.

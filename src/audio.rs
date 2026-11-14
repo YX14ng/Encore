@@ -25,6 +25,9 @@ impl Audio {
     fn with_output(audio_output: Option<&str>) -> Result<Self, String> {
         let mpv = Mpv::with_initializer(|init| {
             init.set_property("vid", "no")?;
+            // The next song is queued in mpv's playlist, and mpv goes into it without reopening
+            // the sound output, so there is no silence between songs.
+            init.set_property("gapless-audio", "yes")?;
             if let Some(output) = audio_output {
                 init.set_property("ao", output)?;
             }
@@ -42,6 +45,28 @@ impl Audio {
             .map_err(|error| error.to_string())?;
         self.set_paused(false);
         Ok(())
+    }
+
+    /// Queues `path` to start right when the current file ends, replacing anything queued.
+    pub fn queue_next(&self, path: &Path) -> Result<(), String> {
+        let path = path.to_str().ok_or("the audio path is not valid UTF-8")?;
+        self.clear_queued();
+        self.mpv
+            .command("loadfile", &[path, "append"])
+            .map_err(|error| error.to_string())
+    }
+
+    /// Takes the queued file (and any finished one) out of mpv's playlist, keeping the
+    /// current file.
+    pub fn clear_queued(&self) {
+        // Clearing an empty playlist fails; there is nothing to report.
+        let _ = self.mpv.command("playlist-clear", &[]);
+    }
+
+    /// The position of the current file in mpv's playlist: 0 for the file that was started, 1
+    /// once mpv went on into the queued one.
+    pub fn playlist_pos(&self) -> Option<i64> {
+        self.mpv.get_property("playlist-pos").ok()
     }
 
     /// Pauses or resumes.
@@ -135,6 +160,61 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(500));
         let position = audio.position().unwrap_or(0.0);
         assert!((30.0..32.0).contains(&position), "at {position}");
+    }
+
+    /// Plays the last seconds of a cached song with another one queued and checks mpv goes
+    /// into it without stopping in between: `cargo test -- --ignored goes_on_without_a_gap`.
+    #[test]
+    #[ignore = "needs libmpv and two songs in the cache"]
+    fn goes_on_without_a_gap() {
+        let songs: Vec<_> = std::fs::read_dir(crate::download::cache_dir().join("audio"))
+            .expect("cache dir")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| path.extension().is_some_and(|ext| ext == "webm"))
+            .take(2)
+            .collect();
+        assert_eq!(songs.len(), 2, "needs two cached songs");
+        let audio = Audio::muted().expect("mpv");
+        audio.play(&songs[0]).expect("play");
+        let duration = (0..50)
+            .find_map(|_| {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                audio.duration()
+            })
+            .expect("the song did not open");
+        audio.queue_next(&songs[1]).expect("queue");
+        audio.seek(duration - 1.5);
+        let mut went_idle = false;
+        let started = std::time::Instant::now();
+        while audio.playlist_pos() != Some(1) {
+            went_idle |= audio.is_idle();
+            assert!(started.elapsed().as_secs() < 10, "never went on");
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        assert!(!went_idle, "mpv stopped between the songs");
+        std::thread::sleep(std::time::Duration::from_millis(800));
+        let position = audio.position().unwrap_or(0.0);
+        assert!(
+            (0.3..2.0).contains(&position),
+            "the next song is at {position}"
+        );
+        audio.clear_queued();
+        assert_eq!(
+            audio.playlist_pos(),
+            Some(0),
+            "the finished song is cleared"
+        );
+        audio.queue_next(&songs[0]).expect("queue");
+        audio.play(&songs[0]).expect("play");
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        assert_eq!(
+            audio.playlist_pos(),
+            Some(0),
+            "playing replaces the playlist"
+        );
+        let count: i64 = audio.mpv.get_property("playlist-count").expect("count");
+        assert_eq!(count, 1, "nothing stays queued after playing a song");
     }
 
     /// Opens the real sound output at volume 0 and plays a cached song for a moment:

@@ -12,7 +12,7 @@ use crate::Message;
 use crate::audio_settings::AudioSettings;
 use crate::download;
 use crate::mixer::Mixer;
-use crate::queue::Queue;
+use crate::queue::{Queue, Repeat};
 use crate::search::{Filter, Results, Shared, Status};
 use crate::youtube::{self, Collection, SearchPage, SearchTrack, Tile, TopResult};
 
@@ -54,6 +54,10 @@ pub struct Online {
     /// Whether mpv reported a position for the current song; until then idle means "opening".
     heard: bool,
     error: Option<String>,
+    /// The repeat mode, which decides the song that comes next.
+    repeat: Repeat,
+    /// The song queued in mpv to follow the current one without a gap.
+    queued: Option<usize>,
 }
 
 impl Online {
@@ -82,6 +86,8 @@ impl Online {
             next_file: None,
             heard: false,
             error: None,
+            repeat: settings.repeat,
+            queued: None,
         }
     }
 
@@ -326,9 +332,10 @@ impl Online {
     }
 
     /// Takes every song after the current one out of the queue.
-    pub fn queue_clear(&mut self) {
+    pub fn queue_clear(&mut self) -> Task<Message> {
         self.queue.clear_upcoming();
         self.next_file = None;
+        self.prefetch_next()
     }
 
     /// The queue, for the queue panel.
@@ -344,10 +351,27 @@ impl Online {
         self.prefetch_next()
     }
 
-    /// Downloads the song that plays next, so it starts at once (or can fade in).
-    fn prefetch_next(&self) -> Task<Message> {
-        self.queue
-            .next(true)
+    /// Changes the repeat mode, and with it the song that comes next.
+    pub fn set_repeat(&mut self, repeat: Repeat) -> Task<Message> {
+        self.repeat = repeat;
+        self.prefetch_next()
+    }
+
+    /// The song that comes after the current one: itself with repeat one, and the first one
+    /// after the last with repeat all.
+    fn following(&self) -> Option<usize> {
+        match self.repeat {
+            Repeat::One => self.queue.playing(),
+            Repeat::All => self.queue.next(true),
+            Repeat::Off => self.queue.next(false),
+        }
+    }
+
+    /// Forgets the song queued in mpv and downloads the one that now comes next, so it can
+    /// follow with no gap (or fade in).
+    fn prefetch_next(&mut self) -> Task<Message> {
+        self.forget_queued();
+        self.following()
             .and_then(|next| self.queue.get(next))
             .map_or_else(Task::none, |next| {
                 let id = next.id.clone();
@@ -357,11 +381,44 @@ impl Online {
             })
     }
 
-    /// Keeps a downloaded next song for crossfading.
-    pub fn prefetched(&mut self, id: String, path: Result<PathBuf, String>) {
-        if let Ok(path) = path {
-            self.next_file = Some((id, path));
+    fn forget_queued(&mut self) {
+        if self.queued.take().is_some()
+            && let Some(mixer) = &self.mixer
+        {
+            mixer.clear_queued();
         }
+    }
+
+    /// Keeps a downloaded next song for crossfading, and queues it in mpv to follow the
+    /// current one with no gap.
+    pub fn prefetched(&mut self, id: String, path: Result<PathBuf, String>) {
+        let Ok(path) = path else {
+            return;
+        };
+        let next = self
+            .following()
+            .filter(|&next| self.queue.get(next).is_some_and(|track| track.id == id));
+        if let (Some(next), Some(mixer), None) = (next, &self.mixer, &self.loading)
+            && mixer.queue_next(&path).is_ok()
+        {
+            self.queued = Some(next);
+        }
+        self.next_file = Some((id, path));
+    }
+
+    /// The song mpv went on into by itself, once it does, with the download of the one after
+    /// it.
+    pub fn went_on(&mut self) -> Option<(SearchTrack, Task<Message>)> {
+        let next = self.queued?;
+        if !self.mixer.as_ref()?.went_on() {
+            return None;
+        }
+        self.queued = None;
+        self.next_file = None;
+        self.queue.set_playing(next);
+        self.heard = false;
+        let track = self.queue.get(next)?.clone();
+        Some((track, self.prefetch_next()))
     }
 
     /// Fades into the next song when the current one is `seconds` from its end (in real time,
@@ -393,6 +450,7 @@ impl Online {
             return None;
         }
         self.next_file = None;
+        self.queued = None;
         self.queue.set_playing(next);
         self.heard = false;
         Some((track, self.prefetch_next()))
@@ -415,12 +473,14 @@ impl Online {
 
     /// Downloads song `index` of the queue (or takes it from the cache) so it can play.
     pub fn play(&mut self, index: usize) -> Task<Message> {
-        let Some(track) = self.queue.get(index) else {
+        let Some(id) = self.queue.get(index).map(|track| track.id.clone()) else {
             return Task::none();
         };
         self.error = None;
-        self.loading = Some(track.id.clone());
-        Task::perform(download::audio(track.id.clone()), move |path| {
+        self.loading = Some(id.clone());
+        // The song playing now must not go on into the queued one while this one downloads.
+        self.forget_queued();
+        Task::perform(download::audio(id), move |path| {
             Message::AudioReady(index, path)
         })
     }

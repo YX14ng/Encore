@@ -81,6 +81,9 @@ impl App {
                     let started = self.song_started(track);
                     return Task::batch([prefetch, started]);
                 }
+                if let Some(started) = self.went_on() {
+                    return started;
+                }
                 if self.online.is_active() {
                     match self.online.poll() {
                         Poll::Position(seconds) => {
@@ -106,6 +109,9 @@ impl App {
                 self.now = now;
                 // Keep the lyrics on the beat between the one-second ticks.
                 if self.online.is_active() && self.playback.is_playing {
+                    if let Some(started) = self.went_on() {
+                        return started;
+                    }
                     self.online.step_fade();
                     self.follow_lyrics();
                 }
@@ -162,7 +168,7 @@ impl App {
             Message::QueueJump(index) => return self.online.play(index),
             Message::QueuePlayNext(index) => return self.online.queue_play_next(index),
             Message::QueueRemove(index) => return self.online.queue_remove(index),
-            Message::QueueClear => self.online.queue_clear(),
+            Message::QueueClear => return self.online.queue_clear(),
             Message::PlayTop => {
                 let (opens, task) = self.online.play_top();
                 if opens {
@@ -302,6 +308,7 @@ impl App {
             Message::CycleRepeat => {
                 self.audio_settings.repeat = self.audio_settings.repeat.next();
                 self.audio_settings.save();
+                return self.online.set_repeat(self.audio_settings.repeat);
             }
             Message::OpenSettings(tab) => self.screen = Screen::Settings(tab),
             Message::PickTheme(name) => {
@@ -359,6 +366,13 @@ impl App {
         };
         let started = self.song_started(track);
         Task::batch([prefetch, started])
+    }
+
+    /// Shows the song mpv went on into with no gap, once it does.
+    fn went_on(&mut self) -> Option<Task<Message>> {
+        let (track, prefetch) = self.online.went_on()?;
+        let started = self.song_started(track);
+        Some(Task::batch([prefetch, started]))
     }
 
     /// Applies the audio screen's settings to mpv and saves them.
