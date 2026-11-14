@@ -22,10 +22,12 @@ pub struct Controls {
 }
 
 /// The progress bar, the transport buttons and the card of the track that is playing.
+/// `format` is the playing file's format ("OPUS 152"), shown next to the song when known.
 pub fn view<'a>(
     song: &'a Song,
     playback: &'a Playback,
     controls: Controls,
+    format: Option<&'a str>,
 ) -> Element<'a, Message> {
     let divider = container(space())
         .width(Fill)
@@ -34,7 +36,7 @@ pub fn view<'a>(
 
     let content = column![
         progress(playback, controls.seeking),
-        buttons(song, playback, controls)
+        buttons(song, playback, controls, format)
     ]
     .spacing(10)
     .padding([10, 20]);
@@ -73,7 +75,12 @@ fn time_label(label: String) -> Element<'static, Message> {
     text(label).size(11).color(theme::text_secondary()).into()
 }
 
-fn buttons<'a>(song: &'a Song, playback: &'a Playback, controls: Controls) -> Element<'a, Message> {
+fn buttons<'a>(
+    song: &'a Song,
+    playback: &'a Playback,
+    controls: Controls,
+    format: Option<&'a str>,
+) -> Element<'a, Message> {
     let play_icon: &'static [u8] = if playback.is_playing {
         include_bytes!("../assets/icons/pause.svg")
     } else {
@@ -167,13 +174,13 @@ fn buttons<'a>(song: &'a Song, playback: &'a Playback, controls: Controls) -> El
     .spacing(8)
     .align_y(Center);
 
-    row![transport, now_playing(song), extras]
+    row![transport, now_playing(song, format), extras]
         .spacing(14)
         .align_y(Center)
         .into()
 }
 
-fn now_playing(song: &Song) -> Element<'_, Message> {
+fn now_playing<'a>(song: &'a Song, format: Option<&'a str>) -> Element<'a, Message> {
     let cover: Element<'_, Message> = match &song.cover {
         Some(handle) => image(handle.clone())
             .width(40)
@@ -196,13 +203,15 @@ fn now_playing(song: &Song) -> Element<'_, Message> {
     .spacing(2)
     .width(Fill);
 
-    let badge = container(text("OPUS 160").size(10).color(theme::text_secondary()))
-        .padding([2, 6])
-        .style(|_| {
-            container::Style::default().border(border::rounded(5).color(theme::line()).width(1))
-        });
+    let badge = format.map(|format| {
+        container(text(format).size(10).color(theme::text_secondary()))
+            .padding([2, 6])
+            .style(|_| {
+                container::Style::default().border(border::rounded(5).color(theme::line()).width(1))
+            })
+    });
 
-    let card = container(row![cover, details, badge].spacing(11).align_y(Center))
+    let card = container(row![cover, details].push(badge).spacing(11).align_y(Center))
         .max_width(460)
         .padding([6, 10])
         .style(|_| {

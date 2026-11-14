@@ -579,6 +579,11 @@ impl Online {
         Poll::Waiting
     }
 
+    /// The format of the playing song, like "OPUS 152".
+    pub fn format_label(&self) -> Option<String> {
+        self.mixer.as_ref()?.format_label()
+    }
+
     /// Milliseconds into the playing song, for keeping lyrics in sync between ticks.
     pub fn position_ms(&self) -> Option<u32> {
         let seconds = self.mixer.as_ref()?.position()?;

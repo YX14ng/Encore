@@ -83,6 +83,8 @@ struct App {
     show_sidebar: bool,
     /// The right panel, if it is open.
     panel: Option<layout::Panel>,
+    /// The playing file's format for the player bar, like "OPUS 152".
+    audio_format: Option<String>,
     /// The listen-together session, if any.
     together: together::Together,
     playlists: Vec<Playlist>,
@@ -293,6 +295,7 @@ impl App {
             },
             show_sidebar: true,
             together: together::Together::load(),
+            audio_format: None,
             panel: Some(layout::Panel::Lyrics),
             liked: true,
             current: 0,

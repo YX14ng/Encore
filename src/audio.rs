@@ -125,15 +125,72 @@ impl Audio {
         let _ = self.mpv.set_property("speed", speed);
     }
 
+    /// The format of the current file, like "OPUS 152", once mpv opened it.
+    pub fn format_label(&self) -> Option<String> {
+        let codec: String = self.mpv.get_property("audio-codec-name").ok()?;
+        let bytes: Option<i64> = self.mpv.get_property("file-size").ok();
+        format_label(&codec, bytes, self.duration())
+    }
+
     /// Whether mpv has nothing loaded, which after a file was playing means it ended.
     pub fn is_idle(&self) -> bool {
         self.mpv.get_property("idle-active").unwrap_or(false)
     }
 }
 
+/// Codecs whose bitrate says nothing about quality, so the label is only their name.
+const LOSSLESS: [&str; 4] = ["flac", "alac", "wavpack", "ape"];
+
+/// A codec and its average bitrate in kbit/s ("OPUS 152"), from the file's size and length.
+/// Without them, or for lossless codecs, just the codec.
+pub fn format_label(codec: &str, bytes: Option<i64>, seconds: Option<f64>) -> Option<String> {
+    let codec = codec.trim();
+    if codec.is_empty() {
+        return None;
+    }
+    let name = if codec.starts_with("pcm") {
+        "PCM".to_string()
+    } else {
+        codec.to_uppercase()
+    };
+    let lossless = LOSSLESS.contains(&codec) || codec.starts_with("pcm");
+    let kbps = match (bytes, seconds) {
+        (Some(bytes), Some(seconds)) if bytes > 0 && seconds >= 1.0 && !lossless => {
+            Some((bytes as f64 * 8.0 / seconds / 1000.0).round() as u32)
+        }
+        _ => None,
+    };
+    Some(match kbps {
+        Some(kbps) => format!("{name} {kbps}"),
+        None => name,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn labels_say_the_codec_and_the_average_bitrate() {
+        // 3:20 of Opus in 4 MB is 160 kbit/s.
+        assert_eq!(
+            format_label("opus", Some(4_000_000), Some(200.0)),
+            Some("OPUS 160".to_string())
+        );
+        assert_eq!(
+            format_label("aac", None, Some(200.0)),
+            Some("AAC".to_string())
+        );
+        assert_eq!(
+            format_label("flac", Some(30_000_000), Some(200.0)),
+            Some("FLAC".to_string())
+        );
+        assert_eq!(
+            format_label("pcm_s16le", Some(1), Some(1.0)),
+            Some("PCM".to_string())
+        );
+        assert_eq!(format_label("", Some(1), Some(1.0)), None);
+    }
 
     fn cached_song() -> std::path::PathBuf {
         std::fs::read_dir(crate::download::cache_dir().join("audio"))
@@ -156,6 +213,8 @@ mod tests {
             audio.duration().is_some()
         });
         assert!(opened, "the song did not open");
+        let label = audio.format_label().expect("a format");
+        assert!(label.starts_with("OPUS "), "{label}");
         audio.seek(30.0);
         std::thread::sleep(std::time::Duration::from_millis(500));
         let position = audio.position().unwrap_or(0.0);

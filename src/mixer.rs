@@ -162,6 +162,11 @@ impl Mixer {
         self.deck().duration()
     }
 
+    /// The format of the playing song, like "OPUS 152".
+    pub fn format_label(&self) -> Option<String> {
+        self.deck().format_label()
+    }
+
     /// Whether nothing is loaded, which after a song was playing means it ended.
     pub fn is_idle(&self) -> bool {
         self.deck().is_idle()

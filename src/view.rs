@@ -53,7 +53,12 @@ impl App {
                 self.backdrop.as_ref(),
                 backdrop::zoom_at(seconds),
                 self.lyrics_view(lyrics::IMMERSIVE),
-                player::view(&self.now_playing, &self.playback, self.player_controls()),
+                player::view(
+                    &self.now_playing,
+                    &self.playback,
+                    self.player_controls(),
+                    self.audio_format.as_deref(),
+                ),
             );
         }
 
@@ -130,7 +135,12 @@ impl App {
                 self.together.is_active(),
             ),
             content,
-            player::view(&self.now_playing, &self.playback, self.player_controls())
+            player::view(
+                &self.now_playing,
+                &self.playback,
+                self.player_controls(),
+                self.audio_format.as_deref(),
+            )
         ])
         .width(Fill)
         .height(Fill)

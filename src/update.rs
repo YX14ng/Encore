@@ -90,6 +90,9 @@ impl App {
                     match self.online.poll() {
                         Poll::Position(seconds) => {
                             self.playback.elapsed = seconds;
+                            if self.audio_format.is_none() {
+                                self.audio_format = self.online.format_label();
+                            }
                             if self.playback.duration == 0 {
                                 self.playback.duration = self.online.duration().unwrap_or(0);
                             }
@@ -394,6 +397,7 @@ impl App {
             .as_deref()
             .and_then(|url| self.online.image(url));
         self.now_playing = Song::from_search(&track, cover);
+        self.audio_format = None;
         let looks = cover_looks(
             track
                 .cover_url
