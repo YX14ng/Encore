@@ -20,6 +20,9 @@ The queue button in the top bar swaps the lyrics panel for the queue: the song t
 the ones up next, which you can jump to, move up to play next or take out. The + on any song row
 adds it to the end of the queue (or plays it when nothing is queued).
 
+Songs follow each other with no gap: once the next song is downloaded, it is queued in mpv, which
+goes on into it without reopening the sound output. With crossfade on, the fade takes over.
+
 Runtime requirements: `mpv` (libmpv) and `yt-dlp` installed on the system.
 
 ### Last.fm
