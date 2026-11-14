@@ -43,6 +43,7 @@ impl App {
             playing: self.playback.is_playing,
         });
         self.discord.update(presence);
+        self.share_with_listeners();
 
         let Some(media) = &mut self.media else {
             return;
@@ -103,7 +104,7 @@ impl App {
                     self.playback.tick();
                 }
                 self.follow_lyrics();
-                return scrobble;
+                return Task::batch([scrobble, self.follow_host()]);
             }
             Message::Frame(now) => {
                 self.now = now;
@@ -169,6 +170,8 @@ impl App {
             Message::QueuePlayNext(index) => return self.online.queue_play_next(index),
             Message::QueueRemove(index) => return self.online.queue_remove(index),
             Message::QueueClear => return self.online.queue_clear(),
+            Message::OpenTogether => self.screen = Screen::Together,
+            Message::Together(event) => return self.together_event(event),
             Message::PlayTop => {
                 let (opens, task) = self.online.play_top();
                 if opens {
@@ -599,8 +602,18 @@ impl App {
         Task::none()
     }
 
+    /// Plays or pauses, if it is not doing so already.
+    pub(crate) fn set_playing(&mut self, playing: bool) {
+        if self.playback.is_playing != playing {
+            self.playback.toggle();
+            if self.online.is_active() {
+                self.online.set_paused(!playing);
+            }
+        }
+    }
+
     /// Jumps to `seconds` into the song.
-    fn seek(&mut self, seconds: f32) {
+    pub(crate) fn seek(&mut self, seconds: f32) {
         let seconds = seconds.max(0.0);
         if self.online.is_active() {
             self.online.seek(f64::from(seconds));

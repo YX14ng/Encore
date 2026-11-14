@@ -35,6 +35,7 @@ mod song;
 mod sponsorblock;
 mod theme;
 mod themes;
+mod together;
 mod top_bar;
 mod update;
 mod view;
@@ -81,6 +82,8 @@ struct App {
     show_sidebar: bool,
     /// The right panel, if it is open.
     panel: Option<layout::Panel>,
+    /// The listen-together session, if any.
+    together: together::Together,
     playlists: Vec<Playlist>,
     recents: Vec<Card>,
     mixes: Vec<Card>,
@@ -146,6 +149,7 @@ enum Screen {
     Library(Shelf),
     Account,
     Settings(settings_view::Tab),
+    Together,
 }
 
 /// Everything that can happen in the app.
@@ -177,6 +181,8 @@ enum Message {
     QueuePlayNext(usize),
     QueueRemove(usize),
     QueueClear,
+    OpenTogether,
+    Together(together::Event),
     PlayTop,
     AudioReady(usize, Result<std::path::PathBuf, String>),
     Prefetched(String, Result<std::path::PathBuf, String>),
@@ -284,6 +290,7 @@ impl App {
                 is_playing: false,
             },
             show_sidebar: true,
+            together: together::Together::load(),
             panel: Some(layout::Panel::Lyrics),
             liked: true,
             current: 0,

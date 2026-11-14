@@ -11,7 +11,7 @@ use crate::sidebar::SidebarAccount;
 use crate::{
     App, Message, Screen, audio_view, backdrop, collection, home, immersive, layout, library,
     lyrics, media_keys, player, profile, queue_view, search, settings_view, sidebar, theme,
-    top_bar,
+    together, top_bar,
 };
 
 impl App {
@@ -109,6 +109,7 @@ impl App {
                     settings_view::Tab::Plugins => self.plugins.view(),
                 },
             ),
+            Screen::Together => together::view(&self.together),
             Screen::Account => column![
                 library::account_view(
                     &self.account,
@@ -125,7 +126,8 @@ impl App {
             top_bar::view(
                 columns.sidebar,
                 self.panel.filter(|_| columns.panel),
-                self.screen != Screen::Home
+                self.screen != Screen::Home,
+                self.together.is_active(),
             ),
             content,
             player::view(&self.now_playing, &self.playback, self.player_controls())
@@ -193,7 +195,12 @@ impl App {
         } else {
             Subscription::none()
         };
-        let resize = Subscription::batch([resize, escape, Subscription::run(media_keys::events)]);
+        let resize = Subscription::batch([
+            resize,
+            escape,
+            Subscription::run(media_keys::events),
+            self.together.subscription().map(Message::Together),
+        ]);
 
         // About 30 frames per second, only while something is moving.
         let frames = time::every(Duration::from_millis(33)).map(Message::Frame);

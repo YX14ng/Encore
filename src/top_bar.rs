@@ -8,11 +8,13 @@ use crate::{Message, theme};
 
 /// Back and forward, the panel toggles and the shortcuts on the right. Back is active while a
 /// search or a collection is open.
-/// The sidebar, lyrics and queue buttons are highlighted while their panel is shown.
+/// The sidebar, lyrics and queue buttons are highlighted while their panel is shown, and the
+/// together button while a session runs.
 pub fn view(
     show_sidebar: bool,
     panel: Option<Panel>,
     can_go_back: bool,
+    together: bool,
 ) -> Element<'static, Message> {
     row![
         tool(include_bytes!("../assets/icons/more.svg"), None, false),
@@ -37,7 +39,11 @@ pub fn view(
             Some(Message::OpenSettings(crate::settings_view::Tab::Appearance)),
             false
         ),
-        tool(include_bytes!("../assets/icons/together.svg"), None, false),
+        tool(
+            include_bytes!("../assets/icons/together.svg"),
+            Some(Message::OpenTogether),
+            together
+        ),
         tool(
             include_bytes!("../assets/icons/lyrics.svg"),
             Some(Message::TogglePanel(Panel::Lyrics)),
