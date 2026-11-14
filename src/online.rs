@@ -304,6 +304,38 @@ impl Online {
         self.play(index)
     }
 
+    /// Adds `track` at the end of the queue, or plays it when nothing is queued.
+    pub fn add_to_queue(&mut self, track: SearchTrack) -> Task<Message> {
+        if !self.is_active() {
+            return self.play_queue(vec![track], 0);
+        }
+        self.queue.add(track);
+        self.prefetch_next()
+    }
+
+    /// Moves song `index` of the queue to play right after the current one.
+    pub fn queue_play_next(&mut self, index: usize) -> Task<Message> {
+        self.queue.play_next(index);
+        self.prefetch_next()
+    }
+
+    /// Takes song `index` out of the queue.
+    pub fn queue_remove(&mut self, index: usize) -> Task<Message> {
+        self.queue.remove(index);
+        self.prefetch_next()
+    }
+
+    /// Takes every song after the current one out of the queue.
+    pub fn queue_clear(&mut self) {
+        self.queue.clear_upcoming();
+        self.next_file = None;
+    }
+
+    /// The queue, for the queue panel.
+    pub fn queue(&self) -> &Queue {
+        &self.queue
+    }
+
     /// Turns shuffle on or off for the queue and the queues to come, and downloads the song
     /// that now plays next.
     pub fn set_shuffle(&mut self, shuffle: bool) -> Task<Message> {

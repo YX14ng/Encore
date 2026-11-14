@@ -5,11 +5,13 @@ use std::time::Duration;
 use iced::widget::{column, container, image, row};
 use iced::{Element, Fill, Subscription, time, window};
 
+use crate::layout::Panel;
 use crate::library::Account;
 use crate::sidebar::SidebarAccount;
 use crate::{
     App, Message, Screen, audio_view, backdrop, collection, home, immersive, layout, library,
-    lyrics, media_keys, player, profile, search, settings_view, sidebar, theme, top_bar,
+    lyrics, media_keys, player, profile, queue_view, search, settings_view, sidebar, theme,
+    top_bar,
 };
 
 impl App {
@@ -57,7 +59,7 @@ impl App {
 
         let hour = chrono::Local::now().hour();
         let columns =
-            layout::visible_columns(self.window_width, self.show_sidebar, self.show_lyrics);
+            layout::visible_columns(self.window_width, self.show_sidebar, self.panel.is_some());
         let seconds = self.now.duration_since(self.started).as_secs_f32();
         let content = match self.screen {
             Screen::Home => {
@@ -120,7 +122,11 @@ impl App {
         };
 
         let center = container(column![
-            top_bar::view(columns.sidebar, columns.lyrics, self.screen != Screen::Home),
+            top_bar::view(
+                columns.sidebar,
+                self.panel.filter(|_| columns.panel),
+                self.screen != Screen::Home
+            ),
             content,
             player::view(&self.now_playing, &self.playback, self.player_controls())
         ])
@@ -151,7 +157,16 @@ impl App {
                 )
             }))
             .push(center)
-            .push(columns.lyrics.then(|| self.lyrics_view(lyrics::PANEL)))
+            .push(
+                self.panel
+                    .filter(|_| columns.panel)
+                    .map(|panel| match panel {
+                        Panel::Lyrics => self.lyrics_view(lyrics::PANEL),
+                        Panel::Queue => {
+                            queue_view::view(self.online.queue(), self.online.shared_view())
+                        }
+                    }),
+            )
             .into()
     }
 

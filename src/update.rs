@@ -111,7 +111,9 @@ impl App {
                 }
             }
             Message::ToggleSidebar => self.show_sidebar = !self.show_sidebar,
-            Message::ToggleLyrics => self.show_lyrics = !self.show_lyrics,
+            Message::TogglePanel(panel) => {
+                self.panel = (self.panel != Some(panel)).then_some(panel);
+            }
             Message::ToggleSection(section) => self.sidebar.toggle(section),
             Message::Select(item) => return self.select(item),
             Message::ToggleLike => self.liked = !self.liked,
@@ -156,6 +158,11 @@ impl App {
             }
             Message::CollectionLoaded(result) => return self.online.collection_loaded(result),
             Message::PlayQueue(tracks, index) => return self.online.play_queue(tracks, index),
+            Message::AddToQueue(track) => return self.online.add_to_queue(track),
+            Message::QueueJump(index) => return self.online.play(index),
+            Message::QueuePlayNext(index) => return self.online.queue_play_next(index),
+            Message::QueueRemove(index) => return self.online.queue_remove(index),
+            Message::QueueClear => self.online.queue_clear(),
             Message::PlayTop => {
                 let (opens, task) = self.online.play_top();
                 if opens {

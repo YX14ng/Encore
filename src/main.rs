@@ -26,6 +26,7 @@ mod player;
 mod plugins;
 mod profile;
 mod queue;
+mod queue_view;
 mod scrobbler;
 mod search;
 mod settings_view;
@@ -78,7 +79,8 @@ struct App {
     sidebar: SidebarState,
     playback: Playback,
     show_sidebar: bool,
-    show_lyrics: bool,
+    /// The right panel, if it is open.
+    panel: Option<layout::Panel>,
     playlists: Vec<Playlist>,
     recents: Vec<Card>,
     mixes: Vec<Card>,
@@ -153,7 +155,8 @@ enum Message {
     Tick(Instant),
     Frame(Instant),
     ToggleSidebar,
-    ToggleLyrics,
+    /// Opens the right panel with this content, or closes it if it already shows it.
+    TogglePanel(layout::Panel),
     ToggleSection(Section),
     Select(NavItem),
     ToggleLike,
@@ -169,6 +172,11 @@ enum Message {
     OpenTile(Tile),
     CollectionLoaded(Result<Collection, String>),
     PlayQueue(Vec<SearchTrack>, usize),
+    AddToQueue(SearchTrack),
+    QueueJump(usize),
+    QueuePlayNext(usize),
+    QueueRemove(usize),
+    QueueClear,
     PlayTop,
     AudioReady(usize, Result<std::path::PathBuf, String>),
     Prefetched(String, Result<std::path::PathBuf, String>),
@@ -276,7 +284,7 @@ impl App {
                 is_playing: false,
             },
             show_sidebar: true,
-            show_lyrics: true,
+            panel: Some(layout::Panel::Lyrics),
             liked: true,
             current: 0,
             lyrics,

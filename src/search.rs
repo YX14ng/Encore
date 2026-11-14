@@ -246,7 +246,7 @@ pub fn track_list<'a>(
     Column::with_children(rows).spacing(2).into()
 }
 
-/// One song row; clicking it plays `tracks` from `index`.
+/// One song row; clicking it plays `tracks` from `index`, and its + adds the song to the queue.
 pub fn track_row<'a>(
     tracks: &'a [SearchTrack],
     index: usize,
@@ -276,8 +276,17 @@ pub fn track_row<'a>(
         text(duration).size(12).color(theme::text_secondary())
     };
 
+    let add = button(theme::icon(
+        include_bytes!("../assets/icons/plus.svg"),
+        theme::text_secondary(),
+        16.0,
+    ))
+    .on_press(Message::AddToQueue(track.clone()))
+    .padding(6)
+    .style(|_, status| theme::flat_button(status, false));
+
     let cover = picture(track.cover_url.as_deref(), 44.0, false, shared);
-    button(row![cover, details, right].spacing(12).align_y(Center))
+    button(row![cover, details, right, add].spacing(12).align_y(Center))
         .on_press(Message::PlayQueue(tracks.to_vec(), index))
         .width(Fill)
         .padding([6, 8])

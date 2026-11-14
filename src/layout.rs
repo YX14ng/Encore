@@ -1,6 +1,13 @@
 //! Which side panels fit in the window.
 
-/// Below this window width the lyrics panel is hidden.
+/// What the panel at the right shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Panel {
+    Lyrics,
+    Queue,
+}
+
+/// Below this window width the right panel (lyrics or queue) is hidden.
 pub const LYRICS_MIN_WIDTH: f32 = 1100.0;
 /// Below this window width the sidebar is hidden too.
 pub const SIDEBAR_MIN_WIDTH: f32 = 720.0;
@@ -9,14 +16,15 @@ pub const SIDEBAR_MIN_WIDTH: f32 = 720.0;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Columns {
     pub sidebar: bool,
-    pub lyrics: bool,
+    /// The right panel, with the lyrics or the queue.
+    pub panel: bool,
 }
 
 /// A panel is shown only if the user wants it and the window is wide enough for it.
-pub fn visible_columns(width: f32, show_sidebar: bool, show_lyrics: bool) -> Columns {
+pub fn visible_columns(width: f32, show_sidebar: bool, show_panel: bool) -> Columns {
     Columns {
         sidebar: show_sidebar && width >= SIDEBAR_MIN_WIDTH,
-        lyrics: show_lyrics && width >= LYRICS_MIN_WIDTH,
+        panel: show_panel && width >= LYRICS_MIN_WIDTH,
     }
 }
 
@@ -24,8 +32,8 @@ pub fn visible_columns(width: f32, show_sidebar: bool, show_lyrics: bool) -> Col
 mod tests {
     use super::*;
 
-    fn columns(sidebar: bool, lyrics: bool) -> Columns {
-        Columns { sidebar, lyrics }
+    fn columns(sidebar: bool, panel: bool) -> Columns {
+        Columns { sidebar, panel }
     }
 
     #[test]
@@ -34,7 +42,7 @@ mod tests {
     }
 
     #[test]
-    fn a_medium_window_hides_the_lyrics() {
+    fn a_medium_window_hides_the_right_panel() {
         assert_eq!(visible_columns(1099.0, true, true), columns(true, false));
     }
 
