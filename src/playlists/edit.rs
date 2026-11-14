@@ -204,25 +204,44 @@ mod tests {
         .expect("create");
         let result = async {
             add(rp.clone(), id.clone(), "dQw4w9WgXcQ".to_string()).await?;
-            let songs = |playlist: rustypipe::model::MusicPlaylist| {
-                playlist
-                    .tracks
-                    .items
-                    .iter()
-                    .map(|track| track.id.clone())
-                    .collect::<Vec<_>>()
-            };
-            let read = rp.query().authenticated().music_playlist(&id).await;
-            let after_add = songs(read.map_err(|error| error.to_string())?);
+            let after_add = settled_songs(&rp, &id, &["Rgrt_8mXrK8", "dQw4w9WgXcQ"]).await?;
             remove(rp.clone(), id.clone(), "Rgrt_8mXrK8".to_string()).await?;
-            let read = rp.query().authenticated().music_playlist(&id).await;
-            let after_remove = songs(read.map_err(|error| error.to_string())?);
+            let after_remove = settled_songs(&rp, &id, &["dQw4w9WgXcQ"]).await?;
             Ok::<_, String>((after_add, after_remove))
         }
         .await;
         delete(rp, id).await.expect("delete");
         let (after_add, after_remove) = result.expect("edit");
-        assert_eq!(after_add, ["Rgrt_8mXrK8", "dQw4w9WgXcQ"]);
-        assert_eq!(after_remove, ["dQw4w9WgXcQ"]);
+        assert_eq!(after_add, ["Rgrt_8mXrK8", "dQw4w9WgXcQ"], "after adding");
+        assert_eq!(after_remove, ["dQw4w9WgXcQ"], "after removing");
+    }
+
+    /// The songs in playlist `id`, read again for a few seconds until they are `expected`:
+    /// YouTube can answer with the playlist as it was a moment before.
+    async fn settled_songs(
+        rp: &RustyPipe,
+        id: &str,
+        expected: &[&str],
+    ) -> Result<Vec<String>, String> {
+        let mut songs = Vec::new();
+        for _ in 0..5 {
+            let playlist = rp
+                .query()
+                .authenticated()
+                .music_playlist(id)
+                .await
+                .map_err(|error| error.to_string())?;
+            songs = playlist
+                .tracks
+                .items
+                .into_iter()
+                .map(|track| track.id)
+                .collect();
+            if songs == expected {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        }
+        Ok(songs)
     }
 }
