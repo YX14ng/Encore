@@ -23,6 +23,16 @@ adds it to the end of the queue (or plays it when nothing is queued).
 Songs follow each other with no gap: once the next song is downloaded, it is queued in mpv, which
 goes on into it without reopening the sound output. With crossfade on, the fade takes over.
 
+### Listen together
+
+The people button in the top bar opens the together screen. **Host** opens a port (41730 by
+default) and makes an invite (`encore:<address>:<port>:<token>`); friends paste it under **Join**,
+or, with the Discord plugin on, use "Ask to Join" on your Discord profile or an invite you send
+from a chat (their Encore must be open). Each Encore downloads the songs itself and follows the
+host's song, position and pauses. Friends on the internet need your router to forward the port.
+They connect straight to your computer, so they see its address and you see theirs. Details:
+[`docs/superpowers/specs/2026-11-14-encore-together-design.md`](docs/superpowers/specs/2026-11-14-encore-together-design.md).
+
 Runtime requirements: `mpv` (libmpv) and `yt-dlp` installed on the system.
 
 ### Last.fm
