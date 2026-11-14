@@ -26,9 +26,11 @@ mod profile;
 mod queue;
 mod scrobbler;
 mod search;
+mod settings_view;
 mod sidebar;
 mod song;
 mod theme;
+mod themes;
 mod top_bar;
 mod update;
 mod view;
@@ -116,6 +118,14 @@ struct App {
     seeking: Option<f32>,
     /// What mpv said when it refused the audio filters, shown on the audio screen.
     audio_error: Option<String>,
+    /// The chosen theme and accent.
+    appearance: themes::Appearance,
+    /// The built-in and custom themes.
+    themes: Vec<themes::Theme>,
+    /// Custom theme files that could not be read.
+    theme_errors: Vec<String>,
+    /// The most colorful color of the playing song's cover, for the "from cover" accent.
+    cover_color: Option<iced::Color>,
 }
 
 /// The screens of the center column.
@@ -126,7 +136,7 @@ enum Screen {
     Collection,
     Library(Shelf),
     Account,
-    Audio,
+    Settings(settings_view::Tab),
 }
 
 /// Everything that can happen in the app.
@@ -186,7 +196,10 @@ enum Message {
     ToggleMute,
     ToggleShuffle,
     CycleRepeat,
-    OpenAudio,
+    OpenSettings(settings_view::Tab),
+    PickTheme(String),
+    PickAccent(themes::Accent),
+    ReloadThemes,
     AudioChanged(audio_settings::AudioChange),
     AudioChangeDone,
 }
@@ -204,6 +217,7 @@ impl App {
     /// The initial state, plus restoring a saved session in the background.
     fn boot() -> (Self, Task<Message>) {
         let mut app = Self::new();
+        app.apply_appearance();
         app.online.seed_images(app.offline.saved_images());
         // Show the library saved by the last session at once; it reloads in the background.
         let cached_images = match library::load_cache() {
@@ -230,7 +244,8 @@ impl App {
         let tracks = mock::parse_tracks(include_str!("../assets/mock/tracks.tsv"));
         let first = tracks.first().expect("tracks.tsv lists at least one track");
         let duration = first.duration;
-        let backdrop = load_backdrop(first);
+        let (backdrop, cover_color) = load_cover(first);
+        let (themes, theme_errors) = themes::load_all();
         let lyrics = load_lyrics(first);
         let elapsed = 93;
         let first_line = lyrics::current_line(lyrics.synced(), elapsed * 1000).unwrap_or(0);
@@ -275,14 +290,29 @@ impl App {
             audio_settings,
             seeking: None,
             audio_error: None,
+            appearance: themes::Appearance::load(),
+            themes,
+            theme_errors,
+            cover_color,
         }
     }
 }
 
-/// Reads the track's cover from disk and blurs it for the home background.
-fn load_backdrop(track: &Track) -> Option<image::Handle> {
-    let bytes = fs::read(mock::cover_path(&track.cover)).ok()?;
-    backdrop::blurred_backdrop(&bytes)
+/// Reads the sample track's cover from disk: blurred for the home background, and its most
+/// colorful color for the accent.
+fn load_cover(track: &Track) -> (Option<image::Handle>, Option<iced::Color>) {
+    cover_looks(fs::read(mock::cover_path(&track.cover)).ok().as_deref())
+}
+
+/// What a cover gives the interface: the blurred background and the accent color.
+fn cover_looks(bytes: Option<&[u8]>) -> (Option<image::Handle>, Option<iced::Color>) {
+    match bytes {
+        Some(bytes) => (
+            backdrop::blurred_backdrop(bytes),
+            themes::cover_color(bytes),
+        ),
+        None => (None, None),
+    }
 }
 
 /// Reads and parses the track's lyrics. A track without lyrics, or with a file that cannot be

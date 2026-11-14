@@ -52,6 +52,13 @@ pub fn palette() -> Palette {
     PALETTE.read().map(|palette| *palette).unwrap_or(ENCORE)
 }
 
+/// Switches the palette; the next frame draws with it.
+pub fn set_palette(palette: Palette) {
+    if let Ok(mut current) = PALETTE.write() {
+        *current = palette;
+    }
+}
+
 pub fn sidebar_bg() -> Color {
     palette().sidebar
 }

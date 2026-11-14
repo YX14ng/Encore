@@ -11,9 +11,12 @@ use crate::queue::Repeat;
 use crate::sidebar::NavItem;
 use crate::song::Song;
 use crate::youtube::SearchTrack;
+use iced::Color;
+use iced::widget::image;
+
 use crate::{
-    App, Message, Screen, account, audio_settings, backdrop, clock, discord, library,
-    load_backdrop, load_lyrics, lyrics, lyrics_source, offline,
+    App, Message, Screen, account, audio_settings, clock, cover_looks, discord, library,
+    load_cover, load_lyrics, lyrics, lyrics_source, offline, theme, themes,
 };
 
 impl App {
@@ -288,7 +291,21 @@ impl App {
                 self.audio_settings.repeat = self.audio_settings.repeat.next();
                 self.audio_settings.save();
             }
-            Message::OpenAudio => self.screen = Screen::Audio,
+            Message::OpenSettings(tab) => self.screen = Screen::Settings(tab),
+            Message::PickTheme(name) => {
+                self.appearance.theme = name;
+                self.appearance.save();
+                self.apply_appearance();
+            }
+            Message::PickAccent(accent) => {
+                self.appearance.accent = accent;
+                self.appearance.save();
+                self.apply_appearance();
+            }
+            Message::ReloadThemes => {
+                (self.themes, self.theme_errors) = themes::load_all();
+                self.apply_appearance();
+            }
             Message::AudioChanged(change) => {
                 if self.audio_settings.change(change) {
                     self.apply_audio();
@@ -336,11 +353,13 @@ impl App {
             .as_deref()
             .and_then(|url| self.online.image(url));
         self.now_playing = Song::from_search(&track, cover);
-        self.backdrop = track
-            .cover_url
-            .as_deref()
-            .and_then(|url| self.online.image_bytes(url))
-            .and_then(backdrop::blurred_backdrop);
+        let looks = cover_looks(
+            track
+                .cover_url
+                .as_deref()
+                .and_then(|url| self.online.image_bytes(url)),
+        );
+        self.set_cover_looks(looks);
         let duration = track.duration;
         self.playback = Playback {
             elapsed: 0,
@@ -443,10 +462,20 @@ impl App {
     /// Puts a freshly downloaded cover on the player and behind the home greeting.
     pub(crate) fn show_cover(&mut self, url: &str) {
         self.now_playing.cover = self.online.image(url);
-        self.backdrop = self
-            .online
-            .image_bytes(url)
-            .and_then(backdrop::blurred_backdrop);
+        let looks = cover_looks(self.online.image_bytes(url));
+        self.set_cover_looks(looks);
+    }
+
+    /// Puts a cover's blurred background behind the home greeting and its color on the accent.
+    fn set_cover_looks(&mut self, (backdrop, color): (Option<image::Handle>, Option<Color>)) {
+        self.backdrop = backdrop;
+        self.cover_color = color;
+        self.apply_appearance();
+    }
+
+    /// Draws with the chosen theme and accent from the next frame on.
+    pub(crate) fn apply_appearance(&mut self) {
+        theme::set_palette(self.appearance.palette(&self.themes, self.cover_color));
     }
 
     /// A song ended: plays it again with repeat one, else the next one.
@@ -511,9 +540,10 @@ impl App {
         self.current = index;
         let track = &self.tracks[self.current];
         self.playback.restart(track.duration);
-        self.backdrop = load_backdrop(track);
+        let looks = load_cover(track);
         self.lyrics = load_lyrics(track);
         self.now_playing = Song::from_mock(track);
+        self.set_cover_looks(looks);
         self.follow_lyrics();
     }
 

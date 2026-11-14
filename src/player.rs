@@ -149,7 +149,7 @@ fn buttons<'a>(song: &'a Song, playback: &'a Playback, controls: Controls) -> El
             include_bytes!("../assets/icons/equalizer.svg"),
             theme::text_secondary(),
             18.0,
-            Some(Message::OpenAudio)
+            Some(Message::OpenSettings(crate::settings_view::Tab::Audio))
         ),
         icon_button(
             include_bytes!("../assets/icons/miniplayer.svg"),

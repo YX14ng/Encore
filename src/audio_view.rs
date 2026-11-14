@@ -1,32 +1,25 @@
-//! The audio screen: equalizer with presets, volume normalization, playback speed and
-//! crossfade. Opened with the equalizer button in the player bar.
+//! The audio tab of the settings: equalizer with presets, volume normalization, playback speed
+//! and crossfade. Opened with the equalizer button in the player bar.
 
 use iced::font::Weight;
-use iced::widget::{
-    Row, button, column, container, row, scrollable, slider, text, toggler, vertical_slider,
-};
-use iced::{Center, Element, Fill, Font, border};
+use iced::widget::{Row, button, column, container, row, slider, text, toggler, vertical_slider};
+use iced::{Center, Element, Font, border};
 
 use crate::audio_settings::{
     AudioChange, AudioSettings, BANDS, MAX_CROSSFADE, MAX_GAIN, MAX_SPEED, MIN_SPEED, PRESETS,
 };
 use crate::{Message, theme};
 
-/// The whole screen. `error` is what mpv said when it refused the filters, if it did.
+/// The tab's content. `error` is what mpv said when it refused the filters, if it did.
 pub fn view<'a>(settings: &'a AudioSettings, error: Option<&'a str>) -> Element<'a, Message> {
-    let mut content = column![heading("Audio", 26.0)]
-        .spacing(26)
-        .padding([28, 32])
-        .max_width(760);
-    if let Some(error) = error {
-        content = content.push(text(error).color(theme::accent()));
-    }
-    content = content
+    column![]
+        .push(error.map(|error| text(error).color(theme::accent())))
         .push(equalizer(settings))
         .push(normalization(settings))
         .push(speed(settings))
-        .push(crossfade(settings));
-    scrollable(content).height(Fill).into()
+        .push(crossfade(settings))
+        .spacing(26)
+        .into()
 }
 
 fn equalizer(settings: &AudioSettings) -> Element<'_, Message> {

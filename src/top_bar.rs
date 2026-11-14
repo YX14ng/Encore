@@ -27,6 +27,11 @@ pub fn view(show_sidebar: bool, show_lyrics: bool, can_go_back: bool) -> Element
             show_sidebar
         ),
         space::horizontal(),
+        tool(
+            include_bytes!("../assets/icons/settings.svg"),
+            Some(Message::OpenSettings(crate::settings_view::Tab::Appearance)),
+            false
+        ),
         tool(include_bytes!("../assets/icons/together.svg"), None, false),
         tool(include_bytes!("../assets/icons/cast.svg"), None, false),
         tool(

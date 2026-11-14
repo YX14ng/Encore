@@ -9,7 +9,7 @@ use crate::library::Account;
 use crate::sidebar::SidebarAccount;
 use crate::{
     App, Message, Screen, audio_view, backdrop, collection, home, immersive, layout, library,
-    lyrics, media_keys, player, profile, search, sidebar, theme, top_bar,
+    lyrics, media_keys, player, profile, search, settings_view, sidebar, theme, top_bar,
 };
 
 impl App {
@@ -92,7 +92,20 @@ impl App {
                 self.offline.collections(),
                 self.online.shared_view(),
             ),
-            Screen::Audio => audio_view::view(&self.audio_settings, self.audio_error.as_deref()),
+            Screen::Settings(tab) => settings_view::view(
+                tab,
+                match tab {
+                    settings_view::Tab::Appearance => settings_view::appearance(
+                        &self.appearance,
+                        &self.themes,
+                        &self.theme_errors,
+                        self.cover_color,
+                    ),
+                    settings_view::Tab::Audio => {
+                        audio_view::view(&self.audio_settings, self.audio_error.as_deref())
+                    }
+                },
+            ),
             Screen::Account => column![
                 library::account_view(
                     &self.account,
