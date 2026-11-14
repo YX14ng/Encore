@@ -1,0 +1,3 @@
+# The rustypipe fork is a private GitHub repo: fetch it with the system git, which has the SSH key.
+[net]
+git-fetch-with-cli = true

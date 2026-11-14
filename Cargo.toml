@@ -15,7 +15,8 @@ md5 = "0.8"
 notify-rust = { version = "4", default-features = false, features = ["z-with-tokio"] }
 reqwest = "0.12"
 rfd = { version = "0.18", default-features = false, features = ["xdg-portal"] }
-rustypipe = { version = "0.11", features = ["userdata"] }
+# Encore's fork: upstream's main plus fixes it needs (its "encore" branch).
+rustypipe = { git = "ssh://git@github.com/YX14ng/rustypipe.git", branch = "encore", features = ["userdata"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
@@ -27,5 +28,3 @@ webkit2gtk = { version = "2", features = ["v2_40"] }
 [lints.clippy]
 unwrap_used = "deny"
 
-[patch.crates-io]
-rustypipe = { path = "vendor/rustypipe" }
