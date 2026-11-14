@@ -16,6 +16,10 @@ normalization, playback speed and crossfade. Phase 7 added themes (built-in, cus
 an accent color taken from the cover) and Pear-style plugins: desktop notifications and
 SponsorBlock, plus switches for Discord and Last.fm. Settings are under the gear in the top bar.
 
+The queue button in the top bar swaps the lyrics panel for the queue: the song that is playing and
+the ones up next, which you can jump to, move up to play next or take out. The + on any song row
+adds it to the end of the queue (or plays it when nothing is queued).
+
 Runtime requirements: `mpv` (libmpv) and `yt-dlp` installed on the system.
 
 ### Last.fm
