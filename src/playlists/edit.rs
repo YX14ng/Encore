@@ -89,10 +89,22 @@ async fn send(rp: &RustyPipe, endpoint: &str, body: &Value) -> Result<Value, Str
         .authenticated()
         .raw(ClientType::DesktopMusic, endpoint, body)
         .await
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| request_error(&error))?;
     serde_json::from_str(&response)
         .map_err(|error| format!("YouTube's answer is not JSON: {error}"))
 }
+
+/// What went wrong with a request, in words. YouTube answers 401 when the saved session no
+/// longer works (it expired, or the browser it came from signed out).
+fn request_error(error: &rustypipe::error::Error) -> String {
+    match error {
+        rustypipe::error::Error::HttpStatus(401, _) => SESSION_EXPIRED.to_string(),
+        error => error.to_string(),
+    }
+}
+
+const SESSION_EXPIRED: &str =
+    "Your YouTube Music session expired. Sign out and sign in again in Account.";
 
 /// A playlist's id without the "VL" its browse page adds.
 pub fn bare_id(playlist_id: &str) -> &str {
@@ -155,6 +167,15 @@ mod tests {
             failed,
             Err("YouTube did not change the playlist: No".to_string())
         );
+    }
+
+    #[test]
+    fn an_expired_session_says_so() {
+        use rustypipe::error::Error;
+        let expired = Error::HttpStatus(401, "You must be signed in".into());
+        assert_eq!(request_error(&expired), SESSION_EXPIRED);
+        let other = Error::HttpStatus(500, "oops".into());
+        assert_eq!(request_error(&other), "http status code: 500 message: oops");
     }
 
     #[test]
