@@ -16,7 +16,8 @@ use iced::widget::image;
 
 use crate::{
     App, Message, Screen, account, audio_settings, clock, cover_looks, discord, library,
-    load_cover, load_lyrics, lyrics, lyrics_source, offline, theme, themes,
+    load_cover, load_lyrics, lyrics, lyrics_source, notifications, offline, sponsorblock, theme,
+    themes,
 };
 
 impl App {
@@ -31,7 +32,8 @@ impl App {
     /// Tells the desktop's media controls (MPRIS) and Discord about the song and the playback
     /// state. Discord only hears about real songs, not the samples.
     fn publish_media(&mut self) {
-        let presence = self.online.playing_track().map(|track| discord::Presence {
+        let playing = self.online.playing_track().filter(|_| self.plugins.discord);
+        let presence = playing.map(|track| discord::Presence {
             title: track.title.clone(),
             artist: track.artist.clone(),
             album: track.album.clone(),
@@ -86,7 +88,10 @@ impl App {
                             if self.playback.duration == 0 {
                                 self.playback.duration = self.online.duration().unwrap_or(0);
                             }
-                            scrobble = self.lastfm.progress(seconds);
+                            if self.plugins.lastfm {
+                                scrobble = self.lastfm.progress(seconds);
+                            }
+                            self.skip_offtopic();
                         }
                         Poll::Finished => return self.song_finished(),
                         Poll::Waiting => {}
@@ -302,6 +307,16 @@ impl App {
                 self.appearance.save();
                 self.apply_appearance();
             }
+            Message::SetPlugin(plugin, on) => {
+                self.plugins.set(plugin, on);
+                self.plugins.save();
+            }
+            Message::SegmentsLoaded(id, Ok(segments)) => {
+                self.skip_segments = Some((id, segments));
+                self.skip_offtopic();
+            }
+            // Without SponsorBlock's answer the song simply plays whole.
+            Message::SegmentsLoaded(_, Err(_)) | Message::NotificationShown => {}
             Message::ReloadThemes => {
                 (self.themes, self.theme_errors) = themes::load_all();
                 self.apply_appearance();
@@ -368,13 +383,68 @@ impl App {
         };
         self.lyrics = Lyrics::Loading;
         self.follow_lyrics();
-        let now_playing = self.lastfm.track_started(&track);
+        let now_playing = if self.plugins.lastfm {
+            self.lastfm.track_started(&track)
+        } else {
+            Task::none()
+        };
+        let notice = if self.plugins.notifications {
+            let image_path = self
+                .now_playing
+                .art_url
+                .as_deref()
+                .and_then(|url| url.strip_prefix("file://"))
+                .filter(|path| std::path::Path::new(path).exists())
+                .map(str::to_string);
+            Task::perform(
+                notifications::show(notifications::SongNotice {
+                    title: track.title.clone(),
+                    artist: track.artist.clone(),
+                    album: track.album.clone(),
+                    image_path,
+                }),
+                |()| Message::NotificationShown,
+            )
+        } else {
+            Task::none()
+        };
+        self.skip_segments = None;
+        let segments = if self.plugins.sponsorblock {
+            let id = track.id.clone();
+            Task::perform(sponsorblock::fetch(id.clone()), move |segments| {
+                Message::SegmentsLoaded(id.clone(), segments)
+            })
+        } else {
+            Task::none()
+        };
         let id = track.id.clone();
         let lyrics = Task::perform(
             lyrics_source::fetch(track, self.online.client()),
             move |lyrics| Message::LyricsLoaded(id.clone(), lyrics),
         );
-        Task::batch([lyrics, now_playing])
+        Task::batch([lyrics, now_playing, notice, segments])
+    }
+
+    /// With SponsorBlock on, jumps over the part of the video that is playing if the community
+    /// marked it as not music.
+    fn skip_offtopic(&mut self) {
+        if !self.plugins.sponsorblock {
+            return;
+        }
+        let Some((id, segments)) = &self.skip_segments else {
+            return;
+        };
+        if self
+            .online
+            .playing_track()
+            .is_none_or(|track| &track.id != id)
+        {
+            return;
+        }
+        let position = f64::from(self.position_ms()) / 1000.0;
+        if let Some(end) = sponsorblock::skip_target(segments, position) {
+            self.seek(end as f32);
+        }
     }
 
     /// Enters or leaves the immersive view, switching the window to full screen and back.

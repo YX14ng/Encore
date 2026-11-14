@@ -19,9 +19,11 @@ mod lyrics_source;
 mod media_keys;
 mod mixer;
 mod mock;
+mod notifications;
 mod offline;
 mod online;
 mod player;
+mod plugins;
 mod profile;
 mod queue;
 mod scrobbler;
@@ -29,6 +31,7 @@ mod search;
 mod settings_view;
 mod sidebar;
 mod song;
+mod sponsorblock;
 mod theme;
 mod themes;
 mod top_bar;
@@ -126,6 +129,10 @@ struct App {
     theme_errors: Vec<String>,
     /// The most colorful color of the playing song's cover, for the "from cover" accent.
     cover_color: Option<iced::Color>,
+    /// Which optional features are on.
+    plugins: plugins::Plugins,
+    /// The playing video's SponsorBlock segments, by video id.
+    skip_segments: Option<(String, Vec<sponsorblock::Segment>)>,
 }
 
 /// The screens of the center column.
@@ -200,6 +207,9 @@ enum Message {
     PickTheme(String),
     PickAccent(themes::Accent),
     ReloadThemes,
+    SetPlugin(plugins::Plugin, bool),
+    SegmentsLoaded(String, Result<Vec<sponsorblock::Segment>, String>),
+    NotificationShown,
     AudioChanged(audio_settings::AudioChange),
     AudioChangeDone,
 }
@@ -294,6 +304,8 @@ impl App {
             themes,
             theme_errors,
             cover_color,
+            plugins: plugins::Plugins::load(),
+            skip_segments: None,
         }
     }
 }

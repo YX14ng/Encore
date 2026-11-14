@@ -1,0 +1,164 @@
+//! Plugins, Pear-style: optional features the user switches on and off from the settings.
+//! The choices are kept in `~/.config/encore/plugins.json`.
+
+use iced::Element;
+use iced::font::Weight;
+use iced::widget::{column, text, toggler};
+use serde::{Deserialize, Serialize};
+
+use crate::themes::config_dir;
+use crate::{Message, theme};
+
+/// The optional features.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Plugin {
+    Discord,
+    LastFm,
+    Notifications,
+    SponsorBlock,
+}
+
+impl Plugin {
+    pub const ALL: [Plugin; 4] = [
+        Plugin::Discord,
+        Plugin::LastFm,
+        Plugin::Notifications,
+        Plugin::SponsorBlock,
+    ];
+
+    fn name(self) -> &'static str {
+        match self {
+            Plugin::Discord => "Discord Rich Presence",
+            Plugin::LastFm => "Last.fm scrobbling",
+            Plugin::Notifications => "Desktop notifications",
+            Plugin::SponsorBlock => "SponsorBlock",
+        }
+    }
+
+    fn description(self) -> &'static str {
+        match self {
+            Plugin::Discord => "Shows the song you are listening to on your Discord profile.",
+            Plugin::LastFm => {
+                "Scrobbles the songs you play to Last.fm (connect your account on the account \
+                 screen)."
+            }
+            Plugin::Notifications => "Shows a notification with the cover when a song starts.",
+            Plugin::SponsorBlock => {
+                "Skips the parts of music videos that are not music (intros, skits, outros), as \
+                 marked by the SponsorBlock community."
+            }
+        }
+    }
+}
+
+/// Which plugins are on.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Plugins {
+    pub discord: bool,
+    pub lastfm: bool,
+    pub notifications: bool,
+    pub sponsorblock: bool,
+}
+
+impl Default for Plugins {
+    fn default() -> Self {
+        Self {
+            discord: true,
+            lastfm: true,
+            notifications: false,
+            sponsorblock: true,
+        }
+    }
+}
+
+impl Plugins {
+    /// Reads the saved choices; a missing or broken file gives the defaults.
+    pub fn load() -> Self {
+        std::fs::read_to_string(config_dir().join("plugins.json"))
+            .ok()
+            .and_then(|json| serde_json::from_str::<Self>(&json).ok())
+            .unwrap_or_default()
+    }
+
+    /// Saves the choices. A failed write only means they are not remembered next time.
+    pub fn save(&self) {
+        let dir = config_dir();
+        if std::fs::create_dir_all(&dir).is_ok()
+            && let Ok(json) = serde_json::to_string_pretty(self)
+        {
+            let _ = std::fs::write(dir.join("plugins.json"), json);
+        }
+    }
+
+    pub fn is_on(&self, plugin: Plugin) -> bool {
+        match plugin {
+            Plugin::Discord => self.discord,
+            Plugin::LastFm => self.lastfm,
+            Plugin::Notifications => self.notifications,
+            Plugin::SponsorBlock => self.sponsorblock,
+        }
+    }
+
+    pub fn set(&mut self, plugin: Plugin, on: bool) {
+        let slot = match plugin {
+            Plugin::Discord => &mut self.discord,
+            Plugin::LastFm => &mut self.lastfm,
+            Plugin::Notifications => &mut self.notifications,
+            Plugin::SponsorBlock => &mut self.sponsorblock,
+        };
+        *slot = on;
+    }
+
+    /// The plugins tab of the settings: a switch and a line about each plugin.
+    pub fn view(&self) -> Element<'_, Message> {
+        column(Plugin::ALL.iter().map(|&plugin| {
+            column![
+                toggler(self.is_on(plugin))
+                    .label(plugin.name())
+                    .font(iced::Font {
+                        weight: Weight::Semibold,
+                        ..theme::INTER
+                    })
+                    .on_toggle(move |on| Message::SetPlugin(plugin, on))
+                    .style(theme::switch),
+                text(plugin.description())
+                    .size(13)
+                    .color(theme::text_secondary()),
+            ]
+            .spacing(6)
+            .into()
+        }))
+        .spacing(22)
+        .into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn switches_each_plugin_on_its_own() {
+        let mut plugins = Plugins::default();
+        for plugin in Plugin::ALL {
+            let before = plugins.is_on(plugin);
+            plugins.set(plugin, !before);
+            assert_eq!(plugins.is_on(plugin), !before);
+            let others = Plugin::ALL.iter().filter(|other| **other != plugin);
+            assert!(
+                others
+                    .clone()
+                    .all(|other| plugins.is_on(*other) == Plugins::default().is_on(*other))
+            );
+            plugins.set(plugin, before);
+        }
+    }
+
+    #[test]
+    fn older_files_keep_the_defaults_for_new_plugins() {
+        let plugins = serde_json::from_str::<Plugins>(r#"{"discord": false}"#).expect("json");
+        assert!(!plugins.discord);
+        assert!(plugins.sponsorblock);
+    }
+}

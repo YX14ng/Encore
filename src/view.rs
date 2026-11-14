@@ -104,6 +104,7 @@ impl App {
                     settings_view::Tab::Audio => {
                         audio_view::view(&self.audio_settings, self.audio_error.as_deref())
                     }
+                    settings_view::Tab::Plugins => self.plugins.view(),
                 },
             ),
             Screen::Account => column![

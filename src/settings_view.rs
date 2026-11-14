@@ -1,5 +1,6 @@
-//! The settings screen: a tab bar over the appearance and audio settings. The appearance tab
-//! (themes, accent color, custom theme files) lives here; the audio tab in `audio_view.rs`.
+//! The settings screen: a tab bar over the appearance, audio and plugin settings. The appearance
+//! tab (themes, accent color, custom theme files) lives here, the audio tab in `audio_view.rs`
+//! and the plugins tab in `plugins.rs`.
 
 use iced::font::Weight;
 use iced::widget::{Row, button, column, container, row, scrollable, space, text};
@@ -13,9 +14,14 @@ use crate::{Message, theme};
 pub enum Tab {
     Appearance,
     Audio,
+    Plugins,
 }
 
-const TABS: [(Tab, &str); 2] = [(Tab::Appearance, "Appearance"), (Tab::Audio, "Audio")];
+const TABS: [(Tab, &str); 3] = [
+    (Tab::Appearance, "Appearance"),
+    (Tab::Audio, "Audio"),
+    (Tab::Plugins, "Plugins"),
+];
 
 /// The screen: a heading, the tabs and the selected tab's `content`.
 pub fn view(tab: Tab, content: Element<'_, Message>) -> Element<'_, Message> {
