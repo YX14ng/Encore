@@ -29,7 +29,7 @@ pub fn view<'a>(
         None => container(space())
             .width(Fill)
             .height(Fill)
-            .style(|_| theme::panel(theme::HERO))
+            .style(|_| theme::panel(theme::hero()))
             .into(),
     };
     // Darkens the blurred cover so the text stays readable over bright artwork.
@@ -48,20 +48,20 @@ pub fn view<'a>(
         None => container(space())
             .width(COVER_SIZE)
             .height(COVER_SIZE)
-            .style(|_| theme::panel(theme::HERO).border(border::rounded(14)))
+            .style(|_| theme::panel(theme::hero()).border(border::rounded(14)))
             .into(),
     };
 
     let exit = button(
         text("Exit full screen")
             .size(13)
-            .color(theme::TEXT_SECONDARY),
+            .color(theme::text_secondary()),
     )
     .on_press(Message::ToggleImmersive)
     .padding([6, 14])
     .style(|_, status| {
         let mut style = theme::flat_button(status, false);
-        style.border = border::rounded(16).color(theme::LINE).width(1);
+        style.border = border::rounded(16).color(theme::line()).width(1);
         style
     });
 
@@ -73,7 +73,7 @@ pub fn view<'a>(
         }),
         text(format!("{} \u{b7} {}", song.artist, song.album))
             .size(17)
-            .color(theme::TEXT_SECONDARY),
+            .color(theme::text_secondary()),
         exit,
     ]
     .spacing(14)

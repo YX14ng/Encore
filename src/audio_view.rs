@@ -19,7 +19,7 @@ pub fn view<'a>(settings: &'a AudioSettings, error: Option<&'a str>) -> Element<
         .padding([28, 32])
         .max_width(760);
     if let Some(error) = error {
-        content = content.push(text(error).color(theme::ACCENT));
+        content = content.push(text(error).color(theme::accent()));
     }
     content = content
         .push(equalizer(settings))
@@ -56,7 +56,7 @@ fn equalizer(settings: &AudioSettings) -> Element<'_, Message> {
             .on_release(Message::AudioChangeDone)
             .height(160)
             .style(|_, status| {
-                let mut style = theme::thin_slider(status, theme::ACCENT);
+                let mut style = theme::thin_slider(status, theme::accent());
                 style.handle.shape = slider::HandleShape::Circle { radius: 7.0 };
                 style
             });
@@ -104,7 +104,7 @@ fn speed(settings: &AudioSettings) -> Element<'_, Message> {
     .on_release(Message::AudioChangeDone)
     .width(320)
     .height(18)
-    .style(|_, status| theme::thin_slider(status, theme::ACCENT));
+    .style(|_, status| theme::thin_slider(status, theme::accent()));
 
     column![
         heading("Playback speed", 16.0),
@@ -130,7 +130,7 @@ fn crossfade(settings: &AudioSettings) -> Element<'_, Message> {
     .on_release(Message::AudioChangeDone)
     .width(320)
     .height(18)
-    .style(|_, status| theme::thin_slider(status, theme::ACCENT));
+    .style(|_, status| theme::thin_slider(status, theme::accent()));
     let label = match settings.crossfade {
         0 => "Off".to_string(),
         seconds => format!("{seconds} s"),
@@ -165,10 +165,10 @@ fn chip(label: &str, selected: bool, message: Message) -> Element<'_, Message> {
         .style(move |_, status| {
             let mut style = theme::flat_button(status, false);
             if selected {
-                style.background = Some(theme::ACCENT.into());
-                style.text_color = theme::TEXT;
+                style.background = Some(theme::accent().into());
+                style.text_color = theme::text_primary();
             }
-            style.border = border::rounded(16).color(theme::LINE).width(1);
+            style.border = border::rounded(16).color(theme::line()).width(1);
             style
         })
         .into()
@@ -185,11 +185,11 @@ fn heading(label: &str, size: f32) -> Element<'_, Message> {
 }
 
 fn small<'a>(label: String) -> Element<'a, Message> {
-    text(label).size(11).color(theme::TEXT_SECONDARY).into()
+    text(label).size(11).color(theme::text_secondary()).into()
 }
 
 fn note(message: &str) -> Element<'_, Message> {
-    container(text(message).size(13).color(theme::TEXT_SECONDARY)).into()
+    container(text(message).size(13).color(theme::text_secondary())).into()
 }
 
 #[cfg(test)]

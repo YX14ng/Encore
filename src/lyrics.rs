@@ -56,8 +56,8 @@ pub struct Style {
     pub current_size: f32,
     pub other_size: f32,
     pub row_height: f32,
-    /// The color the panel fades into at the top and bottom, or `None` for no fade.
-    pub fade_into: Option<Color>,
+    /// Whether the panel fades into its background at the top and bottom.
+    pub fade: bool,
 }
 
 /// The panel at the right of the window.
@@ -67,7 +67,7 @@ pub const PANEL: Style = Style {
     current_size: 26.0,
     other_size: 22.0,
     row_height: 88.0,
-    fade_into: Some(theme::LYRICS),
+    fade: true,
 };
 
 /// The large lyrics of the immersive view.
@@ -77,7 +77,7 @@ pub const IMMERSIVE: Style = Style {
     current_size: 40.0,
     other_size: 32.0,
     row_height: 118.0,
-    fade_into: None,
+    fade: false,
 };
 
 /// Reads an LRC file (`[mm:ss.cc] text` per line) into lines sorted by start time.
@@ -147,7 +147,7 @@ pub fn view(
             let rows = lines.iter().map(|line| {
                 text(line)
                     .size(style.other_size * 0.8)
-                    .color(theme::TEXT.scale_alpha(0.85))
+                    .color(theme::text_primary().scale_alpha(0.85))
                     .into()
             });
             scrollable(
@@ -164,7 +164,8 @@ pub fn view(
         Lyrics::Missing | Lyrics::Synced(_) => note("No lyrics for this track"),
     };
 
-    let layered: Element<'_, Message> = match style.fade_into {
+    let fade_into = style.fade.then(theme::lyrics_bg);
+    let layered: Element<'_, Message> = match fade_into {
         Some(color) => stack![
             content,
             column![
@@ -181,14 +182,14 @@ pub fn view(
         .width(style.width)
         .height(Fill)
         .clip(true);
-    match style.fade_into {
+    match fade_into {
         Some(color) => panel.style(move |_| theme::panel(color)).into(),
         None => panel.into(),
     }
 }
 
 fn note(message: &str) -> Element<'_, Message> {
-    container(text(message).color(theme::TEXT_SECONDARY))
+    container(text(message).color(theme::text_secondary()))
         .padding([48, 26])
         .into()
 }
@@ -209,9 +210,9 @@ fn fade(direction: Degrees, color: Color) -> Element<'static, Message> {
 
 fn lyric(line: &str, is_current: bool, style: Style) -> Element<'_, Message> {
     let color = if is_current {
-        theme::TEXT
+        theme::text_primary()
     } else {
-        theme::TEXT.scale_alpha(0.3)
+        theme::text_primary().scale_alpha(0.3)
     };
     let font = if is_current {
         Font {

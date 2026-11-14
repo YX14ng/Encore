@@ -112,7 +112,7 @@ impl App {
         ])
         .width(Fill)
         .height(Fill)
-        .style(|_| theme::panel(theme::CENTER));
+        .style(|_| theme::panel(theme::center_bg()));
 
         row![]
             .push(columns.sidebar.then(|| {

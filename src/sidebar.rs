@@ -195,7 +195,7 @@ pub fn view<'a>(
                 for (index, playlist) in user_playlists.iter().enumerate() {
                     let glyph = theme::icon(
                         include_bytes!("../assets/icons/queue.svg"),
-                        theme::ACCENT,
+                        theme::accent(),
                         18.0,
                     );
                     let item = NavItem::Playlist(index);
@@ -230,7 +230,7 @@ pub fn view<'a>(
             .into(),
         None => theme::icon(
             include_bytes!("../assets/icons/artists.svg"),
-            theme::TEXT_SECONDARY,
+            theme::text_secondary(),
             18.0,
         )
         .into(),
@@ -241,7 +241,7 @@ pub fn view<'a>(
         .width(WIDTH)
         .height(Fill)
         .padding([12, 10])
-        .style(|_| theme::panel(theme::SIDEBAR))
+        .style(|_| theme::panel(theme::sidebar_bg()))
         .into()
 }
 
@@ -265,7 +265,7 @@ fn suggestion_list(suggestions: &[String]) -> Element<'_, Message> {
             row![
                 theme::icon(
                     include_bytes!("../assets/icons/search.svg"),
-                    theme::TEXT_DIM,
+                    theme::text_dim(),
                     14.0,
                 ),
                 text(term).size(13),
@@ -292,10 +292,10 @@ fn search_box(query: &str) -> Element<'_, Message> {
         .style(|_, _| text_input::Style {
             background: iced::Background::Color(iced::Color::TRANSPARENT),
             border: iced::Border::default(),
-            icon: theme::TEXT_DIM,
-            placeholder: theme::TEXT_DIM,
-            value: theme::TEXT,
-            selection: theme::ACCENT.scale_alpha(0.4),
+            icon: theme::text_dim(),
+            placeholder: theme::text_dim(),
+            value: theme::text_primary(),
+            selection: theme::accent().scale_alpha(0.4),
         });
 
     container(
@@ -303,7 +303,7 @@ fn search_box(query: &str) -> Element<'_, Message> {
             input,
             theme::icon(
                 include_bytes!("../assets/icons/search.svg"),
-                theme::TEXT_DIM,
+                theme::text_dim(),
                 18.0,
             )
         ]
@@ -312,8 +312,8 @@ fn search_box(query: &str) -> Element<'_, Message> {
     )
     .padding([7, 10])
     .style(|_| {
-        container::background(iced::Color::from_rgba8(255, 255, 255, 0.05))
-            .border(border::rounded(8).color(theme::LINE).width(1))
+        container::background(theme::tint(0.05))
+            .border(border::rounded(8).color(theme::line()).width(1))
     })
     .into()
 }
@@ -321,10 +321,10 @@ fn search_box(query: &str) -> Element<'_, Message> {
 fn section_header(label: &'static str, section: Section) -> Element<'static, Message> {
     let title = text(label.to_uppercase())
         .size(11)
-        .color(theme::TEXT_SECONDARY);
+        .color(theme::text_secondary());
     let chevron = theme::icon(
         include_bytes!("../assets/icons/chevron-down.svg"),
-        theme::TEXT_SECONDARY,
+        theme::text_secondary(),
         18.0,
     );
 
@@ -339,7 +339,7 @@ fn section_header(label: &'static str, section: Section) -> Element<'static, Mes
 fn entries(list: &[Entry], selected: NavItem) -> Column<'static, Message> {
     let mut entries = column![].spacing(1);
     for entry in list {
-        let glyph = theme::icon(entry.icon, theme::ACCENT, 18.0);
+        let glyph = theme::icon(entry.icon, theme::accent(), 18.0);
         entries = entries.push(nav_button(glyph.into(), entry.label, entry.item, selected));
     }
     entries

@@ -360,7 +360,7 @@ pub fn account_view<'a>(
                     None => iced::widget::container(iced::widget::space())
                         .width(96)
                         .height(96)
-                        .style(|_| theme::panel(theme::HERO).border(border::rounded(48)))
+                        .style(|_| theme::panel(theme::hero()).border(border::rounded(48)))
                         .into(),
                 };
                 let names = column![text(&profile.name).size(22).font(Font {
@@ -371,7 +371,7 @@ pub fn account_view<'a>(
                     profile
                         .handle
                         .as_deref()
-                        .map(|handle| text(handle).color(theme::TEXT_SECONDARY)),
+                        .map(|handle| text(handle).color(theme::text_secondary())),
                 )
                 .spacing(4);
                 content = content.push(
@@ -398,8 +398,8 @@ pub fn account_view<'a>(
         }
         Account::SignedOut | Account::Failed(_) => {
             if let Account::Failed(error) = account {
-                content =
-                    content.push(text(format!("Could not sign in: {error}")).color(theme::ACCENT));
+                content = content
+                    .push(text(format!("Could not sign in: {error}")).color(theme::accent()));
             }
             let browsers = BROWSERS.iter().map(|&(browser, name)| {
                 button(text(name).size(14))
@@ -407,7 +407,7 @@ pub fn account_view<'a>(
                     .padding([8, 18])
                     .style(|_, status| {
                         let mut style = theme::flat_button(status, false);
-                        style.border = border::rounded(18).color(theme::LINE).width(1);
+                        style.border = border::rounded(18).color(theme::line()).width(1);
                         style
                     })
                     .into()
@@ -445,12 +445,12 @@ pub fn account_view<'a>(
 }
 
 fn accent_button_owned(label: String, message: Message) -> Element<'static, Message> {
-    button(text(label).size(14).color(theme::TEXT))
+    button(text(label).size(14).color(theme::text_primary()))
         .on_press(message)
         .padding([8, 22])
         .style(|_, status| {
             let mut style = theme::flat_button(status, false);
-            style.background = Some(theme::ACCENT.into());
+            style.background = Some(theme::accent().into());
             style.border = border::rounded(18);
             style
         })
@@ -458,12 +458,12 @@ fn accent_button_owned(label: String, message: Message) -> Element<'static, Mess
 }
 
 pub(crate) fn accent_button(label: &str, message: Message) -> Element<'_, Message> {
-    button(text(label).size(14).color(theme::TEXT))
+    button(text(label).size(14).color(theme::text_primary()))
         .on_press(message)
         .padding([8, 22])
         .style(|_, status| {
             let mut style = theme::flat_button(status, false);
-            style.background = Some(theme::ACCENT.into());
+            style.background = Some(theme::accent().into());
             style.border = border::rounded(18);
             style
         })
@@ -481,7 +481,7 @@ fn heading(label: &str) -> Element<'_, Message> {
 }
 
 pub(crate) fn note<'a>(message: impl text::IntoFragment<'a>) -> Element<'a, Message> {
-    text(message).color(theme::TEXT_SECONDARY).into()
+    text(message).color(theme::text_secondary()).into()
 }
 
 #[cfg(test)]

@@ -40,7 +40,7 @@ fn loaded<'a>(
         TileKind::Radio => "MIX",
     };
 
-    let play = button(text("Play").size(14).color(theme::TEXT))
+    let play = button(text("Play").size(14).color(theme::text_primary()))
         .on_press_maybe(
             (!collection.tracks.is_empty())
                 .then(|| Message::PlayQueue(collection.tracks.clone(), 0)),
@@ -48,30 +48,30 @@ fn loaded<'a>(
         .padding([8, 22])
         .style(|_, status| {
             let mut style = theme::flat_button(status, false);
-            style.background = Some(theme::ACCENT.into());
+            style.background = Some(theme::accent().into());
             style.border = border::rounded(18);
             style
         });
 
     let details = column![
-        text(kind).size(11).color(theme::TEXT_SECONDARY),
+        text(kind).size(11).color(theme::text_secondary()),
         text(&collection.title).size(34).font(Font {
             weight: Weight::Bold,
             ..theme::INTER
         }),
         text(&collection.subtitle)
             .size(13)
-            .color(theme::TEXT_SECONDARY),
+            .color(theme::text_secondary()),
         text(format!("{} songs", collection.tracks.len()))
             .size(13)
-            .color(theme::TEXT_SECONDARY),
+            .color(theme::text_secondary()),
         space().height(8),
         row![play, download_button(collection, offline)].spacing(10),
     ]
     .push(
         offline
             .error()
-            .map(|error| text(error).size(12).color(theme::ACCENT)),
+            .map(|error| text(error).size(12).color(theme::accent())),
     )
     .spacing(4);
 
@@ -92,7 +92,7 @@ fn loaded<'a>(
 }
 
 fn note<'a>(message: impl text::IntoFragment<'a>) -> Element<'a, Message> {
-    text(message).color(theme::TEXT_SECONDARY).into()
+    text(message).color(theme::text_secondary()).into()
 }
 
 /// Download, the progress while downloading, or Remove download once it is on disk.
@@ -114,7 +114,7 @@ fn download_button<'a>(collection: &'a Collection, offline: &'a Offline) -> Elem
         row![
             theme::icon(
                 include_bytes!("../assets/icons/download.svg"),
-                theme::TEXT,
+                theme::text_primary(),
                 16.0
             ),
             text(label).size(14),
@@ -126,7 +126,7 @@ fn download_button<'a>(collection: &'a Collection, offline: &'a Offline) -> Elem
     .padding([8, 18])
     .style(|_, status| {
         let mut style = theme::flat_button(status, false);
-        style.border = border::rounded(18).color(theme::LINE).width(1);
+        style.border = border::rounded(18).color(theme::line()).width(1);
         style
     })
     .into()

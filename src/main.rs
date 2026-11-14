@@ -58,7 +58,7 @@ fn main() -> iced::Result {
     iced::application(App::boot, App::update, App::view)
         .title("Encore")
         .subscription(App::subscription)
-        .theme(Theme::Dark)
+        .theme(App::theme)
         .font(include_bytes!("../assets/fonts/Inter-Regular.ttf").as_slice())
         .font(include_bytes!("../assets/fonts/Inter-SemiBold.ttf").as_slice())
         .font(include_bytes!("../assets/fonts/Inter-Bold.ttf").as_slice())
@@ -192,6 +192,15 @@ enum Message {
 }
 
 impl App {
+    /// iced's own widgets (scrollbars, text inputs, switches) follow the palette's lightness.
+    fn theme(&self) -> Theme {
+        if theme::palette().light {
+            Theme::Light
+        } else {
+            Theme::Dark
+        }
+    }
+
     /// The initial state, plus restoring a saved session in the background.
     fn boot() -> (Self, Task<Message>) {
         let mut app = Self::new();

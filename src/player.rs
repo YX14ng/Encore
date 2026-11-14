@@ -30,7 +30,7 @@ pub fn view<'a>(
     let divider = container(space())
         .width(Fill)
         .height(1)
-        .style(|_| container::background(theme::LINE));
+        .style(|_| container::background(theme::line()));
 
     let content = column![
         progress(playback, controls.seeking),
@@ -41,7 +41,7 @@ pub fn view<'a>(
 
     container(column![divider, content])
         .width(Fill)
-        .style(|_| container::background(Color::from_rgb8(0x16, 0x16, 0x19)))
+        .style(|_| container::background(theme::player_bg()))
         .into()
 }
 
@@ -57,7 +57,7 @@ fn progress(playback: &Playback, seeking: Option<f32>) -> Element<'static, Messa
     let bar = slider(0.0..=length, position, Message::Seeking)
         .on_release(Message::SeekDone)
         .height(14)
-        .style(|_, status| theme::thin_slider(status, theme::TEXT));
+        .style(|_, status| theme::thin_slider(status, theme::text_primary()));
 
     row![
         time_label(clock::format_time(elapsed)),
@@ -70,7 +70,7 @@ fn progress(playback: &Playback, seeking: Option<f32>) -> Element<'static, Messa
 }
 
 fn time_label(label: String) -> Element<'static, Message> {
-    text(label).size(11).color(theme::TEXT_SECONDARY).into()
+    text(label).size(11).color(theme::text_secondary()).into()
 }
 
 fn buttons<'a>(song: &'a Song, playback: &'a Playback, controls: Controls) -> Element<'a, Message> {
@@ -80,9 +80,9 @@ fn buttons<'a>(song: &'a Song, playback: &'a Playback, controls: Controls) -> El
         include_bytes!("../assets/icons/play.svg")
     };
     let like_color = if controls.liked {
-        theme::ACCENT
+        theme::accent()
     } else {
-        theme::TEXT_SECONDARY
+        theme::text_secondary()
     };
 
     let repeat_icon: &'static [u8] = if controls.repeat == Repeat::One {
@@ -105,14 +105,19 @@ fn buttons<'a>(song: &'a Song, playback: &'a Playback, controls: Controls) -> El
         ),
         icon_button(
             include_bytes!("../assets/icons/previous.svg"),
-            theme::TEXT,
+            theme::text_primary(),
             18.0,
             Some(Message::Previous)
         ),
-        icon_button(play_icon, theme::TEXT, 26.0, Some(Message::TogglePlay)),
+        icon_button(
+            play_icon,
+            theme::text_primary(),
+            26.0,
+            Some(Message::TogglePlay)
+        ),
         icon_button(
             include_bytes!("../assets/icons/next.svg"),
-            theme::TEXT,
+            theme::text_primary(),
             18.0,
             Some(Message::Next)
         ),
@@ -135,26 +140,26 @@ fn buttons<'a>(song: &'a Song, playback: &'a Playback, controls: Controls) -> El
     let extras = row![
         icon_button(
             volume_icon,
-            theme::TEXT_SECONDARY,
+            theme::text_secondary(),
             18.0,
             Some(Message::ToggleMute)
         ),
         volume_bar(controls),
         icon_button(
             include_bytes!("../assets/icons/equalizer.svg"),
-            theme::TEXT_SECONDARY,
+            theme::text_secondary(),
             18.0,
             Some(Message::OpenAudio)
         ),
         icon_button(
             include_bytes!("../assets/icons/miniplayer.svg"),
-            theme::TEXT_SECONDARY,
+            theme::text_secondary(),
             18.0,
             None
         ),
         icon_button(
             include_bytes!("../assets/icons/fullscreen.svg"),
-            theme::TEXT_SECONDARY,
+            theme::text_secondary(),
             18.0,
             Some(Message::ToggleImmersive)
         ),
@@ -178,7 +183,7 @@ fn now_playing(song: &Song) -> Element<'_, Message> {
         None => container(space())
             .width(40)
             .height(40)
-            .style(|_| theme::panel(theme::HERO))
+            .style(|_| theme::panel(theme::hero()))
             .into(),
     };
 
@@ -186,23 +191,23 @@ fn now_playing(song: &Song) -> Element<'_, Message> {
         text(&song.title).size(14),
         text(format!("{} \u{b7} {}", song.artist, song.album))
             .size(12)
-            .color(theme::TEXT_SECONDARY),
+            .color(theme::text_secondary()),
     ]
     .spacing(2)
     .width(Fill);
 
-    let badge = container(text("OPUS 160").size(10).color(theme::TEXT_SECONDARY))
+    let badge = container(text("OPUS 160").size(10).color(theme::text_secondary()))
         .padding([2, 6])
         .style(|_| {
-            container::Style::default().border(border::rounded(5).color(theme::LINE).width(1))
+            container::Style::default().border(border::rounded(5).color(theme::line()).width(1))
         });
 
     let card = container(row![cover, details, badge].spacing(11).align_y(Center))
         .max_width(460)
         .padding([6, 10])
         .style(|_| {
-            container::background(Color::from_rgba8(255, 255, 255, 0.05))
-                .border(border::rounded(9).color(theme::LINE).width(1))
+            container::background(theme::tint(0.05))
+                .border(border::rounded(9).color(theme::line()).width(1))
         });
 
     container(card).center_x(Fill).into()
@@ -214,16 +219,16 @@ fn volume_bar(controls: Controls) -> Element<'static, Message> {
         .on_release(Message::VolumeDone)
         .width(90)
         .height(14)
-        .style(|_, status| theme::thin_slider(status, theme::TEXT_SECONDARY))
+        .style(|_, status| theme::thin_slider(status, theme::text_secondary()))
         .into()
 }
 
 /// The accent color for a button that is switched on.
 fn toggle_color(on: bool) -> Color {
     if on {
-        theme::ACCENT
+        theme::accent()
     } else {
-        theme::TEXT_SECONDARY
+        theme::text_secondary()
     }
 }
 

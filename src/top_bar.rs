@@ -49,9 +49,9 @@ fn tool(
     active: bool,
 ) -> Element<'static, Message> {
     let color = if active {
-        theme::TEXT
+        theme::text_primary()
     } else {
-        theme::TEXT_SECONDARY
+        theme::text_secondary()
     };
 
     button(theme::icon(bytes, color, 18.0))

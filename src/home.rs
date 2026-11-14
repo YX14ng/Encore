@@ -109,7 +109,7 @@ fn hero(hour: u32, backdrop: Option<&image::Handle>, zoom: f32) -> Element<'_, M
         None => container(space())
             .width(Fill)
             .height(HERO_HEIGHT)
-            .style(|_| theme::panel(theme::HERO))
+            .style(|_| theme::panel(theme::hero()))
             .into(),
     };
 
@@ -118,9 +118,9 @@ fn hero(hour: u32, backdrop: Option<&image::Handle>, zoom: f32) -> Element<'_, M
         .height(HERO_HEIGHT)
         .style(|_| {
             let gradient = Linear::new(Degrees(180.0))
-                .add_stop(0.0, theme::CENTER.scale_alpha(0.0))
-                .add_stop(0.6, theme::CENTER.scale_alpha(0.5))
-                .add_stop(1.0, theme::CENTER);
+                .add_stop(0.0, theme::center_bg().scale_alpha(0.0))
+                .add_stop(0.6, theme::center_bg().scale_alpha(0.5))
+                .add_stop(1.0, theme::center_bg());
             container::background(gradient)
         });
 
@@ -151,15 +151,19 @@ fn recents_grid(recents: &[Card]) -> Element<'_, Message> {
 fn recent_row(card: &Card) -> Element<'_, Message> {
     let details = column![
         text(&card.title).size(14),
-        text(&card.subtitle).size(12).color(theme::TEXT_SECONDARY),
+        text(&card.subtitle).size(12).color(theme::text_secondary()),
     ]
     .spacing(2)
     .width(Fill);
 
     container(
-        row![cover(card, 44.0), details, text("···").color(theme::ACCENT)]
-            .spacing(12)
-            .align_y(iced::Center),
+        row![
+            cover(card, 44.0),
+            details,
+            text("···").color(theme::accent())
+        ]
+        .spacing(12)
+        .align_y(iced::Center),
     )
     .width(Fill)
     .padding([9, 6])
@@ -183,7 +187,7 @@ fn mix_card(card: &Card) -> Element<'_, Message> {
         text(&card.title).size(13),
         text(&card.subtitle)
             .size(12)
-            .color(theme::TEXT_SECONDARY)
+            .color(theme::text_secondary())
             .wrapping(Wrapping::None),
     ]
     .width(150)

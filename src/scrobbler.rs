@@ -273,7 +273,7 @@ impl LastFm {
                     "Scrobbling is off: {error}. Set both variables to your Last.fm API account \
                      and restart Encore."
                 ))
-                .color(theme::ACCENT),
+                .color(theme::accent()),
             ),
             Status::SignedOut => content
                 .push(library::note(
@@ -294,7 +294,7 @@ impl LastFm {
                     Message::LastFmDisconnect,
                 )),
             Status::Failed(error) => content
-                .push(text(format!("Could not connect: {error}")).color(theme::ACCENT))
+                .push(text(format!("Could not connect: {error}")).color(theme::accent()))
                 .push(library::accent_button(
                     "Connect Last.fm",
                     Message::LastFmConnect,
@@ -313,7 +313,7 @@ impl LastFm {
             )));
         }
         if let Some(error) = &self.last_error {
-            content = content.push(text(error).size(13).color(theme::TEXT_SECONDARY));
+            content = content.push(text(error).size(13).color(theme::text_secondary()));
         }
         content.into()
     }

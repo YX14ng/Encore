@@ -152,12 +152,12 @@ fn chips(selected: Filter) -> Element<'static, Message> {
             .padding([6, 14])
             .style(move |_, status| {
                 let mut style = theme::flat_button(status, false);
-                style.border = border::rounded(16).color(theme::LINE).width(1);
+                style.border = border::rounded(16).color(theme::line()).width(1);
                 if active {
-                    style.background = Some(theme::TEXT.into());
-                    style.text_color = theme::CENTER;
+                    style.background = Some(theme::text_primary().into());
+                    style.text_color = theme::center_bg();
                 } else if style.background.is_none() {
-                    style.background = Some(iced::Color::from_rgba8(255, 255, 255, 0.06).into());
+                    style.background = Some(theme::tint(0.06).into());
                 }
                 style
             })
@@ -173,7 +173,7 @@ fn section<'a>(
 ) -> Element<'a, Message> {
     let header = row![text(title).size(20).font(bold()), space::horizontal()]
         .push(show_all.map(|filter| {
-            button(text("Show all").size(13).color(theme::TEXT_SECONDARY))
+            button(text("Show all").size(13).color(theme::text_secondary()))
                 .on_press(Message::SetFilter(filter))
                 .padding([4, 10])
                 .style(|_, status| theme::flat_button(status, false))
@@ -201,19 +201,19 @@ fn top_card<'a>(top: &'a TopResult, shared: Shared<'a>) -> Element<'a, Message> 
         ),
     };
 
-    let play = button(text("Play").size(14).color(theme::TEXT))
+    let play = button(text("Play").size(14).color(theme::text_primary()))
         .on_press(Message::PlayTop)
         .padding([8, 22])
         .style(|_, status| {
             let mut style = theme::flat_button(status, false);
-            style.background = Some(theme::ACCENT.into());
+            style.background = Some(theme::accent().into());
             style.border = border::rounded(18);
             style
         });
 
     let details = column![
         text(title).size(26).font(bold()),
-        text(subtitle).size(13).color(theme::TEXT_SECONDARY),
+        text(subtitle).size(13).color(theme::text_secondary()),
         space().height(8),
         play,
     ]
@@ -228,8 +228,8 @@ fn top_card<'a>(top: &'a TopResult, shared: Shared<'a>) -> Element<'a, Message> 
         .padding(16)
         .style(|_, status| {
             let mut style = theme::flat_button(status, false);
-            style.background = Some(iced::Color::from_rgba8(255, 255, 255, 0.05).into());
-            style.border = border::rounded(12).color(theme::LINE).width(1);
+            style.background = Some(theme::tint(0.05).into());
+            style.border = border::rounded(12).color(theme::line()).width(1);
             style
         })
         .into()
@@ -255,7 +255,9 @@ pub fn track_row<'a>(
     let track = &tracks[index];
     let details = column![
         text(&track.title).size(14),
-        text(subtitle(track)).size(12).color(theme::TEXT_SECONDARY),
+        text(subtitle(track))
+            .size(12)
+            .color(theme::text_secondary()),
     ]
     .spacing(2)
     .width(Fill);
@@ -263,7 +265,7 @@ pub fn track_row<'a>(
     let is_loading = shared.loading == Some(track.id.as_str());
     let is_playing = shared.playing == Some(track.id.as_str());
     let right = if is_loading {
-        text("Loading\u{2026}").size(12).color(theme::ACCENT)
+        text("Loading\u{2026}").size(12).color(theme::accent())
     } else {
         // Some lists (an artist's top songs) come without durations.
         let duration = if track.duration == 0 {
@@ -271,7 +273,7 @@ pub fn track_row<'a>(
         } else {
             clock::format_time(track.duration)
         };
-        text(duration).size(12).color(theme::TEXT_SECONDARY)
+        text(duration).size(12).color(theme::text_secondary())
     };
 
     let cover = picture(track.cover_url.as_deref(), 44.0, false, shared);
@@ -333,7 +335,7 @@ fn card_parts<'a>(
             .wrapping(iced::widget::text::Wrapping::None),
         text(subtitle)
             .size(12)
-            .color(theme::TEXT_SECONDARY)
+            .color(theme::text_secondary())
             .wrapping(iced::widget::text::Wrapping::None),
     ]
     .width(CARD_SIZE)
@@ -385,7 +387,7 @@ pub fn picture<'a>(
         None => container(space())
             .width(size)
             .height(size)
-            .style(move |_| theme::panel(theme::HERO).border(border::rounded(radius)))
+            .style(move |_| theme::panel(theme::hero()).border(border::rounded(radius)))
             .into(),
     }
 }
@@ -395,7 +397,7 @@ fn heading<'a>(label: String) -> Element<'a, Message> {
 }
 
 fn note<'a>(message: impl text::IntoFragment<'a>) -> Element<'a, Message> {
-    text(message).color(theme::TEXT_SECONDARY).into()
+    text(message).color(theme::text_secondary()).into()
 }
 
 fn bold() -> Font {
