@@ -8,6 +8,7 @@ mod backdrop;
 mod clock;
 mod collection;
 mod discord;
+mod discord_ipc;
 mod download;
 mod home;
 mod immersive;
@@ -183,6 +184,7 @@ enum Message {
     QueueClear,
     OpenTogether,
     Together(together::Event),
+    Discord(discord_ipc::Event),
     PlayTop,
     AudioReady(usize, Result<std::path::PathBuf, String>),
     Prefetched(String, Result<std::path::PathBuf, String>),

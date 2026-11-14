@@ -16,6 +16,7 @@ pub fn view(together: &Together) -> Element<'_, Message> {
             invite,
             host,
             listeners,
+            requests,
             ..
         } => {
             let status = if host.is_some() {
@@ -57,6 +58,33 @@ pub fn view(together: &Together) -> Element<'_, Message> {
                 }),
                 people,
             ]
+            .push((!requests.is_empty()).then(|| {
+                Column::with_children(requests.iter().map(|(user_id, name)| {
+                    row![
+                        text(format!("{name} asks to join on Discord"))
+                            .size(14)
+                            .width(Fill),
+                        accent_button(
+                            "Accept",
+                            Event::Answer {
+                                user_id: user_id.clone(),
+                                accept: true,
+                            }
+                        ),
+                        plain_button(
+                            "Decline",
+                            Event::Answer {
+                                user_id: user_id.clone(),
+                                accept: false,
+                            }
+                        ),
+                    ]
+                    .spacing(10)
+                    .align_y(iced::Center)
+                    .into()
+                }))
+                .spacing(8)
+            }))
             .spacing(14)
             .into()
         }

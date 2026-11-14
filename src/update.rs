@@ -41,6 +41,7 @@ impl App {
             duration: self.playback.duration,
             elapsed: self.playback.elapsed,
             playing: self.playback.is_playing,
+            session: self.together.discord_session(),
         });
         self.discord.update(presence);
         self.share_with_listeners();
@@ -172,6 +173,7 @@ impl App {
             Message::QueueClear => return self.online.queue_clear(),
             Message::OpenTogether => self.screen = Screen::Together,
             Message::Together(event) => return self.together_event(event),
+            Message::Discord(event) => return self.discord_event(event),
             Message::PlayTop => {
                 let (opens, task) = self.online.play_top();
                 if opens {

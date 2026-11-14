@@ -12,6 +12,7 @@ use std::time::Instant;
 
 use iced::Subscription;
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 
 use crate::themes::config_dir;
 pub use view::view;
@@ -71,6 +72,8 @@ pub enum Session {
         /// The server's handle, once the port is open.
         host: Option<host::Host>,
         listeners: Vec<String>,
+        /// People who asked on Discord to join: their user id and name.
+        requests: Vec<(String, String)>,
     },
     Joining(guest::Config),
     Listening {
@@ -92,6 +95,11 @@ pub enum Event {
     CopyInvite,
     Host(host::Event),
     Guest(guest::Event),
+    /// Accepts or turns down a Discord request to join.
+    Answer {
+        user_id: String,
+        accept: bool,
+    },
 }
 
 /// The together state of the app.
@@ -148,6 +156,23 @@ impl Together {
             } => Some((invite, listeners.len())),
             _ => None,
         }
+    }
+
+    /// The hosted session as Discord shows it: a party and the invite as the join secret.
+    pub fn discord_session(&self) -> Option<crate::discord::Hosted> {
+        let (invite, listeners) = self.hosted_invite()?;
+        // Derived from the token so it names the session without giving the token away.
+        let digest = sha2::Sha256::digest(invite.token.as_bytes());
+        let party_id: String = digest
+            .iter()
+            .take(8)
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        Some(crate::discord::Hosted {
+            party_id: format!("encore-{party_id}"),
+            listeners: listeners as u32,
+            secret: invite.encode(),
+        })
     }
 
     /// The server or the connection to the host, while a session runs.

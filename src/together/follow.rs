@@ -8,7 +8,7 @@ use iced::Task;
 use super::invite::{self, Invite};
 use super::protocol::{self, Track};
 use super::{Event, Session, guest, host};
-use crate::{App, Message};
+use crate::{App, Message, Screen, discord_ipc};
 
 /// A guest seeks when it drifts this far from the host.
 const DRIFT_MS: u64 = 2000;
@@ -59,8 +59,43 @@ impl App {
             }
             Event::Host(event) => self.host_event(event),
             Event::Guest(event) => return self.guest_event(event),
+            Event::Answer { user_id, accept } => {
+                if let Session::Hosting { requests, .. } = &mut together.session {
+                    requests.retain(|(id, _)| *id != user_id);
+                }
+                self.discord.answer(user_id, accept);
+            }
         }
         Task::none()
+    }
+
+    /// Applies a join invite or request from Discord (only with the Discord plugin on).
+    pub(crate) fn discord_event(&mut self, event: discord_ipc::Event) -> Task<Message> {
+        if !self.plugins.discord {
+            return Task::none();
+        }
+        match event {
+            discord_ipc::Event::Join { secret } => {
+                if matches!(self.together.session, Session::Hosting { .. }) {
+                    self.together.error = Some(
+                        "End your own session before joining a friend's from Discord.".to_string(),
+                    );
+                    return Task::none();
+                }
+                self.screen = Screen::Together;
+                self.together.target = None;
+                self.together.invite_input = secret;
+                self.together_event(Event::Join)
+            }
+            discord_ipc::Event::JoinRequest { user_id, name } => {
+                if let Session::Hosting { requests, .. } = &mut self.together.session
+                    && !requests.iter().any(|(id, _)| *id == user_id)
+                {
+                    requests.push((user_id, name));
+                }
+                Task::none()
+            }
+        }
     }
 
     /// Checks the address and port, then hosts, first asking for the public address when the
@@ -121,6 +156,7 @@ impl App {
             },
             host: None,
             listeners: Vec::new(),
+            requests: Vec::new(),
         };
     }
 

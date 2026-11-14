@@ -9,9 +9,9 @@ use crate::layout::Panel;
 use crate::library::Account;
 use crate::sidebar::SidebarAccount;
 use crate::{
-    App, Message, Screen, audio_view, backdrop, collection, home, immersive, layout, library,
-    lyrics, media_keys, player, profile, queue_view, search, settings_view, sidebar, theme,
-    together, top_bar,
+    App, Message, Screen, audio_view, backdrop, collection, discord, home, immersive, layout,
+    library, lyrics, media_keys, player, profile, queue_view, search, settings_view, sidebar,
+    theme, together, top_bar,
 };
 
 impl App {
@@ -199,6 +199,7 @@ impl App {
             resize,
             escape,
             Subscription::run(media_keys::events),
+            Subscription::run(discord::events),
             self.together.subscription().map(Message::Together),
         ]);
 
