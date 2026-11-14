@@ -200,6 +200,7 @@ impl App {
                     return self.online.radio_loaded(seed, songs);
                 }
             }
+            Message::Playlist(event) => return self.playlist_event(event),
             Message::ToggleAutoplay => {
                 self.audio_settings.autoplay = !self.audio_settings.autoplay;
                 self.audio_settings.save();
@@ -552,6 +553,9 @@ impl App {
 
     /// Highlights a sidebar entry and shows its screen.
     pub(crate) fn select(&mut self, item: NavItem) -> Task<Message> {
+        if item == NavItem::NewPlaylist {
+            return self.playlist_event(crate::playlists::Event::OpenNew);
+        }
         self.sidebar.selected = item;
         self.screen = match item {
             NavItem::History => Screen::Library(Shelf::History),

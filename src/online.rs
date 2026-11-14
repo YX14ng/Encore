@@ -62,6 +62,8 @@ pub struct Online {
     autoplay: bool,
     /// The song whose radio autoplay last asked for, so it is asked only once.
     radio_for: Option<String>,
+    /// The covers the user picked for playlists, by playlist id.
+    covers: HashMap<String, image::Handle>,
 }
 
 impl Online {
@@ -94,6 +96,7 @@ impl Online {
             queued: None,
             autoplay: settings.autoplay,
             radio_for: None,
+            covers: crate::playlists::covers::load(),
         }
     }
 
@@ -672,9 +675,41 @@ impl Online {
         self.queue.previous(wrap)
     }
 
+    /// Sets or (with `None`) forgets the cover the user picked for playlist `id`.
+    pub fn set_cover(&mut self, id: String, cover: Option<image::Handle>) {
+        match cover {
+            Some(cover) => self.covers.insert(id, cover),
+            None => self.covers.remove(&id),
+        };
+    }
+
+    /// Shows `song` at the end of playlist `id`, if it is the open collection.
+    pub fn song_added(&mut self, id: &str, song: SearchTrack) {
+        if let Some(collection) = self.open_playlist(id)
+            && !collection.tracks.iter().any(|track| track.id == song.id)
+        {
+            collection.tracks.push(song);
+        }
+    }
+
+    /// Takes song `song_id` out of playlist `id`, if it is the open collection.
+    pub fn song_removed(&mut self, id: &str, song_id: &str) {
+        if let Some(collection) = self.open_playlist(id) {
+            collection.tracks.retain(|track| track.id != song_id);
+        }
+    }
+
+    fn open_playlist(&mut self, id: &str) -> Option<&mut Collection> {
+        let bare = crate::playlists::edit::bare_id;
+        self.collection
+            .as_mut()
+            .filter(|collection| bare(&collection.id) == bare(id))
+    }
+
     fn shared(&self) -> Shared<'_> {
         Shared {
             images: &self.images,
+            covers: &self.covers,
             loading: self.loading.as_deref(),
             playing: self.playing_track().map(|track| track.id.as_str()),
         }

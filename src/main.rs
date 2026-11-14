@@ -25,6 +25,7 @@ mod notifications;
 mod offline;
 mod online;
 mod player;
+mod playlists;
 mod plugins;
 mod profile;
 mod queue;
@@ -144,6 +145,10 @@ struct App {
     plugins: plugins::Plugins,
     /// The playing video's SponsorBlock segments, by video id.
     skip_segments: Option<(String, Vec<sponsorblock::Segment>)>,
+    /// The playlist dialog over the window, if one is open.
+    dialog: Option<playlists::Dialog>,
+    /// The note at the bottom of the window and its number, to know when it goes.
+    toast: Option<(u64, String)>,
 }
 
 /// The screens of the center column.
@@ -199,6 +204,7 @@ enum Message {
     /// Similar songs for autoplay, for the song with this id.
     RadioLoaded(String, Result<Vec<youtube::SearchTrack>, String>),
     ToggleAutoplay,
+    Playlist(playlists::Event),
     Back,
     OpenAccount,
     SignInDefault,
@@ -336,6 +342,8 @@ impl App {
             cover_color,
             plugins: plugins::Plugins::load(),
             skip_segments: None,
+            dialog: None,
+            toast: None,
         }
     }
 }

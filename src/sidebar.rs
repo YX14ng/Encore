@@ -193,14 +193,25 @@ pub fn view<'a>(
             // Signed in: the user's own playlists.
             Some(user_playlists) => {
                 for (index, playlist) in user_playlists.iter().enumerate() {
-                    let glyph = theme::icon(
-                        include_bytes!("../assets/icons/queue.svg"),
-                        theme::accent(),
-                        18.0,
-                    );
+                    let glyph: Element<'a, Message> = match account
+                        .covers
+                        .get(crate::playlists::edit::bare_id(&playlist.id))
+                    {
+                        Some(cover) => iced::widget::image(cover.clone())
+                            .width(18)
+                            .height(18)
+                            .content_fit(iced::ContentFit::Cover)
+                            .border_radius(4)
+                            .into(),
+                        None => theme::icon(
+                            include_bytes!("../assets/icons/queue.svg"),
+                            theme::accent(),
+                            18.0,
+                        )
+                        .into(),
+                    };
                     let item = NavItem::Playlist(index);
-                    content =
-                        content.push(nav_button(glyph.into(), &playlist.title, item, selected));
+                    content = content.push(nav_button(glyph, &playlist.title, item, selected));
                 }
             }
             // Signed out: the sample playlists.
@@ -254,6 +265,8 @@ pub struct SidebarAccount<'a> {
     pub photo: Option<iced::widget::image::Handle>,
     /// The user's playlists once signed in; the sample ones are shown otherwise.
     pub playlists: Option<&'a [Tile]>,
+    /// The covers the user picked for playlists, by playlist id.
+    pub covers: &'a std::collections::HashMap<String, iced::widget::image::Handle>,
     /// Whether the selected entry is on screen (Home or a library shelf).
     pub highlight: bool,
 }

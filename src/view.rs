@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use iced::widget::{column, container, image, row};
+use iced::widget::{column, container, image, row, stack};
 use iced::{Element, Fill, Subscription, time, window};
 
 use crate::layout::Panel;
@@ -10,8 +10,8 @@ use crate::library::Account;
 use crate::sidebar::SidebarAccount;
 use crate::{
     App, Message, Screen, audio_view, backdrop, collection, discord, home, immersive, layout,
-    library, lyrics, media_keys, mini_player, player, profile, queue_view, search, settings_view,
-    sidebar, theme, together, top_bar,
+    library, lyrics, media_keys, mini_player, player, playlists, profile, queue_view, search,
+    settings_view, sidebar, theme, together, top_bar,
 };
 
 impl App {
@@ -100,7 +100,8 @@ impl App {
             Screen::Search => search::view(self.online.results()),
             Screen::Collection => {
                 let (collection, status, shared) = self.online.collection();
-                collection::view(collection, status, shared, &self.offline)
+                let own = collection.is_some_and(|collection| self.is_own_playlist(&collection.id));
+                collection::view(collection, status, shared, &self.offline, own)
             }
             Screen::Library(shelf) => library::shelf_view(
                 shelf,
@@ -155,7 +156,7 @@ impl App {
         .height(Fill)
         .style(|_| theme::panel(theme::center_bg()));
 
-        row![]
+        let main: Element<'_, Message> = row![]
             .push(columns.sidebar.then(|| {
                 sidebar::view(
                     &self.sidebar,
@@ -170,6 +171,7 @@ impl App {
                             Account::SignedIn(data) => Some(&data.playlists),
                             _ => None,
                         },
+                        covers: self.online.shared_view().covers,
                         highlight: matches!(
                             self.screen,
                             Screen::Home | Screen::Library(_) | Screen::Account
@@ -190,6 +192,17 @@ impl App {
                         ),
                     }),
             )
+            .into();
+
+        stack![main]
+            .push(
+                self.toast
+                    .as_ref()
+                    .map(|(_, message)| playlists::toast(message)),
+            )
+            .push(self.dialog.as_ref().map(|dialog| {
+                playlists::dialog(dialog, self.own_playlists(), self.online.shared_view())
+            }))
             .into()
     }
 

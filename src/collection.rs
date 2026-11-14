@@ -7,18 +7,20 @@ use iced::{Center, Element, Fill, Font, border};
 use crate::offline::{Offline, State};
 use crate::search::{self, Shared, Status};
 use crate::youtube::{Collection, TileKind};
-use crate::{Message, theme};
+use crate::{Message, playlists, theme};
 
-/// The collection screen, or its loading or error state.
+/// The collection screen, or its loading or error state. In the user's `own` playlist, songs
+/// can be taken out.
 pub fn view<'a>(
     collection: Option<&'a Collection>,
     status: &'a Status,
     shared: Shared<'a>,
     offline: &'a Offline,
+    own: bool,
 ) -> Element<'a, Message> {
     let content = match (status, collection) {
         (Status::Failed(error), _) => column![note(format!("Could not open it: {error}"))],
-        (_, Some(collection)) => loaded(collection, shared, offline),
+        (_, Some(collection)) => loaded(collection, shared, offline, own),
         _ => column![note("Loading\u{2026}")],
     };
 
@@ -31,6 +33,7 @@ fn loaded<'a>(
     collection: &'a Collection,
     shared: Shared<'a>,
     offline: &'a Offline,
+    own: bool,
 ) -> iced::widget::Column<'a, Message> {
     let round = collection.kind == TileKind::Artist;
     let kind = match collection.kind {
@@ -66,7 +69,9 @@ fn loaded<'a>(
             .size(13)
             .color(theme::text_secondary()),
         space().height(8),
-        row![play, download_button(collection, offline)].spacing(10),
+        row![play, download_button(collection, offline)]
+            .push((collection.kind == TileKind::Playlist).then(|| cover_button(collection)))
+            .spacing(10),
     ]
     .push(
         offline
@@ -76,7 +81,13 @@ fn loaded<'a>(
     .spacing(4);
 
     let header = row![
-        search::picture(collection.image_url.as_deref(), 180.0, round, shared),
+        search::cover_picture(
+            &collection.id,
+            collection.image_url.as_deref(),
+            180.0,
+            round,
+            shared
+        ),
         details
     ]
     .spacing(24)
@@ -84,6 +95,8 @@ fn loaded<'a>(
 
     let songs: iced::Element<'a, Message> = if collection.tracks.is_empty() {
         note("No songs here.")
+    } else if own {
+        search::playlist_track_list(&collection.tracks, &collection.id, shared)
     } else {
         search::track_list(&collection.tracks, None, shared)
     };
@@ -93,6 +106,22 @@ fn loaded<'a>(
 
 fn note<'a>(message: impl text::IntoFragment<'a>) -> Element<'a, Message> {
     text(message).color(theme::text_secondary()).into()
+}
+
+/// Opens the dialog to give the playlist a cover of the user's own.
+fn cover_button(collection: &Collection) -> Element<'_, Message> {
+    button(text("Cover").size(14))
+        .on_press(Message::Playlist(playlists::Event::OpenCover {
+            id: crate::playlists::edit::bare_id(&collection.id).to_string(),
+            title: collection.title.clone(),
+        }))
+        .padding([8, 18])
+        .style(|_, status| {
+            let mut style = theme::flat_button(status, false);
+            style.border = border::rounded(18).color(theme::line()).width(1);
+            style
+        })
+        .into()
 }
 
 /// Download, the progress while downloading, or Remove download once it is on disk.

@@ -8,7 +8,7 @@ use iced::widget::{Column, Row, button, column, container, image, row, scrollabl
 use iced::{Center, Element, Fill, Font, border};
 
 use crate::youtube::{Collection, SearchPage, SearchTrack, Tile, TileKind, TopResult};
-use crate::{Message, clock, theme};
+use crate::{Message, clock, playlists, theme};
 
 /// How many songs or videos the "All" view shows before "Show all".
 const PREVIEW_ROWS: usize = 4;
@@ -50,6 +50,8 @@ const FILTERS: [(Filter, &str); 6] = [
 #[derive(Clone, Copy)]
 pub struct Shared<'a> {
     pub images: &'a HashMap<String, image::Handle>,
+    /// The covers the user picked for playlists, by playlist id.
+    pub covers: &'a HashMap<String, image::Handle>,
     /// The song being downloaded before it can play.
     pub loading: Option<&'a str>,
     /// The song that is playing.
@@ -242,14 +244,36 @@ pub fn track_list<'a>(
     shared: Shared<'a>,
 ) -> Element<'a, Message> {
     let shown = limit.unwrap_or(tracks.len()).min(tracks.len());
-    let rows = (0..shown).map(|index| track_row(tracks, index, shared));
+    let rows = (0..shown).map(|index| song_row(tracks, index, None, shared));
     Column::with_children(rows).spacing(2).into()
 }
 
-/// One song row; clicking it plays `tracks` from `index`, and its + adds the song to the queue.
+/// The songs of the user's own playlist `playlist_id`, each with a button to take it out.
+pub fn playlist_track_list<'a>(
+    tracks: &'a [SearchTrack],
+    playlist_id: &'a str,
+    shared: Shared<'a>,
+) -> Element<'a, Message> {
+    let rows = (0..tracks.len()).map(|index| song_row(tracks, index, Some(playlist_id), shared));
+    Column::with_children(rows).spacing(2).into()
+}
+
+/// One song row; clicking it plays `tracks` from `index`, its + adds the song to the queue
+/// and the button beside it to a playlist.
 pub fn track_row<'a>(
     tracks: &'a [SearchTrack],
     index: usize,
+    shared: Shared<'a>,
+) -> Element<'a, Message> {
+    song_row(tracks, index, None, shared)
+}
+
+/// A song row; inside the user's playlist `in_playlist` it also has a button to take the song
+/// out.
+fn song_row<'a>(
+    tracks: &'a [SearchTrack],
+    index: usize,
+    in_playlist: Option<&'a str>,
     shared: Shared<'a>,
 ) -> Element<'a, Message> {
     let track = &tracks[index];
@@ -276,22 +300,42 @@ pub fn track_row<'a>(
         text(duration).size(12).color(theme::text_secondary())
     };
 
-    let add = button(theme::icon(
+    let row_button = |icon: &'static [u8], message: Message| {
+        button(theme::icon(icon, theme::text_secondary(), 16.0))
+            .on_press(message)
+            .padding(6)
+            .style(|_, status| theme::flat_button(status, false))
+    };
+    let add = row_button(
         include_bytes!("../assets/icons/plus.svg"),
-        theme::text_secondary(),
-        16.0,
-    ))
-    .on_press(Message::AddToQueue(track.clone()))
-    .padding(6)
-    .style(|_, status| theme::flat_button(status, false));
+        Message::AddToQueue(track.clone()),
+    );
+    let save = row_button(
+        include_bytes!("../assets/icons/playlist-add.svg"),
+        Message::Playlist(playlists::Event::OpenAddTo(track.clone())),
+    );
+    let take_out = in_playlist.map(|id| {
+        row_button(
+            include_bytes!("../assets/icons/close.svg"),
+            Message::Playlist(playlists::Event::Remove {
+                id: id.to_string(),
+                song_id: track.id.clone(),
+            }),
+        )
+    });
 
     let cover = picture(track.cover_url.as_deref(), 44.0, false, shared);
-    button(row![cover, details, right, add].spacing(12).align_y(Center))
-        .on_press(Message::PlayQueue(tracks.to_vec(), index))
-        .width(Fill)
-        .padding([6, 8])
-        .style(move |_, status| theme::flat_button(status, is_playing))
-        .into()
+    let buttons = row![add, save].push(take_out);
+    button(
+        row![cover, details, right, buttons]
+            .spacing(12)
+            .align_y(Center),
+    )
+    .on_press(Message::PlayQueue(tracks.to_vec(), index))
+    .width(Fill)
+    .padding([6, 8])
+    .style(move |_, status| theme::flat_button(status, is_playing))
+    .into()
 }
 
 /// A horizontal row of cards.
@@ -319,6 +363,7 @@ pub fn card_grid<'a>(tiles: &'a [Tile], shared: Shared<'a>) -> Element<'a, Messa
 fn card<'a>(tile: &'a Tile, shared: Shared<'a>) -> Element<'a, Message> {
     let round = tile.kind == TileKind::Artist;
     card_parts(
+        &tile.id,
         tile.image_url.as_deref(),
         &tile.title,
         tile.subtitle.clone(),
@@ -329,6 +374,7 @@ fn card<'a>(tile: &'a Tile, shared: Shared<'a>) -> Element<'a, Message> {
 }
 
 fn card_parts<'a>(
+    id: &str,
     image_url: Option<&str>,
     title: &'a str,
     subtitle: String,
@@ -337,7 +383,7 @@ fn card_parts<'a>(
     shared: Shared<'a>,
 ) -> Element<'a, Message> {
     let content = column![
-        picture(image_url, CARD_SIZE, round, shared),
+        cover_picture(id, image_url, CARD_SIZE, round, shared),
         space().height(6),
         text(title)
             .size(13)
@@ -365,6 +411,7 @@ pub fn offline_grid<'a>(collections: &'a [Collection], shared: Shared<'a>) -> El
     let rows = collections.chunks(GRID_COLUMNS).map(|chunk| {
         let cards = chunk.iter().map(|collection| {
             card_parts(
+                &collection.id,
                 collection.image_url.as_deref(),
                 &collection.title,
                 format!("{} songs", collection.tracks.len()),
@@ -398,6 +445,26 @@ pub fn picture<'a>(
             .height(size)
             .style(move |_| theme::panel(theme::hero()).border(border::rounded(radius)))
             .into(),
+    }
+}
+
+/// A playlist's (or album's) picture: the cover the user picked for `id`, if any, or the one at
+/// `url`.
+pub fn cover_picture<'a>(
+    id: &str,
+    url: Option<&str>,
+    size: f32,
+    round: bool,
+    shared: Shared<'a>,
+) -> Element<'a, Message> {
+    match shared.covers.get(crate::playlists::edit::bare_id(id)) {
+        Some(cover) => image(cover.clone())
+            .width(size)
+            .height(size)
+            .content_fit(iced::ContentFit::Cover)
+            .border_radius(5.0)
+            .into(),
+        None => picture(url, size, round, shared),
     }
 }
 

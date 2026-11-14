@@ -8,6 +8,7 @@ use rustypipe::client::RustyPipe;
 use serde::{Deserialize, Serialize};
 
 use crate::account::{self, BROWSERS, Browser};
+use crate::playlists::edit;
 use crate::profile::{self, Profile};
 use crate::search::{self, Shared};
 use crate::youtube::{self, Collection, SearchTrack, Tile, TileKind};
@@ -26,9 +27,18 @@ pub struct LibraryData {
     pub albums: Vec<Tile>,
     pub artists: Vec<Tile>,
     pub playlists: Vec<Tile>,
+    /// The ids of the playlists the user made, which songs can be added to.
+    #[serde(default)]
+    pub own_playlists: Vec<String>,
 }
 
 impl LibraryData {
+    /// Whether playlist `id` is one the user made.
+    pub fn is_own(&self, id: &str) -> bool {
+        let id = crate::playlists::edit::bare_id(id);
+        self.own_playlists.iter().any(|own| own == id)
+    }
+
     /// Every image the library screens can show.
     pub fn image_urls(&self) -> Vec<String> {
         let tracks = self.history.iter().chain(&self.songs).chain(&self.liked);
@@ -150,6 +160,37 @@ pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
         })
         .unwrap_or_default();
 
+    let own_playlists: Vec<String> = playlists
+        .as_ref()
+        .map(|page| {
+            page.items
+                .iter()
+                .filter(|playlist| edit::is_own(&playlist.id, playlist.channel.is_some()))
+                .map(|playlist| playlist.id.clone())
+                .collect()
+        })
+        .unwrap_or_default();
+    // YouTube Music gives no owner for the user's own playlists; they are the user's.
+    let owner = profile.as_ref().map(|profile| profile.name.clone());
+    let playlists: Vec<Tile> = playlists
+        .map(|page| {
+            page.items
+                .iter()
+                // "LM" is Liked Music, which already has its own entry in the sidebar.
+                .filter(|playlist| playlist.id != "LM")
+                .map(|playlist| {
+                    let mut tile = youtube::playlist_tile(playlist);
+                    if let Some(owner) = &owner
+                        && own_playlists.contains(&playlist.id)
+                    {
+                        tile.subtitle = format!("Playlist \u{b7} {owner}");
+                    }
+                    tile
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     Ok(LibraryData {
         profile,
         mixes: mixes_from(&history, MIX_COUNT),
@@ -166,16 +207,8 @@ pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
         artists: artists
             .map(|page| page.items.iter().map(youtube::artist_tile).collect())
             .unwrap_or_default(),
-        // "LM" is Liked Music, which already has its own entry in the sidebar.
-        playlists: playlists
-            .map(|page| {
-                page.items
-                    .iter()
-                    .filter(|playlist| playlist.id != "LM")
-                    .map(youtube::playlist_tile)
-                    .collect()
-            })
-            .unwrap_or_default(),
+        playlists,
+        own_playlists,
     })
 }
 
