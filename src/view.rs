@@ -126,12 +126,7 @@ impl App {
             ),
             Screen::Together => together::view(&self.together),
             Screen::Account => column![
-                library::account_view(
-                    &self.account,
-                    &self.cookie_path,
-                    self.default_browser,
-                    self.profile_photo(),
-                ),
+                library::account_view(&self.account, &self.cookie_path, self.profile_photo(),),
                 self.lastfm.view()
             ]
             .into(),

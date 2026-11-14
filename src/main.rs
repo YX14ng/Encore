@@ -34,6 +34,7 @@ mod scrobbler;
 mod search;
 mod settings_view;
 mod sidebar;
+mod sign_in_window;
 mod song;
 mod sponsorblock;
 mod theme;
@@ -65,6 +66,9 @@ use song::Song;
 use youtube::{Collection, SearchPage, SearchTrack, Tile};
 
 fn main() -> iced::Result {
+    if std::env::args().nth(1).as_deref() == Some(sign_in_window::FLAG) {
+        std::process::exit(sign_in_window::run());
+    }
     iced::application(App::boot, App::update, App::view)
         .title("Encore")
         .subscription(App::subscription)
@@ -115,8 +119,6 @@ struct App {
     account: Account,
     /// The cookies.txt path typed on the account screen.
     cookie_path: String,
-    /// The system's default browser, for "Sign in with your browser".
-    default_browser: Option<Browser>,
     /// Downloaded collections and the download in progress.
     offline: Offline,
     /// Whether the immersive (full screen) view is showing.
@@ -207,7 +209,7 @@ enum Message {
     Playlist(playlists::Event),
     Back,
     OpenAccount,
-    SignInDefault,
+    SignInWindow,
     SignInWith(Browser),
     CookiePathChanged(String),
     ImportCookies,
@@ -327,7 +329,6 @@ impl App {
             now_playing,
             account: Account::SignedOut,
             cookie_path: String::new(),
-            default_browser: account::default_browser(),
             offline: Offline::load(),
             immersive: false,
             media: media_keys::MediaKeys::start(),

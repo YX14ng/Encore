@@ -223,25 +223,12 @@ impl App {
                     Message::SignedIn,
                 );
             }
-            Message::SignInDefault => {
+            Message::SignInWindow => {
                 let Some(client) = self.online.client() else {
                     return Task::none();
                 };
-                let Some(browser) = self.default_browser else {
-                    self.account = Account::Failed(
-                        "could not tell which browser is the default; pick it below".to_string(),
-                    );
-                    return Task::none();
-                };
-                if let Err(error) = account::open_sign_in_page() {
-                    self.account = Account::Failed(error);
-                    return Task::none();
-                }
-                self.account = Account::Waiting(browser);
-                return Task::perform(
-                    library::wait_for_sign_in(client, browser),
-                    Message::SignedIn,
-                );
+                self.account = Account::Waiting;
+                return Task::perform(library::sign_in_with_window(client), Message::SignedIn);
             }
             Message::CookiePathChanged(path) => self.cookie_path = path,
             Message::ImportCookies => {

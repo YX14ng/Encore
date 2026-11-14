@@ -7,6 +7,7 @@ edition = "2024"
 chrono = "0.4"
 discord-rich-presence = "1.1"
 fastrand = "2"
+gtk = "0.18"
 iced = { version = "0.14", features = ["tokio", "image", "svg"] }
 image = "0.25.10"
 libmpv2 = "7"
@@ -18,8 +19,10 @@ rustypipe = { version = "0.11", features = ["userdata"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
+soup3 = "0.5"
 souvlaki = { version = "0.9", default-features = false, features = ["use_zbus"] }
 tokio = { version = "1", features = ["process", "fs", "macros", "rt-multi-thread"] }
+webkit2gtk = { version = "2", features = ["v2_40"] }
 
 [lints.clippy]
 unwrap_used = "deny"

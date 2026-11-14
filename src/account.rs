@@ -1,6 +1,8 @@
-//! Signing in. YouTube Music only serves the library (history, saved songs, playlists) to
-//! requests that carry the session cookies of a signed-in browser, so Encore asks yt-dlp to read
-//! them from the browser the user picks, keeps only the YouTube ones and hands them to rustypipe.
+//! Reading a session from a browser. YouTube Music only serves the library (history, saved
+//! songs, playlists) to requests that carry the session cookies of a signed-in browser. Encore
+//! signs in through its own window (`sign_in_window`); as other ways, it asks yt-dlp to read the
+//! cookies from the browser the user picks, or reads a cookies.txt, keeps only the YouTube ones
+//! and hands them to rustypipe.
 //!
 //! The cookies give full access to the Google account while they are valid. They stay on this
 //! computer, in Encore's data folder, readable only by the user.
@@ -54,14 +56,6 @@ impl std::fmt::Display for ReadError {
 }
 
 impl Browser {
-    /// The browser's name as shown on screen.
-    pub fn name(self) -> &'static str {
-        BROWSERS
-            .iter()
-            .find(|(browser, _)| *browser == self)
-            .map_or("your browser", |(_, name)| name)
-    }
-
     /// The value for yt-dlp's `--cookies-from-browser`. Zen is Firefox-based but unknown to
     /// yt-dlp, so it is passed as Firefox with the path of its profile.
     pub fn ytdlp_spec(self, home: &Path) -> Result<String, String> {
@@ -191,38 +185,6 @@ pub async fn read_from_browser(browser: Browser) -> Result<String, ReadError> {
     Ok(cookies)
 }
 
-/// The browser for a `.desktop` file name like `zen.desktop` or `google-chrome.desktop`.
-pub fn browser_from_desktop(desktop: &str) -> Option<Browser> {
-    let name = desktop.to_lowercase();
-    if name.contains("zen") {
-        Some(Browser::Zen)
-    } else if name.contains("brave") {
-        Some(Browser::Brave)
-    } else if name.contains("chromium") {
-        Some(Browser::Chromium)
-    } else if name.contains("chrome") {
-        Some(Browser::Chrome)
-    } else if name.contains("firefox") {
-        Some(Browser::Firefox)
-    } else {
-        None
-    }
-}
-
-/// The system's default web browser, if it is one Encore can read a session from.
-pub fn default_browser() -> Option<Browser> {
-    let output = std::process::Command::new("xdg-settings")
-        .args(["get", "default-web-browser"])
-        .output()
-        .ok()?;
-    browser_from_desktop(String::from_utf8_lossy(&output.stdout).trim())
-}
-
-/// Opens YouTube Music in the default browser so the user can sign in there.
-pub fn open_sign_in_page() -> Result<(), String> {
-    open_in_browser("https://music.youtube.com")
-}
-
 /// Opens `url` in the default browser.
 pub fn open_in_browser(url: &str) -> Result<(), String> {
     std::process::Command::new("xdg-open")
@@ -305,32 +267,6 @@ mod tests {
         std::fs::write(profile.join("cookies.sqlite"), b"x").expect("cookies");
         assert_eq!(zen_profile(&home), Ok(profile));
         std::fs::remove_dir_all(&home).expect("cleanup");
-    }
-
-    #[test]
-    fn recognizes_default_browsers() {
-        assert_eq!(browser_from_desktop("zen.desktop"), Some(Browser::Zen));
-        assert_eq!(
-            browser_from_desktop("app.zen_browser.zen.desktop"),
-            Some(Browser::Zen)
-        );
-        assert_eq!(
-            browser_from_desktop("firefox.desktop"),
-            Some(Browser::Firefox)
-        );
-        assert_eq!(
-            browser_from_desktop("chromium.desktop"),
-            Some(Browser::Chromium)
-        );
-        assert_eq!(
-            browser_from_desktop("google-chrome.desktop"),
-            Some(Browser::Chrome)
-        );
-        assert_eq!(
-            browser_from_desktop("brave-browser.desktop"),
-            Some(Browser::Brave)
-        );
-        assert_eq!(browser_from_desktop("org.gnome.Epiphany.desktop"), None);
     }
 
     #[test]

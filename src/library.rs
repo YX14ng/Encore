@@ -12,7 +12,7 @@ use crate::playlists::edit;
 use crate::profile::{self, Profile};
 use crate::search::{self, Shared};
 use crate::youtube::{self, Collection, SearchTrack, Tile, TileKind};
-use crate::{Message, theme};
+use crate::{Message, sign_in_window, theme};
 
 /// Everything the library screens show. Saved to disk so the next start shows it at once.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,8 +66,8 @@ pub enum Account {
     Checking,
     SignedOut,
     SigningIn,
-    /// Waiting for the user to sign in in this browser.
-    Waiting(Browser),
+    /// Waiting for the user to sign in in Encore's sign-in window.
+    Waiting,
     SignedIn(Box<LibraryData>),
     Failed(String),
 }
@@ -250,25 +250,13 @@ pub async fn sign_in_with_browser(rp: RustyPipe, browser: Browser) -> Result<Lib
     sign_in(rp, cookies).await
 }
 
-/// How many times to look for the session while the user signs in, five seconds apart.
-const SIGN_IN_ATTEMPTS: u32 = 36;
-
-/// Waits for the user to sign in to YouTube Music in `browser` (opened by Encore), checking
-/// every five seconds for up to three minutes, then signs in.
-pub async fn wait_for_sign_in(rp: RustyPipe, browser: Browser) -> Result<LibraryData, String> {
-    for _ in 0..SIGN_IN_ATTEMPTS {
-        match account::read_from_browser(browser).await {
-            Ok(cookies) => return sign_in(rp, Ok(cookies)).await,
-            Err(account::ReadError::NoSession) => {
-                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-            }
-            Err(error) => return Err(error.to_string()),
-        }
-    }
-    Err(format!(
-        "no sign-in was detected in {} after three minutes",
-        browser.name()
-    ))
+/// Opens Encore's own sign-in window and signs in with the session made there.
+pub async fn sign_in_with_window(rp: RustyPipe) -> Result<LibraryData, String> {
+    let cookie = sign_in_window::sign_in().await?;
+    rp.user_auth_set_cookie(cookie)
+        .await
+        .map_err(|error| error.to_string())?;
+    load(rp).await
 }
 
 /// Why a saved session could not be restored.
@@ -352,7 +340,7 @@ pub fn shelf_view<'a>(
             Shelf::Artists => search::card_grid(&data.artists, shared),
             Shelf::Downloads => search::offline_grid(downloads, shared),
         },
-        Account::Checking | Account::SigningIn | Account::Waiting(_) => {
+        Account::Checking | Account::SigningIn | Account::Waiting => {
             note("Loading your library\u{2026}")
         }
         Account::SignedOut | Account::Failed(_) => column![
@@ -373,7 +361,6 @@ pub fn shelf_view<'a>(
 pub fn account_view<'a>(
     account: &'a Account,
     cookie_path: &'a str,
-    default_browser: Option<Browser>,
     photo: Option<iced::widget::image::Handle>,
 ) -> Element<'a, Message> {
     let mut content = column![heading("Your YouTube Music account")]
@@ -422,12 +409,11 @@ pub fn account_view<'a>(
         Account::Checking | Account::SigningIn => {
             content = content.push(note("Signing in\u{2026}"));
         }
-        Account::Waiting(browser) => {
-            content = content.push(note(format!(
-                "YouTube Music is open in {}. Sign in there with your Google account; Encore \
-                 notices on its own within a few seconds.",
-                browser.name()
-            )));
+        Account::Waiting => {
+            content = content.push(note(
+                "Sign in with your Google account in the window Encore opened. It closes on its \
+                 own once YouTube Music opens signed in.",
+            ));
         }
         Account::SignedOut | Account::Failed(_) => {
             if let Account::Failed(error) = account {
@@ -445,22 +431,22 @@ pub fn account_view<'a>(
                     })
                     .into()
             });
-            let main_label = match default_browser {
-                Some(browser) => format!("Sign in with {}", browser.name()),
-                None => "Sign in with your browser".to_string(),
-            };
             content = content
                 .push(note(
-                    "Encore opens YouTube Music in your browser. Sign in there with your Google \
-                     account and Encore picks up the session: only the YouTube cookies are kept, \
-                     on this computer.",
+                    "Encore opens a small window of its own where you sign in with your Google \
+                     account, like a browser only Encore uses. Only the YouTube cookies are \
+                     kept, on this computer.",
                 ))
-                .push(accent_button_owned(main_label, Message::SignInDefault))
+                .push(accent_button("Sign in", Message::SignInWindow))
                 .push(note(
-                    "Already signed in somewhere else? Read the session from:",
+                    "Or read the session from a browser you are signed in to. It stops working \
+                     when that browser renews it, often within minutes:",
                 ))
                 .push(Row::with_children(browsers).spacing(8))
-                .push(note("Or import a cookies.txt exported from your browser:"))
+                .push(note(
+                    "Or import a cookies.txt. Export it from a private window and close the \
+                     window, so the browser never renews it:",
+                ))
                 .push(
                     iced::widget::row![
                         text_input("~/Downloads/cookies.txt", cookie_path)
@@ -475,19 +461,6 @@ pub fn account_view<'a>(
     }
 
     scrollable(content).height(Fill).into()
-}
-
-fn accent_button_owned(label: String, message: Message) -> Element<'static, Message> {
-    button(text(label).size(14).color(theme::text_primary()))
-        .on_press(message)
-        .padding([8, 22])
-        .style(|_, status| {
-            let mut style = theme::flat_button(status, false);
-            style.background = Some(theme::accent().into());
-            style.border = border::rounded(18);
-            style
-        })
-        .into()
 }
 
 pub(crate) fn accent_button(label: &str, message: Message) -> Element<'_, Message> {
