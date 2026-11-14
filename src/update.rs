@@ -194,6 +194,17 @@ impl App {
             }
             Message::AudioReady(index, path) => return self.start_online(index, path),
             Message::Prefetched(id, path) => self.online.prefetched(id, path),
+            Message::RadioLoaded(seed, songs) => {
+                // A guest plays what the host plays; its own queue does not go on.
+                if !self.together.is_guest() {
+                    return self.online.radio_loaded(seed, songs);
+                }
+            }
+            Message::ToggleAutoplay => {
+                self.audio_settings.autoplay = !self.audio_settings.autoplay;
+                self.audio_settings.save();
+                return self.online.set_autoplay(self.audio_settings.autoplay);
+            }
             Message::Back => {
                 self.screen = match self.screen {
                     Screen::Collection => Screen::Search,

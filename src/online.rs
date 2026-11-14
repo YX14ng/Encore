@@ -58,6 +58,10 @@ pub struct Online {
     repeat: Repeat,
     /// The song queued in mpv to follow the current one without a gap.
     queued: Option<usize>,
+    /// Whether similar songs are added when the queue runs out.
+    autoplay: bool,
+    /// The song whose radio autoplay last asked for, so it is asked only once.
+    radio_for: Option<String>,
 }
 
 impl Online {
@@ -88,6 +92,8 @@ impl Online {
             error: None,
             repeat: settings.repeat,
             queued: None,
+            autoplay: settings.autoplay,
+            radio_for: None,
         }
     }
 
@@ -328,6 +334,8 @@ impl Online {
     /// Takes song `index` out of the queue.
     pub fn queue_remove(&mut self, index: usize) -> Task<Message> {
         self.queue.remove(index);
+        // Taking out the last song lets autoplay ask again for similar songs.
+        self.radio_for = None;
         self.prefetch_next()
     }
 
@@ -335,6 +343,8 @@ impl Online {
     pub fn queue_clear(&mut self) -> Task<Message> {
         self.queue.clear_upcoming();
         self.next_file = None;
+        // With autoplay on, similar songs take the cleared ones' place.
+        self.radio_for = None;
         self.prefetch_next()
     }
 
@@ -357,6 +367,59 @@ impl Online {
         self.prefetch_next()
     }
 
+    /// Turns autoplay on or off. On, it fills the queue if it is running out.
+    pub fn set_autoplay(&mut self, autoplay: bool) -> Task<Message> {
+        self.autoplay = autoplay;
+        self.prefetch_next()
+    }
+
+    /// Whether autoplay is on, for the queue panel.
+    pub fn autoplay(&self) -> bool {
+        self.autoplay
+    }
+
+    /// Asks for songs like the one playing when nothing comes after it, once per song.
+    fn fill_from_radio(&mut self) -> Task<Message> {
+        let Some(seed) = self.queue.playing_track().map(|track| track.id.clone()) else {
+            return Task::none();
+        };
+        if !self.autoplay || self.radio_for.as_deref() == Some(seed.as_str()) {
+            return Task::none();
+        }
+        let Some(client) = self.client.clone() else {
+            return Task::none();
+        };
+        self.radio_for = Some(seed.clone());
+        Task::perform(youtube::radio(client, seed.clone()), move |songs| {
+            Message::RadioLoaded(seed.clone(), songs)
+        })
+    }
+
+    /// Adds autoplay's similar songs, if the queue still runs out, and downloads the next one.
+    /// A failed request only means the queue ends; it is asked again on the next song.
+    pub fn radio_loaded(
+        &mut self,
+        seed: String,
+        songs: Result<Vec<SearchTrack>, String>,
+    ) -> Task<Message> {
+        let Ok(songs) = songs else {
+            if self.radio_for.as_deref() == Some(seed.as_str()) {
+                self.radio_for = None;
+            }
+            return Task::none();
+        };
+        if !self.autoplay || !self.is_active() || self.following().is_some() {
+            return Task::none();
+        }
+        self.queue.add_suggested(songs);
+        // The song may have ended while the radio loaded; then the first similar one plays.
+        let ended = self.loading.is_none() && self.mixer.as_ref().is_some_and(Mixer::is_idle);
+        match self.following() {
+            Some(next) if ended => self.play(next),
+            _ => self.prefetch_next(),
+        }
+    }
+
     /// The song that comes after the current one: itself with repeat one, and the first one
     /// after the last with repeat all.
     fn following(&self) -> Option<usize> {
@@ -371,6 +434,9 @@ impl Online {
     /// follow with no gap (or fade in).
     fn prefetch_next(&mut self) -> Task<Message> {
         self.forget_queued();
+        if self.following().is_none() {
+            return self.fill_from_radio();
+        }
         self.following()
             .and_then(|next| self.queue.get(next))
             .map_or_else(Task::none, |next| {

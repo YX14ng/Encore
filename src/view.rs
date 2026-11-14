@@ -183,9 +183,11 @@ impl App {
                     .filter(|_| columns.panel)
                     .map(|panel| match panel {
                         Panel::Lyrics => self.lyrics_view(lyrics::PANEL),
-                        Panel::Queue => {
-                            queue_view::view(self.online.queue(), self.online.shared_view())
-                        }
+                        Panel::Queue => queue_view::view(
+                            self.online.queue(),
+                            self.online.autoplay(),
+                            self.online.shared_view(),
+                        ),
                     }),
             )
             .into()

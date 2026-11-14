@@ -196,6 +196,9 @@ enum Message {
     PlayTop,
     AudioReady(usize, Result<std::path::PathBuf, String>),
     Prefetched(String, Result<std::path::PathBuf, String>),
+    /// Similar songs for autoplay, for the song with this id.
+    RadioLoaded(String, Result<Vec<youtube::SearchTrack>, String>),
+    ToggleAutoplay,
     Back,
     OpenAccount,
     SignInDefault,

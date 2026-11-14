@@ -2,15 +2,15 @@
 //! playing and the songs that come after it, which can be played, moved up or taken out.
 
 use iced::font::Weight;
-use iced::widget::{Column, button, column, container, row, scrollable, space, text};
+use iced::widget::{Column, button, column, container, row, scrollable, space, text, toggler};
 use iced::{Center, Element, Fill, Font};
 
 use crate::queue::Queue;
 use crate::search::{Shared, picture, subtitle};
 use crate::{Message, clock, lyrics, theme};
 
-/// The panel for `queue`.
-pub fn view<'a>(queue: &'a Queue, shared: Shared<'a>) -> Element<'a, Message> {
+/// The panel for `queue`, with the autoplay switch.
+pub fn view<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element<'a, Message> {
     let upcoming = queue.upcoming();
     let clear = (!upcoming.is_empty()).then(|| {
         button(text("Clear").size(13).color(theme::text_secondary()))
@@ -31,22 +31,34 @@ pub fn view<'a>(queue: &'a Queue, shared: Shared<'a>) -> Element<'a, Message> {
                 Place::Playing,
                 shared,
             ));
-            content = content.push(label(match upcoming.len() {
+            let count = label(match upcoming.len() {
                 0 => "Nothing up next".to_string(),
                 1 => "Up next \u{b7} 1 song".to_string(),
                 count => format!("Up next \u{b7} {count} songs"),
-            }));
-            content = content.push(
-                Column::with_children(upcoming.iter().enumerate().map(|(place, &index)| {
-                    let place = if place == 0 {
-                        Place::Next
-                    } else {
-                        Place::Later
-                    };
-                    song(queue, index, place, shared)
-                }))
-                .spacing(2),
-            );
+            });
+            content = content
+                .push(row![count, space::horizontal(), autoplay_switch(autoplay)].align_y(Center));
+            let first_suggested = upcoming.iter().position(|&index| queue.is_suggested(index));
+            let mut rows = Column::new().spacing(2);
+            for (place, &index) in upcoming.iter().enumerate() {
+                if Some(place) == first_suggested {
+                    rows = rows.push(label("Autoplay \u{b7} similar songs".to_string()));
+                }
+                let place = if place == 0 {
+                    Place::Next
+                } else {
+                    Place::Later
+                };
+                rows = rows.push(song(queue, index, place, shared));
+            }
+            content = content.push(rows);
+            if upcoming.is_empty() && autoplay {
+                content = content.push(
+                    text("Autoplay will go on with similar songs.")
+                        .size(13)
+                        .color(theme::text_secondary()),
+                );
+            }
         }
         None => {
             content = content.push(
@@ -136,6 +148,17 @@ fn song<'a>(
         .width(Fill)
         .padding([5, 6])
         .style(move |_, status| theme::flat_button(status, playing))
+        .into()
+}
+
+/// The switch that turns autoplay on and off.
+fn autoplay_switch(on: bool) -> Element<'static, Message> {
+    toggler(on)
+        .label("Autoplay")
+        .size(16)
+        .text_size(12)
+        .on_toggle(|_| Message::ToggleAutoplay)
+        .style(theme::switch)
         .into()
 }
 

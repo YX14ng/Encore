@@ -93,6 +93,8 @@ pub struct AudioSettings {
     pub keep_pitch: bool,
     /// Seconds the end of a song overlaps the start of the next; 0 is off.
     pub crossfade: u32,
+    /// Plays similar songs when the queue runs out.
+    pub autoplay: bool,
 }
 
 impl Default for AudioSettings {
@@ -108,6 +110,7 @@ impl Default for AudioSettings {
             speed: 1.0,
             keep_pitch: true,
             crossfade: 0,
+            autoplay: true,
         }
     }
 }

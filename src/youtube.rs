@@ -137,6 +137,17 @@ pub async fn suggestions(rp: RustyPipe, query: String) -> Result<Vec<String>, St
 }
 
 /// Loads the songs of an album, a playlist or an artist (their top songs).
+/// Songs like `seed`, from its YouTube Music radio, for autoplay. The first page is enough:
+/// another one is asked for when those run out.
+pub async fn radio(rp: RustyPipe, seed: String) -> Result<Vec<SearchTrack>, String> {
+    let radio = rp
+        .query()
+        .music_radio_track(&seed)
+        .await
+        .map_err(|error| error.to_string())?;
+    Ok(radio.items.iter().map(track).collect())
+}
+
 pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
     let q = rp.query();
     match tile.kind {
@@ -444,5 +455,17 @@ mod tests {
         };
         let radio = open(client().expect("client"), tile).await.expect("radio");
         assert!(radio.tracks.len() > 10, "only {} songs", radio.tracks.len());
+    }
+
+    /// Asks for autoplay's similar songs: `cargo test -- --ignored finds_similar_songs`.
+    #[tokio::test]
+    #[ignore = "needs the network"]
+    async fn finds_similar_songs() {
+        let songs = radio(client().expect("client"), "Rgrt_8mXrK8".to_string())
+            .await
+            .expect("radio");
+        assert!(songs.len() > 10, "only {} songs", songs.len());
+        let others = songs.iter().filter(|song| song.id != "Rgrt_8mXrK8").count();
+        assert!(others > 10, "only {others} other songs");
     }
 }

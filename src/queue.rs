@@ -1,6 +1,8 @@
 //! The play queue: the songs in list order, the order they play in (shuffled or not) and which
 //! one is playing.
 
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 
 use crate::youtube::SearchTrack;
@@ -38,6 +40,8 @@ pub struct Queue {
     order: Vec<usize>,
     /// The position in `order` of the song that is playing.
     cursor: Option<usize>,
+    /// The songs autoplay added (similar songs after the ones picked).
+    suggested: HashSet<usize>,
 }
 
 impl Queue {
@@ -52,6 +56,7 @@ impl Queue {
         self.order = play_order(tracks.len(), first, shuffle, rng);
         self.tracks = tracks;
         self.cursor = None;
+        self.suggested.clear();
     }
 
     /// Song `index` (in list order).
@@ -138,12 +143,40 @@ impl Queue {
         }
     }
 
-    /// Adds `track` at the end of the queue. Returns its index.
+    /// Adds `track` after the songs already picked, before any autoplay added. Returns its
+    /// index.
     pub fn add(&mut self, track: SearchTrack) -> usize {
         self.tracks.push(track);
         let index = self.tracks.len() - 1;
-        self.order.push(index);
+        let start = self.cursor.map_or(0, |cursor| cursor + 1);
+        let at = self.order[start.min(self.order.len())..]
+            .iter()
+            .position(|song| self.suggested.contains(song))
+            .map_or(self.order.len(), |at| start + at);
+        self.order.insert(at, index);
         index
+    }
+
+    /// Adds similar songs from autoplay at the end of the queue, leaving out any the queue
+    /// already holds. Returns how many were added.
+    pub fn add_suggested(&mut self, tracks: Vec<SearchTrack>) -> usize {
+        let mut known: HashSet<String> = self.tracks.iter().map(|track| track.id.clone()).collect();
+        let mut added = 0;
+        for track in tracks {
+            if known.insert(track.id.clone()) {
+                self.tracks.push(track);
+                let index = self.tracks.len() - 1;
+                self.order.push(index);
+                self.suggested.insert(index);
+                added += 1;
+            }
+        }
+        added
+    }
+
+    /// Whether autoplay added song `index`.
+    pub fn is_suggested(&self, index: usize) -> bool {
+        self.suggested.contains(&index)
     }
 
     /// Moves song `index` (already in the queue) to play right after the current one.
@@ -158,6 +191,8 @@ impl Queue {
             return;
         };
         self.order.remove(from);
+        // Moved up by hand, it is no longer just a suggestion.
+        self.suggested.remove(&index);
         let cursor = if from < cursor { cursor - 1 } else { cursor };
         self.order.insert(cursor + 1, index);
         self.cursor = Some(cursor);
@@ -321,6 +356,29 @@ mod tests {
         assert!(queue.upcoming().is_empty());
         assert_eq!(queue.next(false), None);
         assert_eq!(queue.previous(false), Some(1));
+    }
+
+    #[test]
+    fn autoplay_adds_new_songs_after_the_picked_ones() {
+        let mut queue = queue(2, 0, false);
+        queue.set_playing(0);
+        let mut similar = songs(4);
+        similar[0].id = "x".to_string();
+        // Song "1" is already in the queue.
+        assert_eq!(queue.add_suggested(similar), 3);
+        assert_eq!(queue.upcoming(), &[1, 2, 3, 4]);
+        assert!(queue.is_suggested(2));
+        assert!(!queue.is_suggested(1));
+        let picked = queue.add(songs(1).remove(0));
+        assert_eq!(
+            queue.upcoming(),
+            &[1, picked, 2, 3, 4],
+            "picked songs go first"
+        );
+        queue.play_next(2);
+        assert!(!queue.is_suggested(2), "moved up by hand");
+        queue.replace(songs(1), 0, false, &mut fastrand::Rng::with_seed(1));
+        assert!(!queue.is_suggested(2));
     }
 
     #[test]
