@@ -8,10 +8,27 @@ right.
 
 ## Status
 
-Phase 2 is done: search YouTube Music from the sidebar and play songs (downloaded with yt-dlp,
-played with mpv). Next is phase 3: signing in, the library and playlists.
+Phases 1 to 5 are done: search and playback (downloaded with yt-dlp, played with mpv), signing
+in with your browser's YouTube Music session, the library and playlists, offline downloads, synced
+lyrics and the immersive view, media keys (MPRIS), Discord Rich Presence and Last.fm scrobbling.
+Next is phase 6: audio extras such as an equalizer and crossfade.
 
 Runtime requirements: `mpv` (libmpv) and `yt-dlp` installed on the system.
+
+### Last.fm
+
+Scrobbling needs a Last.fm API account (create one at
+<https://www.last.fm/api/account/create>; the callback URL can stay empty). Encore reads it from
+two environment variables and says on the account screen which one is missing:
+
+```sh
+ENCORE_LASTFM_API_KEY=...
+ENCORE_LASTFM_API_SECRET=...
+```
+
+Then press "Connect Last.fm" on the account screen and approve Encore in the browser. The session
+key and the scrobbles waiting to be sent are kept in `~/.local/share/encore/lastfm/`, readable only
+by you.
 
 - Design: [`docs/superpowers/specs/2026-11-12-encore-fase1-design.md`](docs/superpowers/specs/2026-11-12-encore-fase1-design.md)
 - Step plan: [`docs/superpowers/plans/2026-11-12-encore-fase1.md`](docs/superpowers/plans/2026-11-12-encore-fase1.md)
