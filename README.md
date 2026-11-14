@@ -23,6 +23,11 @@ adds it to the end of the queue (or plays it when nothing is queued).
 Songs follow each other with no gap: once the next song is downloaded, it is queued in mpv, which
 goes on into it without reopening the sound output. With crossfade on, the fade takes over.
 
+The mini player button in the player bar shrinks the window to the cover, the song and the
+controls and keeps it above other windows; the same button brings the full window back. The badge
+next to the song shows the playing file's codec and average bitrate (YouTube's Opus is usually
+around 130 kbit/s).
+
 ### Listen together
 
 The people button in the top bar opens the together screen. **Host** opens a port (41730 by
