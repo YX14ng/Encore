@@ -8,11 +8,13 @@ right.
 
 ## Status
 
-Phases 1 to 6 are done: search and playback (downloaded with yt-dlp, played with mpv), signing
+Phases 1 to 7 are done: search and playback (downloaded with yt-dlp, played with mpv), signing
 in with your browser's YouTube Music session, the library and playlists, offline downloads, synced
 lyrics and the immersive view, media keys (MPRIS), Discord Rich Presence, Last.fm scrobbling, and
 the audio extras: seek, volume, shuffle and repeat, a 10-band equalizer with presets, volume
-normalization, playback speed and crossfade. Next is phase 7: themes and plugins.
+normalization, playback speed and crossfade. Phase 7 added themes (built-in, custom JSON files and
+an accent color taken from the cover) and Pear-style plugins: desktop notifications and
+SponsorBlock, plus switches for Discord and Last.fm. Settings are under the gear in the top bar.
 
 Runtime requirements: `mpv` (libmpv) and `yt-dlp` installed on the system.
 
