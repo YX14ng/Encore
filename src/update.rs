@@ -62,6 +62,7 @@ impl App {
             }
             Message::Tick(now) => {
                 self.now = now;
+                let mut scrobble = Task::none();
                 if self.online.is_active() {
                     match self.online.poll() {
                         Poll::Position(seconds) => {
@@ -69,6 +70,7 @@ impl App {
                             if self.playback.duration == 0 {
                                 self.playback.duration = self.online.duration().unwrap_or(0);
                             }
+                            scrobble = self.lastfm.progress(seconds);
                         }
                         Poll::Finished => return self.play_next_online(),
                         Poll::Waiting => {}
@@ -77,6 +79,7 @@ impl App {
                     self.playback.tick();
                 }
                 self.follow_lyrics();
+                return scrobble;
             }
             Message::Frame(now) => {
                 self.now = now;
@@ -237,6 +240,11 @@ impl App {
             }
             Message::ToggleImmersive => return self.set_immersive(!self.immersive),
             Message::ExitImmersive => return self.set_immersive(false),
+            Message::LastFmConnect => return self.lastfm.connect(),
+            Message::LastFmConnected(result) => return self.lastfm.connected(result),
+            Message::LastFmDisconnect => self.lastfm.disconnect(),
+            Message::LastFmAnswered(result) => self.lastfm.answered(result),
+            Message::Scrobbled(result) => return self.lastfm.scrobbled(result),
             Message::OpenOffline(id) => {
                 if let Some(collection) = self.offline.get(&id).cloned() {
                     self.screen = Screen::Collection;
@@ -275,12 +283,13 @@ impl App {
         };
         self.lyrics = Lyrics::Loading;
         self.follow_lyrics();
+        let now_playing = self.lastfm.track_started(&track);
         let id = track.id.clone();
         let lyrics = Task::perform(
             lyrics_source::fetch(track, self.online.client()),
             move |lyrics| Message::LyricsLoaded(id.clone(), lyrics),
         );
-        Task::batch([prefetch, lyrics])
+        Task::batch([prefetch, lyrics, now_playing])
     }
 
     /// Enters or leaves the immersive view, switching the window to full screen and back.

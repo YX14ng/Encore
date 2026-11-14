@@ -220,8 +220,13 @@ pub fn default_browser() -> Option<Browser> {
 
 /// Opens YouTube Music in the default browser so the user can sign in there.
 pub fn open_sign_in_page() -> Result<(), String> {
+    open_in_browser("https://music.youtube.com")
+}
+
+/// Opens `url` in the default browser.
+pub fn open_in_browser(url: &str) -> Result<(), String> {
     std::process::Command::new("xdg-open")
-        .arg("https://music.youtube.com")
+        .arg(url)
         .spawn()
         .map(|_| ())
         .map_err(|error| format!("could not open the browser: {error}"))

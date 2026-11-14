@@ -79,12 +79,16 @@ impl App {
                 self.offline.collections(),
                 self.online.shared_view(),
             ),
-            Screen::Account => library::account_view(
-                &self.account,
-                &self.cookie_path,
-                self.default_browser,
-                self.profile_photo(),
-            ),
+            Screen::Account => column![
+                library::account_view(
+                    &self.account,
+                    &self.cookie_path,
+                    self.default_browser,
+                    self.profile_photo(),
+                ),
+                self.lastfm.view()
+            ]
+            .into(),
         };
 
         let center = container(column![

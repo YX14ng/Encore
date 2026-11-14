@@ -9,6 +9,7 @@ discord-rich-presence = "1.1"
 iced = { version = "0.14", features = ["tokio", "image", "svg"] }
 image = "0.25.10"
 libmpv2 = "7"
+md5 = "0.8"
 reqwest = "0.12"
 rustypipe = { version = "0.11", features = ["userdata"] }
 serde = { version = "1", features = ["derive"] }

@@ -9,6 +9,7 @@ mod discord;
 mod download;
 mod home;
 mod immersive;
+mod lastfm;
 mod layout;
 mod library;
 mod lyrics;
@@ -19,6 +20,7 @@ mod offline;
 mod online;
 mod player;
 mod profile;
+mod scrobbler;
 mod search;
 mod sidebar;
 mod song;
@@ -102,6 +104,8 @@ struct App {
     media: Option<media_keys::MediaKeys>,
     /// The "Listening to …" status on Discord.
     discord: discord::Discord,
+    /// Scrobbling to Last.fm.
+    lastfm: scrobbler::LastFm,
 }
 
 /// The screens of the center column.
@@ -158,6 +162,11 @@ enum Message {
     ToggleImmersive,
     ExitImmersive,
     MediaKey(media_keys::MediaKey),
+    LastFmConnect,
+    LastFmConnected(Result<lastfm::Session, String>),
+    LastFmDisconnect,
+    LastFmAnswered(Result<(), lastfm::ApiError>),
+    Scrobbled(Result<(), lastfm::ApiError>),
 }
 
 impl App {
@@ -230,6 +239,7 @@ impl App {
             immersive: false,
             media: media_keys::MediaKeys::start(),
             discord: discord::Discord::start(),
+            lastfm: scrobbler::LastFm::load(),
         }
     }
 }

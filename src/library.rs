@@ -457,7 +457,7 @@ fn accent_button_owned(label: String, message: Message) -> Element<'static, Mess
         .into()
 }
 
-fn accent_button(label: &str, message: Message) -> Element<'_, Message> {
+pub(crate) fn accent_button(label: &str, message: Message) -> Element<'_, Message> {
     button(text(label).size(14).color(theme::TEXT))
         .on_press(message)
         .padding([8, 22])
@@ -480,7 +480,7 @@ fn heading(label: &str) -> Element<'_, Message> {
         .into()
 }
 
-fn note<'a>(message: impl text::IntoFragment<'a>) -> Element<'a, Message> {
+pub(crate) fn note<'a>(message: impl text::IntoFragment<'a>) -> Element<'a, Message> {
     text(message).color(theme::TEXT_SECONDARY).into()
 }
 
