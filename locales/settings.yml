@@ -11,6 +11,7 @@ settings.title:
   pt-BR: Configurações
   ru: Настройки
   id: Setelan
+  it: Impostazioni
   de: Einstellungen
   ja: 設定
   ko: 설정
@@ -26,6 +27,7 @@ settings.appearance:
   pt-BR: Aparência
   ru: Оформление
   id: Tampilan
+  it: Aspetto
   de: Darstellung
   ja: 外観
   ko: 화면
@@ -41,6 +43,7 @@ settings.audio:
   pt-BR: Áudio
   ru: Звук
   id: Audio
+  it: Audio
   de: Audio
   ja: オーディオ
   ko: 오디오
@@ -56,6 +59,7 @@ settings.plugins:
   pt-BR: Plugins
   ru: Плагины
   id: Plugin
+  it: Plugin
   de: Plugins
   ja: プラグイン
   ko: 플러그인
@@ -71,6 +75,7 @@ settings.language:
   pt-BR: Idioma
   ru: Язык
   id: Bahasa
+  it: Lingua
   de: Sprache
   ja: 言語
   ko: 언어
@@ -86,6 +91,7 @@ settings.language_system:
   pt-BR: Sistema
   ru: Системный
   id: Sistem
+  it: Sistema
   de: System
   ja: システム
   ko: 시스템
@@ -101,6 +107,7 @@ settings.language_system_named:
   pt-BR: Sistema (%{name})
   ru: Системный (%{name})
   id: Sistem (%{name})
+  it: Sistema (%{name})
   de: System (%{name})
   ja: システム（%{name}）
   ko: 시스템 (%{name})
@@ -114,8 +121,9 @@ settings.language_note:
   fr: Les textes de YouTube Music (Explorer, les noms des mix) suivront au prochain démarrage.
   bn: YouTube Music-এর নিজস্ব লেখা (এক্সপ্লোর, মিক্সের নাম) পরের বার চালু করলে বদলাবে।
   pt-BR: Os textos do próprio YouTube Music (Explorar, os nomes dos mixes) mudam na próxima vez que abrir.
-  ru: Тексты самого YouTube Music (обзор, названия миксов) сменятся при следующем запуске.
+  ru: Тексты самого YouTube Music (Навигатор, названия миксов) сменятся при следующем запуске.
   id: Teks milik YouTube Music (Jelajahi, nama mix) ikut berubah saat dibuka berikutnya.
+  it: I testi di YouTube Music (Esplora, i nomi dei mix) si aggiorneranno al prossimo avvio.
   de: Die Texte von YouTube Music selbst (Entdecken, die Namen der Mixe) folgen beim nächsten Start.
   ja: YouTube Music 側の表示（探索、ミックス名）は次回の起動から切り替わります。
   ko: YouTube Music 자체의 텍스트(둘러보기, 믹스 이름)는 다음 실행부터 바뀝니다.
@@ -131,6 +139,7 @@ settings.theme:
   pt-BR: Tema
   ru: Тема
   id: Tema
+  it: Tema
   de: Design
   ja: テーマ
   ko: 테마
@@ -146,6 +155,7 @@ settings.accent:
   pt-BR: Cor de destaque
   ru: Акцентный цвет
   id: Warna aksen
+  it: Colore di risalto
   de: Akzentfarbe
   ja: アクセントカラー
   ko: 강조 색상
@@ -161,6 +171,7 @@ settings.accent_theme:
   pt-BR: Do tema
   ru: Из темы
   id: Dari tema
+  it: Dal tema
   de: Vom Design
   ja: テーマに合わせる
   ko: 테마에 맞춤
@@ -176,6 +187,7 @@ settings.accent_cover:
   pt-BR: Da capa
   ru: Из обложки
   id: Dari sampul
+  it: Dalla copertina
   de: Vom Cover
   ja: ジャケットに合わせる
   ko: 커버에 맞춤
@@ -189,8 +201,9 @@ settings.accent_cover_note:
   fr: L'accent change avec la pochette de chaque titre.
   bn: প্রতিটি গানের কভারের সাথে অ্যাকসেন্ট বদলায়।
   pt-BR: O destaque muda com a capa de cada música.
-  ru: Акцент меняется вместе с обложкой каждой песни.
+  ru: Акцентный цвет меняется вместе с обложкой каждого трека.
   id: Aksen berubah mengikuti sampul setiap lagu.
+  it: Il colore di risalto cambia con la copertina di ogni brano.
   de: Die Akzentfarbe wechselt mit dem Cover jedes Songs.
   ja: アクセントカラーが曲のジャケットに合わせて変わります。
   ko: 강조 색상이 곡마다 커버에 맞춰 바뀝니다.
@@ -204,8 +217,9 @@ settings.custom_themes:
   fr: Thèmes personnalisés
   bn: নিজস্ব থিম
   pt-BR: Temas personalizados
-  ru: Свои темы
+  ru: Пользовательские темы
   id: Tema kustom
+  it: Temi personalizzati
   de: Eigene Designs
   ja: カスタムテーマ
   ko: 사용자 테마
@@ -219,8 +233,9 @@ settings.custom_themes_note:
   fr: 'Ajoutez vos thèmes en fichiers JSON dans %{folder}. Les couleurs sont au format #rrggbb ; celles qui manquent viennent du thème sombre d''Encore, ou de Daylight avec "light": true.'
   bn: 'নিজের থিম JSON ফাইল হিসেবে %{folder}-এ যোগ করুন। রং #rrggbb আকারে; বাদ পড়া রংগুলো Encore-এর ডার্ক থিম থেকে, বা "light": true থাকলে Daylight থেকে আসে।'
   pt-BR: 'Adicione seus temas como arquivos JSON em %{folder}. As cores são #rrggbb; as que faltarem vêm do tema escuro do Encore, ou do Daylight com "light": true.'
-  ru: 'Добавляйте свои темы как JSON-файлы в %{folder}. Цвета — #rrggbb; недостающие берутся из тёмной темы Encore или из Daylight при "light": true.'
+  ru: 'Добавляйте свои темы в виде JSON-файлов в папку %{folder}. Цвета — в формате #rrggbb; недостающие берутся из тёмной темы Encore или из Daylight при "light": true.'
   id: 'Tambahkan tema sendiri sebagai file JSON di %{folder}. Warna ditulis #rrggbb; yang tidak diisi diambil dari tema gelap Encore, atau dari Daylight dengan "light": true.'
+  it: 'Aggiungi i tuoi temi come file JSON in %{folder}. I colori sono nel formato #rrggbb; quelli mancanti vengono presi dal tema scuro di Encore, o da Daylight con "light": true.'
   de: 'Lege eigene Designs als JSON-Dateien in %{folder} ab. Farben sind #rrggbb; fehlende kommen aus Encores dunklem Design oder mit "light": true aus Daylight.'
   ja: '独自のテーマは JSON ファイルとして %{folder} に置くと追加できます。色は #rrggbb 形式で、省いた色には Encore のダークテーマ（"light": true なら Daylight）の色が使われます。'
   ko: '%{folder}에 JSON 파일을 넣으면 사용자 테마를 추가할 수 있습니다. 색상은 #rrggbb 형식이며, 생략한 색은 Encore의 어두운 테마("light": true이면 Daylight)에서 가져옵니다.'
@@ -236,6 +251,7 @@ settings.reload_themes:
   pt-BR: Recarregar temas
   ru: Перезагрузить темы
   id: Muat ulang tema
+  it: Ricarica i temi
   de: Designs neu laden
   ja: テーマを再読み込み
   ko: 테마 다시 불러오기

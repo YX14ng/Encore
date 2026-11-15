@@ -18,8 +18,9 @@ pub struct Language {
 }
 
 /// The languages offered: the ten most spoken in the world (counting second-language
-/// speakers), Traditional Chinese, and the languages of three of the largest music markets.
-pub const LANGUAGES: [Language; 14] = [
+/// speakers), Traditional Chinese, the languages of three of the largest music markets, and
+/// Italian.
+pub const LANGUAGES: [Language; 15] = [
     lang("en", "English", "en"),
     lang("zh-CN", "简体中文", "zh-CN"),
     lang("zh-TW", "繁體中文", "zh-TW"),
@@ -32,6 +33,7 @@ pub const LANGUAGES: [Language; 14] = [
     lang("ru", "Русский", "ru"),
     lang("id", "Bahasa Indonesia", "id"),
     lang("de", "Deutsch", "de"),
+    lang("it", "Italiano", "it"),
     lang("ja", "日本語", "ja"),
     lang("ko", "한국어", "ko"),
 ];
