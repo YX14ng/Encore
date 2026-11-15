@@ -5,11 +5,80 @@
 //! with yt-dlp first and then played from the cache.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
+use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
 /// Audio formats yt-dlp may leave in the cache, in order of preference.
 const AUDIO_EXTENSIONS: [&str; 4] = ["webm", "opus", "m4a", "mp4"];
+
+/// How long the session cookies handed to yt-dlp say they last, in seconds. The file is deleted
+/// once yt-dlp is done, so this only has to outlast one download.
+const COOKIE_LIFETIME: u64 = 24 * 60 * 60;
+
+/// How good the downloaded audio is.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Quality {
+    /// Opus around 50 to 70 kbit/s, for slow or metered connections.
+    Low,
+    /// The best audio YouTube gives anyone: Opus around 130 kbit/s.
+    #[default]
+    Normal,
+    /// The best audio the signed-in account gets: Opus around 256 kbit/s with YouTube Music
+    /// Premium, else the same as Normal. Downloads carry the session.
+    High,
+}
+
+impl Quality {
+    /// Every quality, in the order the audio screen shows them.
+    pub const ALL: [Self; 3] = [Self::Low, Self::Normal, Self::High];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Low => "Low",
+            Self::Normal => "Normal",
+            Self::High => "High (Premium)",
+        }
+    }
+
+    /// The cache folder for this quality, so songs of one quality are not played for another.
+    fn cache_folder(self) -> &'static str {
+        match self {
+            Self::Low => "audio-low",
+            Self::Normal => "audio",
+            Self::High => "audio-high",
+        }
+    }
+
+    /// yt-dlp's format choice. Normal and High ask for the same thing; with the session,
+    /// YouTube offers Premium accounts a better format, and yt-dlp takes it.
+    fn format(self) -> &'static str {
+        match self {
+            Self::Low => "bestaudio[ext=webm][abr<=80]/worstaudio",
+            Self::Normal | Self::High => "bestaudio[ext=webm]/bestaudio",
+        }
+    }
+}
+
+/// Where a song is downloaded from: the quality, and for High the session's `Cookie` header.
+/// High without a session downloads Normal.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Source {
+    pub quality: Quality,
+    pub cookie: Option<String>,
+}
+
+impl Source {
+    /// The quality that is really downloaded.
+    fn quality(&self) -> Quality {
+        match (self.quality, &self.cookie) {
+            (Quality::High, None) => Quality::Normal,
+            (quality, _) => quality,
+        }
+    }
+}
 
 /// Where Encore keeps its cache: `$XDG_CACHE_HOME/encore`, or `~/.cache/encore`.
 pub fn cache_dir() -> PathBuf {
@@ -28,22 +97,70 @@ pub fn find_cached(dir: &Path, id: &str) -> Option<PathBuf> {
         .find(|path| path.exists())
 }
 
-/// The yt-dlp arguments that download the best audio of `id` into `dir` and print the file path.
-pub fn ytdlp_args(id: &str, dir: &Path) -> Vec<String> {
+/// The yt-dlp arguments that download the audio of `id` in `quality` into `dir` and print the
+/// file path, with the session in `cookies` (a cookies.txt) if given.
+pub fn ytdlp_args(id: &str, dir: &Path, quality: Quality, cookies: Option<&Path>) -> Vec<String> {
     let template = dir.join("%(id)s.%(ext)s");
-    vec![
+    let mut args = vec![
         "--no-config".to_string(),
         "--no-playlist".to_string(),
         "--quiet".to_string(),
         "--no-warnings".to_string(),
         "-f".to_string(),
-        "bestaudio[ext=webm]/bestaudio".to_string(),
+        quality.format().to_string(),
         "-o".to_string(),
         template.to_string_lossy().into_owned(),
         "--print".to_string(),
         "after_move:filepath".to_string(),
-        format!("https://music.youtube.com/watch?v={id}"),
-    ]
+    ];
+    if let Some(cookies) = cookies {
+        args.push("--cookies".to_string());
+        args.push(cookies.to_string_lossy().into_owned());
+    }
+    args.push(format!("https://music.youtube.com/watch?v={id}"));
+    args
+}
+
+/// A Netscape cookies file (what yt-dlp reads) with the cookies of a `Cookie` header, for
+/// `.youtube.com`, valid until `expires` (seconds since 1970).
+fn cookies_txt(header: &str, expires: u64) -> String {
+    let mut file = String::from("# Netscape HTTP Cookie File\n");
+    for pair in header.split(';') {
+        if let Some((name, value)) = pair.trim().split_once('=')
+            && !name.is_empty()
+        {
+            file.push_str(&format!(
+                ".youtube.com\tTRUE\t/\tTRUE\t{expires}\t{name}\t{value}\n"
+            ));
+        }
+    }
+    file
+}
+
+/// Writes the session for one yt-dlp run into a file only the user can read. The caller
+/// deletes it once yt-dlp is done.
+fn write_cookies(header: &str) -> Result<PathBuf, String> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+
+    static RUNS: AtomicU64 = AtomicU64::new(0);
+    let dir = crate::account::data_dir().join("yt-dlp");
+    crate::account::private_dir(&dir)?;
+    let run = RUNS.fetch_add(1, Ordering::Relaxed);
+    let path = dir.join(format!("cookies-{}-{run}.txt", std::process::id()));
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |since| since.as_secs());
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(&path)
+        .map_err(|error| format!("could not write the session for yt-dlp: {error}"))?;
+    file.write_all(cookies_txt(header, now + COOKIE_LIFETIME).as_bytes())
+        .map_err(|error| format!("could not write the session for yt-dlp: {error}"))?;
+    Ok(path)
 }
 
 /// Where downloaded (offline) songs live: kept until the user removes them.
@@ -53,11 +170,14 @@ pub fn offline_dir() -> PathBuf {
 
 /// Returns the audio of `id`: the offline copy if there is one, else the cache, else a new
 /// download into the cache.
-pub async fn audio(id: String) -> Result<PathBuf, String> {
+pub async fn audio(id: String, source: Source) -> Result<PathBuf, String> {
     if let Some(path) = find_cached(&offline_dir(), &id) {
         return Ok(path);
     }
-    audio_into(id, cache_dir().join("audio")).await
+    let quality = source.quality();
+    let dir = cache_dir().join(quality.cache_folder());
+    let cookie = source.cookie.filter(|_| quality == Quality::High);
+    audio_into(id, dir, quality, cookie.as_deref()).await
 }
 
 /// Keeps a song offline: copies it from the cache if it is there, else downloads it.
@@ -69,7 +189,11 @@ pub async fn keep_offline(id: String) -> Result<PathBuf, String> {
     tokio::fs::create_dir_all(&offline)
         .await
         .map_err(|error| error.to_string())?;
-    if let Some(cached) = find_cached(&cache_dir().join("audio"), &id) {
+    // The best copy already in the cache, whatever quality is chosen now.
+    let cached = [Quality::High, Quality::Normal, Quality::Low]
+        .into_iter()
+        .find_map(|quality| find_cached(&cache_dir().join(quality.cache_folder()), &id));
+    if let Some(cached) = cached {
         let name = cached.file_name().ok_or("bad cache file name")?;
         let target = offline.join(name);
         tokio::fs::copy(&cached, &target)
@@ -77,11 +201,16 @@ pub async fn keep_offline(id: String) -> Result<PathBuf, String> {
             .map_err(|error| error.to_string())?;
         return Ok(target);
     }
-    audio_into(id, offline).await
+    audio_into(id, offline, Quality::Normal, None).await
 }
 
 /// Downloads the audio of `id` into `dir` unless it is already there.
-async fn audio_into(id: String, dir: PathBuf) -> Result<PathBuf, String> {
+async fn audio_into(
+    id: String,
+    dir: PathBuf,
+    quality: Quality,
+    cookie: Option<&str>,
+) -> Result<PathBuf, String> {
     tokio::fs::create_dir_all(&dir)
         .await
         .map_err(|error| error.to_string())?;
@@ -89,11 +218,16 @@ async fn audio_into(id: String, dir: PathBuf) -> Result<PathBuf, String> {
         return Ok(path);
     }
 
+    let cookies = cookie.map(write_cookies).transpose()?;
     let output = Command::new("yt-dlp")
-        .args(ytdlp_args(&id, &dir))
+        .args(ytdlp_args(&id, &dir, quality, cookies.as_deref()))
         .output()
-        .await
-        .map_err(|error| format!("could not run yt-dlp: {error}"))?;
+        .await;
+    if let Some(cookies) = &cookies {
+        // yt-dlp writes the cookies back when it ends; the session must not linger on disk.
+        let _ = std::fs::remove_file(cookies);
+    }
+    let output = output.map_err(|error| format!("could not run yt-dlp: {error}"))?;
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
     }
@@ -139,13 +273,53 @@ mod tests {
 
     #[test]
     fn asks_yt_dlp_for_audio_only() {
-        let args = ytdlp_args("abc", Path::new("/cache"));
+        let args = ytdlp_args("abc", Path::new("/cache"), Quality::Normal, None);
         assert!(args.contains(&"bestaudio[ext=webm]/bestaudio".to_string()));
         assert!(args.contains(&"/cache/%(id)s.%(ext)s".to_string()));
+        assert!(!args.contains(&"--cookies".to_string()));
         assert_eq!(
             args.last().map(String::as_str),
             Some("https://music.youtube.com/watch?v=abc")
         );
+        let low = ytdlp_args("abc", Path::new("/cache"), Quality::Low, None);
+        assert!(low.contains(&"bestaudio[ext=webm][abr<=80]/worstaudio".to_string()));
+    }
+
+    #[test]
+    fn high_quality_carries_the_session() {
+        let args = ytdlp_args(
+            "abc",
+            Path::new("/c"),
+            Quality::High,
+            Some(Path::new("/s.txt")),
+        );
+        let at = args
+            .iter()
+            .position(|arg| arg == "--cookies")
+            .expect("--cookies");
+        assert_eq!(args[at + 1], "/s.txt");
+        let signed_out = Source {
+            quality: Quality::High,
+            cookie: None,
+        };
+        assert_eq!(signed_out.quality(), Quality::Normal);
+    }
+
+    #[test]
+    fn writes_the_session_as_a_cookies_file() {
+        let file = cookies_txt("SID=a=b; HSID=c;broken; =x", 99);
+        assert_eq!(
+            file,
+            "# Netscape HTTP Cookie File\n\
+             .youtube.com\tTRUE\t/\tTRUE\t99\tSID\ta=b\n\
+             .youtube.com\tTRUE\t/\tTRUE\t99\tHSID\tc\n"
+        );
+    }
+
+    #[test]
+    fn settings_name_the_quality_in_lowercase() {
+        let json = serde_json::to_string(&Quality::High).expect("json");
+        assert_eq!(json, r#""high""#);
     }
 
     #[test]
@@ -157,6 +331,65 @@ mod tests {
         std::fs::write(dir.join("abc.webm"), b"done").expect("final file");
         assert_eq!(find_cached(&dir, "abc"), Some(dir.join("abc.webm")));
         std::fs::remove_dir_all(&dir).expect("cleanup");
+    }
+
+    /// Downloads the bitrate of a song in `source`'s quality into a fresh folder, measured
+    /// like the player's badge.
+    async fn kbps_of(id: &str, source: &Source) -> u32 {
+        let dir = std::env::temp_dir().join(format!("encore-quality-{}", std::process::id()));
+        let cookie = source.cookie.as_deref();
+        let path = audio_into(id.to_string(), dir.clone(), source.quality(), cookie)
+            .await
+            .expect("download");
+        let bytes = std::fs::metadata(&path).expect("file").len();
+        let seconds = crate::youtube::client()
+            .expect("client")
+            .query()
+            .music_details(id)
+            .await
+            .ok()
+            .and_then(|details| details.track.duration)
+            .expect("duration");
+        let _ = std::fs::remove_dir_all(dir);
+        (bytes as f64 * 8.0 / f64::from(seconds) / 1000.0).round() as u32
+    }
+
+    /// Downloads a song in Low, signed out:
+    /// `cargo test -- --ignored downloads_low_quality`.
+    #[tokio::test]
+    #[ignore = "downloads from YouTube"]
+    async fn downloads_low_quality() {
+        let kbps = kbps_of("lYBUbBu4W08", &Source::default()).await;
+        let low = Source {
+            quality: Quality::Low,
+            cookie: None,
+        };
+        let low_kbps = kbps_of("lYBUbBu4W08", &low).await;
+        assert!(
+            low_kbps < 90 && kbps > 100,
+            "low {low_kbps} kbit/s, normal {kbps} kbit/s"
+        );
+    }
+
+    /// Downloads a song in High with the saved session. It uses the account, so run it only
+    /// with the user's go-ahead: `cargo test -- --ignored downloads_high_quality`.
+    #[tokio::test]
+    #[ignore = "downloads with the signed-in session"]
+    async fn downloads_high_quality() {
+        let cookie = crate::youtube::client()
+            .expect("client")
+            .user_auth_cookie_header();
+        assert!(cookie.is_some(), "not signed in");
+        let high = Source {
+            quality: Quality::High,
+            cookie,
+        };
+        let kbps = kbps_of("lYBUbBu4W08", &high).await;
+        let leftovers = std::fs::read_dir(crate::account::data_dir().join("yt-dlp"))
+            .map(|dir| dir.count())
+            .unwrap_or(0);
+        assert_eq!(leftovers, 0, "a cookies file stayed behind ({kbps} kbit/s)");
+        assert!(kbps > 200, "{kbps} kbit/s: is the account Premium?");
     }
 
     /// Copies a cached song into the offline folder and removes it again:
@@ -180,7 +413,7 @@ mod tests {
         let path = keep_offline(id.clone()).await.expect("keep offline");
         assert!(path.starts_with(offline_dir()));
         assert_eq!(
-            audio(id).await.expect("audio"),
+            audio(id, Source::default()).await.expect("audio"),
             path,
             "offline copy is not preferred"
         );

@@ -451,7 +451,7 @@ mod tests {
         assert!(page.top.is_some(), "no top result");
         assert!(!page.albums.is_empty(), "no albums");
         let first = page.songs.first().expect("at least one song");
-        let path = crate::download::audio(first.id.clone())
+        let path = crate::download::audio(first.id.clone(), Default::default())
             .await
             .expect("download");
         let audio = crate::audio::Audio::muted().expect("mpv");

@@ -46,10 +46,14 @@ pub struct SongFile {
     pub trim: Trim,
 }
 
-/// Downloads song `id` (or takes it from the cache) and, with `skip_silence`, finds the silence
-/// at its start and end. Without ffmpeg the song simply plays whole.
-pub async fn song_file(id: String, skip_silence: bool) -> Result<SongFile, String> {
-    let path = download::audio(id).await?;
+/// Downloads song `id` from `source` (or takes it from the cache) and, with `skip_silence`,
+/// finds the silence at its start and end. Without ffmpeg the song simply plays whole.
+pub async fn song_file(
+    id: String,
+    source: download::Source,
+    skip_silence: bool,
+) -> Result<SongFile, String> {
+    let path = download::audio(id, source).await?;
     let trim = if skip_silence {
         find(&path).await
     } else {

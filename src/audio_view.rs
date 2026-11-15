@@ -1,4 +1,5 @@
-//! The audio tab of the settings: the sound output, equalizer with presets, compressor, volume
+//! The audio tab of the settings: the sound output, download quality, equalizer with presets,
+//! compressor, volume
 //! normalization, silence skipping, playback speed and crossfade. Opened with the equalizer
 //! button in the player bar.
 
@@ -13,6 +14,7 @@ use crate::audio_settings::{
     AudioChange, AudioSettings, BANDS, Compressor, MAX_CROSSFADE, MAX_GAIN, MAX_SPEED, MIN_SPEED,
     PRESETS,
 };
+use crate::download::Quality;
 use crate::{Message, theme};
 
 /// The tab's content: `devices` are the outputs to pick from, and `error` is what mpv said when
@@ -25,6 +27,7 @@ pub fn view<'a>(
     column![]
         .push(error.map(|error| text(error).color(theme::accent())))
         .push(output(settings, devices))
+        .push(quality(settings))
         .push(equalizer(settings))
         .push(compressor(settings))
         .push(normalization(settings))
@@ -134,6 +137,35 @@ fn choice<'a>(label: String, selected: bool, message: Message) -> Element<'a, Me
             style
         })
         .into()
+}
+
+fn quality(settings: &AudioSettings) -> Element<'_, Message> {
+    let choices = Row::with_children(Quality::ALL.into_iter().map(|quality| {
+        chip(
+            quality.label(),
+            settings.quality == quality,
+            change(AudioChange::Quality(quality)),
+        )
+    }))
+    .spacing(8)
+    .wrap();
+    let explanation = match settings.quality {
+        Quality::Low => "Opus around 60 kbit/s, for slow or metered connections.",
+        Quality::Normal => "Opus around 130 kbit/s, the best YouTube gives without Premium.",
+        Quality::High => {
+            "Opus around 256 kbit/s with YouTube Music Premium (signed in); without Premium it \
+             is the same as Normal. yt-dlp downloads with your session, which YouTube may \
+             notice: yt-dlp warns that accounts used this way can get blocked for a while."
+        }
+    };
+    column![
+        heading("Audio quality", 16.0),
+        choices,
+        note(explanation),
+        note("Takes effect from the next song that downloads."),
+    ]
+    .spacing(10)
+    .into()
 }
 
 fn compressor(settings: &AudioSettings) -> Element<'_, Message> {

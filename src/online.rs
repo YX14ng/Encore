@@ -62,6 +62,8 @@ pub struct Online {
     autoplay: bool,
     /// Whether songs start and end where their music does.
     skip_silence: bool,
+    /// How good the downloaded audio is.
+    quality: download::Quality,
     /// The song whose radio autoplay last asked for, so it is asked only once.
     radio_for: Option<String>,
     /// The covers the user picked for playlists, by playlist id.
@@ -98,6 +100,7 @@ impl Online {
             queued: None,
             autoplay: settings.autoplay,
             skip_silence: settings.skip_silence,
+            quality: settings.quality,
             radio_for: None,
             covers: crate::playlists::covers::load(),
         }
@@ -449,7 +452,7 @@ impl Online {
             .map_or_else(Task::none, |next| {
                 let id = next.id.clone();
                 Task::perform(
-                    silence::song_file(id.clone(), self.skip_silence),
+                    silence::song_file(id.clone(), self.source(), self.skip_silence),
                     move |song| Message::Prefetched(id.clone(), song),
                 )
             })
@@ -542,10 +545,22 @@ impl Online {
         self.mixer.as_ref().map(Mixer::devices).unwrap_or_default()
     }
 
-    /// Applies the audio screen's settings to mpv. Skipping silence starts with the next song
-    /// that downloads.
+    /// Where songs are downloaded from: the chosen quality, with the session for High.
+    fn source(&self) -> download::Source {
+        let cookie = (self.quality == download::Quality::High)
+            .then(|| self.client.as_ref()?.user_auth_cookie_header())
+            .flatten();
+        download::Source {
+            quality: self.quality,
+            cookie,
+        }
+    }
+
+    /// Applies the audio screen's settings to mpv. Skipping silence and the quality start with
+    /// the next song that downloads.
     pub fn apply_audio(&mut self, settings: &AudioSettings) -> Result<(), String> {
         self.skip_silence = settings.skip_silence;
+        self.quality = settings.quality;
         match &mut self.mixer {
             Some(mixer) => mixer.apply(settings),
             None => Ok(()),
@@ -561,9 +576,10 @@ impl Online {
         self.loading = Some(id.clone());
         // The song playing now must not go on into the queued one while this one downloads.
         self.forget_queued();
-        Task::perform(silence::song_file(id, self.skip_silence), move |song| {
-            Message::AudioReady(index, song)
-        })
+        Task::perform(
+            silence::song_file(id, self.source(), self.skip_silence),
+            move |song| Message::AudioReady(index, song),
+        )
     }
 
     /// Starts the downloaded file. Returns the song that started, and prefetches the next one.

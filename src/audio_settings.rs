@@ -1,12 +1,13 @@
 //! The player's settings that last between sessions: volume, shuffle and repeat, and the audio
-//! screen's sound output, equalizer, compressor, volume normalization, silence skipping, speed
-//! and crossfade. Kept in
+//! screen's sound output, download quality, equalizer, compressor, volume normalization,
+//! silence skipping, speed and crossfade. Kept in
 //! `$XDG_CONFIG_HOME/encore/audio.json` (or `~/.config/encore/audio.json`).
 
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use crate::download::Quality;
 use crate::queue::Repeat;
 
 /// The equalizer's band centers in hertz.
@@ -112,6 +113,7 @@ pub enum AudioChange {
     Normalize(bool),
     Compressor(Compressor),
     SkipSilence(bool),
+    Quality(Quality),
     Speed(f32),
     KeepPitch(bool),
     /// Seconds.
@@ -137,6 +139,8 @@ pub struct AudioSettings {
     pub skip_silence: bool,
     /// mpv's name for the sound output; `None` is the system's default.
     pub output: Option<String>,
+    /// How good the downloaded audio is.
+    pub quality: Quality,
     /// 1.0 is normal speed.
     pub speed: f32,
     /// Keeps voices at their pitch when the speed changes.
@@ -160,6 +164,7 @@ impl Default for AudioSettings {
             compressor: Compressor::Off,
             skip_silence: false,
             output: None,
+            quality: Quality::Normal,
             speed: 1.0,
             keep_pitch: true,
             crossfade: 0,
@@ -214,6 +219,7 @@ impl AudioSettings {
             AudioChange::Normalize(on) => self.normalize = on,
             AudioChange::Compressor(strength) => self.compressor = strength,
             AudioChange::SkipSilence(on) => self.skip_silence = on,
+            AudioChange::Quality(quality) => self.quality = quality,
             AudioChange::Speed(speed) => {
                 self.speed = speed.clamp(MIN_SPEED, MAX_SPEED);
                 return false;
