@@ -14,10 +14,14 @@ use std::process::Stdio;
 use std::rc::Rc;
 
 use gtk::prelude::*;
+use rust_i18n::t;
 use webkit2gtk::{CookieManagerExt, LoadEvent, WebContext, WebViewExt, WebsiteDataManagerExt};
 
 /// The command line flag that makes Encore show the sign-in window instead of the player.
 pub const FLAG: &str = "--sign-in-window";
+
+/// The interface language the window speaks, passed on from the Encore that opens it.
+const LANGUAGE_VAR: &str = "ENCORE_SIGN_IN_LANGUAGE";
 
 /// Google's sign-in page, going on to YouTube Music through YouTube's own sign-in step (which
 /// sets the youtube.com cookies), as music.youtube.com's "Sign in" button does.
@@ -31,21 +35,22 @@ const MUSIC_URL: &str = "https://music.youtube.com/";
 /// YouTube cookies as a `Cookie` header line.
 pub async fn sign_in() -> Result<String, String> {
     let encore = std::env::current_exe()
-        .map_err(|error| format!("could not find Encore's own program: {error}"))?;
+        .map_err(|error| t!("sign_in_window.no_program", error = error).into_owned())?;
     let output = tokio::process::Command::new(encore)
         .arg(FLAG)
+        .env(LANGUAGE_VAR, &*rust_i18n::locale())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .kill_on_drop(true)
         .output()
         .await
-        .map_err(|error| format!("could not open the sign-in window: {error}"))?;
+        .map_err(|error| t!("sign_in_window.open_failed", error = error).into_owned())?;
     let header = String::from_utf8_lossy(&output.stdout).trim().to_string();
     match output.status.code() {
         Some(0) if has_session(&header) => Ok(header),
-        Some(0) | Some(1) => Err("the sign-in window was closed before signing in".to_string()),
-        _ => Err("the sign-in window could not start (is WebKitGTK installed?)".to_string()),
+        Some(0) | Some(1) => Err(t!("sign_in_window.closed").into_owned()),
+        _ => Err(t!("sign_in_window.no_webkit").into_owned()),
     }
 }
 
@@ -56,11 +61,14 @@ pub fn run() -> i32 {
     if std::io::stdout().is_terminal() || gtk::init().is_err() {
         return 2;
     }
+    if let Ok(language) = std::env::var(LANGUAGE_VAR) {
+        rust_i18n::set_locale(&language);
+    }
     let signed_in = Rc::new(Cell::new(false));
     let context = WebContext::new_ephemeral();
     let view = webkit2gtk::WebView::with_context(&context);
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
-    window.set_title("Sign in to YouTube Music \u{2014} Encore");
+    window.set_title(&t!("sign_in_window.title"));
     window.set_default_size(480, 720);
     window.add(&view);
     window.connect_destroy(|_| gtk::main_quit());

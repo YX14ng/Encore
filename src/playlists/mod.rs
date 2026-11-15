@@ -11,6 +11,7 @@ use std::time::Duration;
 
 use iced::Task;
 use iced::widget::image::Handle;
+use rust_i18n::t;
 
 use crate::library::Account;
 use crate::sidebar::NavItem;
@@ -179,7 +180,7 @@ impl App {
                 Ok(entry) => {
                     self.dialog = None;
                     self.online.song_added(&id, SearchTrack { entry, ..song });
-                    return self.show_toast(format!("Added to {title}"));
+                    return self.show_toast(t!("playlists.added_to", title = title).into_owned());
                 }
                 Err(error) => match &mut self.dialog {
                     Some(dialog @ Dialog::AddTo { .. }) => dialog.fail(error),
@@ -188,7 +189,7 @@ impl App {
             },
             Event::Remove { id, song_id, entry } => {
                 let Some(client) = self.account_client() else {
-                    return self.show_toast("Sign in to change your playlists.".to_string());
+                    return self.show_toast(t!("playlists.sign_in_to_change").into_owned());
                 };
                 return Task::perform(
                     edit::remove(client, id.clone(), song_id.clone(), entry),
@@ -209,7 +210,7 @@ impl App {
                 return match result {
                     Ok(()) => {
                         self.online.song_removed(&id, &song_id);
-                        self.show_toast("Removed from the playlist".to_string())
+                        self.show_toast(t!("playlists.removed").into_owned())
                     }
                     Err(error) => self.show_toast(error),
                 };
@@ -236,7 +237,7 @@ impl App {
                 Ok(cover) => {
                     self.online.set_cover(id, Some(cover));
                     self.dialog = None;
-                    return self.show_toast("Cover changed".to_string());
+                    return self.show_toast(t!("playlists.cover_changed").into_owned());
                 }
                 Err(error) => {
                     if let Some(dialog) = &mut self.dialog {
@@ -297,11 +298,11 @@ impl App {
         }
         let title = name.trim().to_string();
         if title.is_empty() {
-            *error = Some("Give the playlist a name.".to_string());
+            *error = Some(t!("playlists.name_needed").into_owned());
             return Task::none();
         }
         let Some(client) = client else {
-            *error = Some("Sign in to make playlists.".to_string());
+            *error = Some(t!("playlists.sign_in_to_make").into_owned());
             return Task::none();
         };
         *busy = true;
@@ -344,17 +345,17 @@ impl App {
         let Account::SignedIn(data) = &mut self.account else {
             return Task::none();
         };
-        let owner = data
-            .profile
-            .as_ref()
-            .map_or_else(String::new, |profile| format!(" \u{b7} {}", profile.name));
+        let subtitle = data.profile.as_ref().map_or_else(
+            || t!("playlists.tile_subtitle"),
+            |profile| t!("playlists.tile_subtitle_owner", owner = profile.name),
+        );
         data.playlists.insert(
             0,
             Tile {
                 kind: TileKind::Playlist,
                 id: id.clone(),
                 title: title.clone(),
-                subtitle: format!("Playlist{owner}"),
+                subtitle: subtitle.into_owned(),
                 image_url: None,
             },
         );
@@ -365,11 +366,11 @@ impl App {
             self.sidebar.selected = NavItem::Playlist(index + 1);
         }
         if with_song {
-            self.show_toast(format!("Added to {title}"))
+            self.show_toast(t!("playlists.added_to", title = title).into_owned())
         } else {
             Task::batch([
                 self.select(NavItem::Playlist(0)),
-                self.show_toast(format!("Created {title}")),
+                self.show_toast(t!("playlists.created", title = title).into_owned()),
             ])
         }
     }
@@ -383,7 +384,7 @@ impl App {
             return Task::none();
         }
         let Some(client) = client else {
-            *error = Some("Sign in to add songs to your playlists.".to_string());
+            *error = Some(t!("playlists.sign_in_to_add").into_owned());
             return Task::none();
         };
         *busy = true;
@@ -416,7 +417,7 @@ impl App {
         };
         let typed = path.trim();
         if typed.is_empty() {
-            *error = Some("Pick an image, or paste the path of one.".to_string());
+            *error = Some(t!("playlists.pick_image").into_owned());
             return Task::none();
         }
         let source = expand_home(typed);

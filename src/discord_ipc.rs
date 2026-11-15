@@ -2,11 +2,13 @@
 //! Unix socket Discord opens. Encore speaks it itself because it must also read what Discord
 //! sends (join invites and requests), which `discord-rich-presence` cannot.
 
+use std::borrow::Cow;
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use rust_i18n::t;
 use serde_json::{Value, json};
 
 /// The biggest frame read from Discord; anything bigger means the stream is broken.
@@ -130,10 +132,10 @@ pub fn event(payload: &Value) -> Option<Event> {
             let name = ["global_name", "username"]
                 .iter()
                 .find_map(|key| user.get(*key)?.as_str())
-                .unwrap_or("Someone");
+                .map_or_else(|| t!("discord_ipc.someone"), Cow::Borrowed);
             Some(Event::JoinRequest {
                 user_id,
-                name: crate::together::protocol::cut(name),
+                name: crate::together::protocol::cut(&name),
             })
         }
         _ => None,

@@ -4,6 +4,7 @@
 use std::time::Instant;
 
 use iced::Task;
+use rust_i18n::t;
 
 use super::invite::{self, Invite};
 use super::protocol::{self, Track};
@@ -33,9 +34,8 @@ impl App {
                     Ok(address) => self.host_at(address, port, token),
                     Err(error) => {
                         together.session = Session::Off;
-                        together.error = Some(format!(
-                            "Could not find your public address ({error}). Type it in instead."
-                        ));
+                        together.error =
+                            Some(t!("together.address_not_found", error = error).into_owned());
                     }
                 }
             }
@@ -77,9 +77,7 @@ impl App {
         match event {
             discord_ipc::Event::Join { secret } => {
                 if matches!(self.together.session, Session::Hosting { .. }) {
-                    self.together.error = Some(
-                        "End your own session before joining a friend's from Discord.".to_string(),
-                    );
+                    self.together.error = Some(t!("together.end_before_joining").into_owned());
                     return Task::none();
                 }
                 self.screen = Screen::Together;
@@ -109,16 +107,12 @@ impl App {
             .ok()
             .filter(|port| *port > 0)
         else {
-            together.error = Some("The port must be a number from 1 to 65535.".to_string());
+            together.error = Some(t!("together.bad_port").into_owned());
             return Task::none();
         };
         let address = together.settings.address.trim().to_string();
         if !address.is_empty() && !invite::is_address(&address) {
-            together.error = Some(
-                "The address must be a host name, an IPv4 address or an IPv6 address in \
-                 brackets."
-                    .to_string(),
-            );
+            together.error = Some(t!("together.bad_address").into_owned());
             return Task::none();
         }
         let token = match invite::new_token() {
@@ -274,7 +268,7 @@ async fn public_address() -> Result<String, String> {
     let ip = text
         .trim()
         .parse::<std::net::IpAddr>()
-        .map_err(|_| "the answer was not an address".to_string())?;
+        .map_err(|_| t!("together.not_an_address").into_owned())?;
     Ok(invite::address_of(ip))
 }
 

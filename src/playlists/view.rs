@@ -6,6 +6,7 @@ use iced::widget::{
     text_input,
 };
 use iced::{Center, Color, Element, Fill, Font, border};
+use rust_i18n::t;
 
 use super::{Dialog, Event, Privacy};
 use crate::search::{Shared, cover_picture};
@@ -91,11 +92,15 @@ fn new_playlist<'a>(
         )
     }))
     .spacing(8);
-    let create = if busy { "Creating\u{2026}" } else { "Create" };
-    column![heading("New playlist")]
-        .push(song.map(|title| note(format!("With \u{201c}{title}\u{201d} in it."))))
+    let create = if busy {
+        t!("playlists.creating")
+    } else {
+        t!("playlists.create")
+    };
+    column![heading(t!("playlists.new_playlist"))]
+        .push(song.map(|title| note(t!("playlists.with_song", title = title))))
         .push(
-            text_input("Name", name)
+            text_input(&t!("playlists.name"), name)
                 .on_input(|text| Message::Playlist(Event::NameChanged(text)))
                 .on_submit(Message::Playlist(Event::Create))
                 .padding([8, 12])
@@ -103,7 +108,10 @@ fn new_playlist<'a>(
         )
         .push(privacy_chips)
         .push(actions(vec![
-            secondary("Cancel", Some(Message::Playlist(Event::Close))),
+            secondary(
+                t!("playlists.cancel"),
+                Some(Message::Playlist(Event::Close)),
+            ),
             primary(create, (!busy).then_some(Message::Playlist(Event::Create))),
         ]))
 }
@@ -123,7 +131,7 @@ fn add_to<'a>(
             ))
             .center(40)
             .style(|_| container::background(theme::tint(0.08)).border(border::rounded(5))),
-            text("New playlist").size(14),
+            text(t!("playlists.new_playlist")).size(14),
         ]
         .spacing(12)
         .align_y(Center),
@@ -134,7 +142,7 @@ fn add_to<'a>(
     .style(|_, status| theme::flat_button(status, false));
 
     let list: Element<'a, Message> = if own.is_empty() {
-        note("You have no playlists of your own yet.".to_string()).into()
+        note(t!("playlists.no_own")).into()
     } else {
         let rows = own.into_iter().map(|tile| {
             button(
@@ -163,14 +171,14 @@ fn add_to<'a>(
     let list = container(list).max_height(320);
 
     column![
-        heading("Add to playlist"),
-        note(format!("\u{201c}{song}\u{201d}")),
+        heading(t!("playlists.add_to_playlist")),
+        note(t!("playlists.quoted", title = song)),
         new,
         list
     ]
-    .push(busy.then(|| note("Adding\u{2026}".to_string())))
+    .push(busy.then(|| note(t!("playlists.adding"))))
     .push(actions(vec![secondary(
-        "Cancel",
+        t!("playlists.cancel"),
         Some(Message::Playlist(Event::Close)),
     )]))
 }
@@ -179,21 +187,28 @@ fn cover<'a>(title: &'a str, path: &'a str, custom: bool, busy: bool) -> Column<
     let idle = |message: Event| (!busy).then_some(Message::Playlist(message));
     let mut buttons = Vec::new();
     if custom {
-        buttons.push(secondary("Use YouTube's", idle(Event::ResetCover)));
+        buttons.push(secondary(
+            t!("playlists.use_youtube"),
+            idle(Event::ResetCover),
+        ));
     }
-    buttons.push(secondary("Cancel", Some(Message::Playlist(Event::Close))));
+    buttons.push(secondary(
+        t!("playlists.cancel"),
+        Some(Message::Playlist(Event::Close)),
+    ));
     buttons.push(primary(
-        if busy { "Saving\u{2026}" } else { "Use image" },
+        if busy {
+            t!("playlists.saving")
+        } else {
+            t!("playlists.use_image")
+        },
         idle(Event::UseCover),
     ));
     column![
-        heading("Playlist cover"),
-        note(format!(
-            "A picture for \u{201c}{title}\u{201d}. It stays on this computer: YouTube Music \
-             keeps its own."
-        )),
-        secondary("Choose an image\u{2026}", idle(Event::BrowseCover)),
-        text_input("or paste the path of an image", path)
+        heading(t!("playlists.cover_title")),
+        note(t!("playlists.cover_note", title = title)),
+        secondary(t!("playlists.choose_image"), idle(Event::BrowseCover)),
+        text_input(&t!("playlists.paste_path"), path)
             .on_input(|text| Message::Playlist(Event::CoverPathChanged(text)))
             .on_submit(Message::Playlist(Event::UseCover))
             .padding([8, 12])
@@ -210,7 +225,10 @@ fn actions(buttons: Vec<Element<'_, Message>>) -> Element<'_, Message> {
         .into()
 }
 
-fn primary(label: &str, message: Option<Message>) -> Element<'_, Message> {
+fn primary<'a>(
+    label: impl text::IntoFragment<'a>,
+    message: Option<Message>,
+) -> Element<'a, Message> {
     button(text(label).size(14).color(Color::WHITE))
         .on_press_maybe(message)
         .padding([8, 18])
@@ -223,7 +241,10 @@ fn primary(label: &str, message: Option<Message>) -> Element<'_, Message> {
         .into()
 }
 
-fn secondary(label: &str, message: Option<Message>) -> Element<'_, Message> {
+fn secondary<'a>(
+    label: impl text::IntoFragment<'a>,
+    message: Option<Message>,
+) -> Element<'a, Message> {
     button(text(label).size(14))
         .on_press_maybe(message)
         .padding([8, 18])
@@ -235,7 +256,11 @@ fn secondary(label: &str, message: Option<Message>) -> Element<'_, Message> {
         .into()
 }
 
-fn chip(label: &str, selected: bool, message: Message) -> Element<'_, Message> {
+fn chip<'a>(
+    label: impl text::IntoFragment<'a>,
+    selected: bool,
+    message: Message,
+) -> Element<'a, Message> {
     button(text(label).size(13))
         .on_press(message)
         .padding([6, 14])
@@ -251,7 +276,7 @@ fn chip(label: &str, selected: bool, message: Message) -> Element<'_, Message> {
         .into()
 }
 
-fn heading(label: &str) -> Element<'_, Message> {
+fn heading<'a>(label: impl text::IntoFragment<'a>) -> Element<'a, Message> {
     text(label)
         .size(20)
         .font(Font {
@@ -261,7 +286,7 @@ fn heading(label: &str) -> Element<'_, Message> {
         .into()
 }
 
-fn note<'a>(message: String) -> iced::widget::Text<'a> {
+fn note<'a>(message: impl text::IntoFragment<'a>) -> iced::widget::Text<'a> {
     text(message).size(13).color(theme::text_secondary())
 }
 

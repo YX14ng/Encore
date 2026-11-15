@@ -4,6 +4,7 @@
 use std::time::Duration;
 
 use iced::futures::{SinkExt, Stream, channel::mpsc};
+use rust_i18n::t;
 use tokio::io::BufReader;
 use tokio::net::TcpStream;
 
@@ -44,8 +45,8 @@ async fn follow(config: &Config, output: &mut mpsc::Sender<Event>) -> String {
     let address = config.invite.socket_address();
     let stream = match tokio::time::timeout(CONNECT_TIMEOUT, TcpStream::connect(&address)).await {
         Ok(Ok(stream)) => stream,
-        Ok(Err(error)) => return format!("Could not reach the host: {error}."),
-        Err(_) => return "The host did not answer.".to_string(),
+        Ok(Err(error)) => return t!("together.unreachable", error = error).into_owned(),
+        Err(_) => return t!("together.no_answer").into_owned(),
     };
     let (read, mut write) = stream.into_split();
     let hello = ToHost::Hello {
@@ -53,7 +54,7 @@ async fn follow(config: &Config, output: &mut mpsc::Sender<Event>) -> String {
         name: config.name.clone(),
     };
     if let Err(error) = protocol::send(&mut write, &hello).await {
-        return format!("Lost the connection to the host: {error}.");
+        return t!("together.connection_lost", error = error).into_owned();
     }
     let mut reader = BufReader::new(read);
     loop {
@@ -63,8 +64,8 @@ async fn follow(config: &Config, output: &mut mpsc::Sender<Event>) -> String {
             },
             Ok(Some(ToGuest::State(state))) => Event::State(state),
             Ok(Some(ToGuest::Refused { reason })) => return protocol::cut(&reason),
-            Ok(None) => return "The host ended the session.".to_string(),
-            Err(error) => return format!("Lost the connection to the host: {error}."),
+            Ok(None) => return t!("together.host_ended").into_owned(),
+            Err(error) => return t!("together.connection_lost", error = error).into_owned(),
         };
         if output.send(event).await.is_err() {
             return String::new();

@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use iced::futures::{SinkExt, Stream, channel::mpsc};
+use rust_i18n::t;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::watch;
@@ -128,7 +129,7 @@ async fn bind(port: u16) -> Result<TcpListener, String> {
         Ok(listener) => Ok(listener),
         Err(_) => TcpListener::bind(("0.0.0.0", port))
             .await
-            .map_err(|error| format!("Could not open port {port}: {error}")),
+            .map_err(|error| t!("together.port_failed", port = port, error = error).into_owned()),
     }
 }
 

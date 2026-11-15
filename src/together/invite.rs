@@ -3,6 +3,8 @@
 
 use std::io::Read;
 
+use rust_i18n::t;
+
 /// The bytes of randomness in a token.
 const TOKEN_BYTES: usize = 16;
 /// Discord's limit for a join secret.
@@ -28,26 +30,26 @@ impl Invite {
     pub fn parse(text: &str) -> Result<Self, String> {
         let text = text.trim();
         if text.len() > MAX_LENGTH {
-            return Err("That invite is too long.".to_string());
+            return Err(t!("together.invite_too_long").into_owned());
         }
         let rest = text
             .strip_prefix(PREFIX)
-            .ok_or("That is not an Encore invite (it starts with \"encore:\").")?;
+            .ok_or_else(|| t!("together.not_an_invite").into_owned())?;
         let mut parts = rest.rsplitn(3, ':');
         let (Some(token), Some(port), Some(address)) = (parts.next(), parts.next(), parts.next())
         else {
-            return Err("That invite is incomplete.".to_string());
+            return Err(t!("together.invite_incomplete").into_owned());
         };
         if !is_token(token) {
-            return Err("The invite's token is broken.".to_string());
+            return Err(t!("together.invite_bad_token").into_owned());
         }
         let port = port
             .parse::<u16>()
             .ok()
             .filter(|port| *port != 0)
-            .ok_or("The invite's port is broken.")?;
+            .ok_or_else(|| t!("together.invite_bad_port").into_owned())?;
         if !is_address(address) {
-            return Err("The invite's address is broken.".to_string());
+            return Err(t!("together.invite_bad_address").into_owned());
         }
         Ok(Self {
             address: address.to_string(),
@@ -67,7 +69,7 @@ pub fn new_token() -> Result<String, String> {
     let mut bytes = [0u8; TOKEN_BYTES];
     std::fs::File::open("/dev/urandom")
         .and_then(|mut source| source.read_exact(&mut bytes))
-        .map_err(|error| format!("could not read random bytes: {error}"))?;
+        .map_err(|error| t!("together.no_random", error = error).into_owned())?;
     Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 

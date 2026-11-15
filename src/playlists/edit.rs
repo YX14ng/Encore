@@ -2,6 +2,7 @@
 //! taking one out. rustypipe only reads playlists, so these are the same InnerTube requests
 //! music.youtube.com makes, sent through rustypipe's authenticated `raw` call.
 
+use rust_i18n::t;
 use rustypipe::client::{ClientType, RustyPipe};
 use serde_json::{Value, json};
 
@@ -17,11 +18,11 @@ pub enum Privacy {
 impl Privacy {
     pub const ALL: [Privacy; 3] = [Privacy::Private, Privacy::Unlisted, Privacy::Public];
 
-    pub fn label(self) -> &'static str {
+    pub fn label(self) -> std::borrow::Cow<'static, str> {
         match self {
-            Privacy::Private => "Private",
-            Privacy::Unlisted => "Unlisted",
-            Privacy::Public => "Public",
+            Privacy::Private => t!("playlists.private"),
+            Privacy::Unlisted => t!("playlists.unlisted"),
+            Privacy::Public => t!("playlists.public"),
         }
     }
 
@@ -136,20 +137,26 @@ async fn send(rp: &RustyPipe, endpoint: &str, body: &Value) -> Result<Value, Str
         .await
         .map_err(|error| request_error(&error))?;
     serde_json::from_str(&response)
-        .map_err(|error| format!("YouTube's answer is not JSON: {error}"))
+        .map_err(|error| t!("playlists.not_json", error = error).into_owned())
 }
 
 /// What went wrong with a request, in words. YouTube answers 401 when the saved session no
 /// longer works (it expired, or the browser it came from signed out).
 fn request_error(error: &rustypipe::error::Error) -> String {
     match error {
-        rustypipe::error::Error::HttpStatus(401, _) => SESSION_EXPIRED.to_string(),
+        rustypipe::error::Error::HttpStatus(401, _) => session_expired(),
         error => error.to_string(),
     }
 }
 
+/// The English of `session_expired`, for callers that cannot translate yet.
 pub(crate) const SESSION_EXPIRED: &str =
     "Your YouTube Music session expired. Sign out and sign in again in Account.";
+
+/// What to say when YouTube no longer accepts the saved session, in the interface's language.
+pub(crate) fn session_expired() -> String {
+    t!("playlists.session_expired").into_owned()
+}
 
 /// A playlist's id without the "VL" its browse page adds.
 pub fn bare_id(playlist_id: &str) -> &str {
@@ -170,17 +177,14 @@ fn created_id(response: &Value) -> Result<String, String> {
         .and_then(Value::as_str)
         .filter(|id| !id.is_empty())
         .map(str::to_string)
-        .ok_or_else(|| error_message(response, "YouTube did not create the playlist"))
+        .ok_or_else(|| error_message(response, &t!("playlists.not_created")))
 }
 
 /// Whether an `edit_playlist` answer says the change was made.
 fn succeeded(response: &Value) -> Result<(), String> {
     match response.get("status").and_then(Value::as_str) {
         Some("STATUS_SUCCEEDED") => Ok(()),
-        _ => Err(error_message(
-            response,
-            "YouTube did not change the playlist",
-        )),
+        _ => Err(error_message(response, &t!("playlists.not_changed"))),
     }
 }
 
@@ -191,7 +195,14 @@ fn error_message(response: &Value, fallback: &str) -> String {
         .and_then(Value::as_str)
         .map_or_else(
             || fallback.to_string(),
-            |message| format!("{fallback}: {message}"),
+            |message| {
+                t!(
+                    "playlists.error_with_reason",
+                    error = fallback,
+                    reason = message
+                )
+                .into_owned()
+            },
         )
 }
 

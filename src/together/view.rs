@@ -3,6 +3,7 @@
 use iced::font::Weight;
 use iced::widget::{Column, button, column, container, row, scrollable, text, text_input};
 use iced::{Element, Fill, Font, border};
+use rust_i18n::t;
 
 use super::{DEFAULT_PORT, Event, Session, Together};
 use crate::{Message, theme};
@@ -11,7 +12,7 @@ use crate::{Message, theme};
 pub fn view(together: &Together) -> Element<'_, Message> {
     let body: Element<'_, Message> = match &together.session {
         Session::Off => off(together),
-        Session::FindingAddress { .. } => note("Finding your public address\u{2026}"),
+        Session::FindingAddress { .. } => note(t!("together.finding_address")),
         Session::Hosting {
             invite,
             host,
@@ -20,12 +21,12 @@ pub fn view(together: &Together) -> Element<'_, Message> {
             ..
         } => {
             let status = if host.is_some() {
-                format!("Your session is open on port {}.", invite.port)
+                t!("together.session_open", port = invite.port)
             } else {
-                "Opening the port\u{2026}".to_string()
+                t!("together.opening_port")
             };
             let people: Element<'_, Message> = if listeners.is_empty() {
-                note("Nobody has joined yet.")
+                note(t!("together.nobody_yet"))
             } else {
                 Column::with_children(listeners.iter().map(|name| text(name).size(14).into()))
                     .spacing(6)
@@ -33,7 +34,7 @@ pub fn view(together: &Together) -> Element<'_, Message> {
             };
             column![
                 note(status),
-                section("Invite"),
+                section(t!("together.invite")),
                 container(
                     text(invite.encode())
                         .size(13)
@@ -43,36 +44,32 @@ pub fn view(together: &Together) -> Element<'_, Message> {
                 .padding([8, 12])
                 .style(|_| container::background(theme::tint(0.05)).border(border::rounded(6))),
                 row![
-                    accent_button("Copy invite", Event::CopyInvite),
-                    plain_button("End session", Event::Leave)
+                    accent_button(t!("together.copy_invite"), Event::CopyInvite),
+                    plain_button(t!("together.end_session"), Event::Leave)
                 ]
                 .spacing(10),
-                note(
-                    "Send the invite to your friends, or let them join from your Discord profile. \
-                     They connect straight to this computer, so they see its address, and you see \
-                     theirs."
-                ),
+                note(t!("together.invite_note")),
                 section(match listeners.len() {
-                    1 => "1 listener".to_string(),
-                    count => format!("{count} listeners"),
+                    1 => t!("together.listener_one"),
+                    count => t!("together.listeners", count = count),
                 }),
                 people,
             ]
             .push((!requests.is_empty()).then(|| {
                 Column::with_children(requests.iter().map(|(user_id, name)| {
                     row![
-                        text(format!("{name} asks to join on Discord"))
+                        text(t!("together.asks_to_join", name = name))
                             .size(14)
                             .width(Fill),
                         accent_button(
-                            "Accept",
+                            t!("together.accept"),
                             Event::Answer {
                                 user_id: user_id.clone(),
                                 accept: true,
                             }
                         ),
                         plain_button(
-                            "Decline",
+                            t!("together.decline"),
                             Event::Answer {
                                 user_id: user_id.clone(),
                                 accept: false,
@@ -89,32 +86,26 @@ pub fn view(together: &Together) -> Element<'_, Message> {
             .into()
         }
         Session::Joining(config) => column![
-            note(format!(
-                "Connecting to {}\u{2026}",
-                config.invite.socket_address()
+            note(t!(
+                "together.connecting",
+                address = config.invite.socket_address()
             )),
-            plain_button("Cancel", Event::Leave),
+            plain_button(t!("together.cancel"), Event::Leave),
         ]
         .spacing(14)
         .into(),
         Session::Listening { host, .. } => column![
-            text(format!("Listening along with {host}")).size(16),
-            note(
-                "Encore plays what they play. Your own controls work, but the host's next \
-                 change wins."
-            ),
-            plain_button("Leave", Event::Leave),
+            text(t!("together.listening_along", host = host)).size(16),
+            note(t!("together.listening_note")),
+            plain_button(t!("together.leave"), Event::Leave),
         ]
         .spacing(14)
         .into(),
     };
 
     let mut content = column![
-        heading("Listen together", 26.0),
-        note(
-            "Friends hear what you play, in sync. Each Encore downloads the songs on its own; \
-             only the song and the position travel."
-        ),
+        heading(t!("together.title"), 26.0),
+        note(t!("together.intro")),
         body,
     ]
     .spacing(18);
@@ -135,10 +126,10 @@ fn off(together: &Together) -> Element<'_, Message> {
             .size(14)
     };
     column![
-        section("Host a session"),
+        section(t!("together.host_section")),
         row![
             field(
-                "Address friends use (found by itself if empty)",
+                &t!("together.address_placeholder"),
                 &together.settings.address,
                 Event::AddressChanged
             )
@@ -151,25 +142,22 @@ fn off(together: &Together) -> Element<'_, Message> {
             .width(90),
         ]
         .spacing(10),
-        note(
-            "Friends on the internet need your router to forward this port to this computer, as \
-             for a game server."
-        ),
-        accent_button("Host", Event::StartHosting),
-        section("Join a session"),
+        note(t!("together.port_note")),
+        accent_button(t!("together.host"), Event::StartHosting),
+        section(t!("together.join_section")),
         field(
             "encore:\u{2026}",
             &together.invite_input,
             Event::InviteChanged
         )
         .on_submit(Message::Together(Event::Join)),
-        accent_button("Join", Event::Join),
+        accent_button(t!("together.join"), Event::Join),
     ]
     .spacing(12)
     .into()
 }
 
-fn accent_button(label: &str, event: Event) -> Element<'_, Message> {
+fn accent_button<'a>(label: impl text::IntoFragment<'a>, event: Event) -> Element<'a, Message> {
     button(text(label).size(14).color(iced::Color::WHITE))
         .on_press(Message::Together(event))
         .padding([8, 18])
@@ -187,7 +175,7 @@ fn accent_button(label: &str, event: Event) -> Element<'_, Message> {
         .into()
 }
 
-fn plain_button(label: &str, event: Event) -> Element<'_, Message> {
+fn plain_button<'a>(label: impl text::IntoFragment<'a>, event: Event) -> Element<'a, Message> {
     button(text(label).size(14))
         .on_press(Message::Together(event))
         .padding([8, 18])
@@ -199,7 +187,7 @@ fn plain_button(label: &str, event: Event) -> Element<'_, Message> {
         .into()
 }
 
-fn heading(label: &str, size: f32) -> Element<'_, Message> {
+fn heading<'a>(label: impl text::IntoFragment<'a>, size: f32) -> Element<'a, Message> {
     text(label)
         .size(size)
         .font(Font {

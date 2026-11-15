@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use iced::widget::image::Handle;
+use rust_i18n::t;
 
 /// The side of the saved square, in pixels: plenty for the 180 px header on a 2× screen.
 const SIDE: u32 = 600;
@@ -54,16 +55,25 @@ fn save_in(dir: &Path, id: &str, source: &Path) -> Result<Handle, String> {
         return Err(format!("{id:?} is not a playlist id"));
     }
     let size = std::fs::metadata(source)
-        .map_err(|error| format!("Could not read {}: {error}", source.display()))?
+        .map_err(|error| {
+            t!(
+                "playlists.read_failed",
+                path = source.display(),
+                error = error
+            )
+            .into_owned()
+        })?
         .len();
     if size > MAX_BYTES {
-        return Err("The image is bigger than 40 MB.".to_string());
+        return Err(t!("playlists.image_too_big").into_owned());
     }
     let picture = image::open(source).map_err(|error| {
-        format!(
-            "{} is not an image Encore can read: {error}",
-            source.display()
+        t!(
+            "playlists.not_an_image",
+            path = source.display(),
+            error = error
         )
+        .into_owned()
     })?;
     let square = square(&picture).resize_exact(SIDE, SIDE, image::imageops::FilterType::Lanczos3);
 
@@ -72,9 +82,9 @@ fn save_in(dir: &Path, id: &str, source: &Path) -> Result<Handle, String> {
     let partial = dir.join(format!("{id}.png.part"));
     square
         .save_with_format(&partial, image::ImageFormat::Png)
-        .map_err(|error| format!("Could not save the cover: {error}"))?;
+        .map_err(|error| t!("playlists.save_failed", error = error).into_owned())?;
     std::fs::rename(&partial, &path)
-        .map_err(|error| format!("Could not save the cover: {error}"))?;
+        .map_err(|error| t!("playlists.save_failed", error = error).into_owned())?;
     let bytes = std::fs::read(&path).map_err(|error| error.to_string())?;
     Ok(Handle::from_bytes(bytes))
 }
@@ -91,7 +101,7 @@ fn remove_from(dir: &Path, id: &str) -> Result<(), String> {
     match std::fs::remove_file(dir.join(format!("{id}.png"))) {
         Ok(()) => Ok(()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(format!("Could not remove the cover: {error}")),
+        Err(error) => Err(t!("playlists.remove_failed", error = error).into_owned()),
     }
 }
 
@@ -99,8 +109,8 @@ fn remove_from(dir: &Path, id: &str) -> Result<(), String> {
 /// cancels or there is no file chooser.
 pub async fn pick() -> Option<PathBuf> {
     rfd::AsyncFileDialog::new()
-        .set_title("Playlist cover")
-        .add_filter("Images", &EXTENSIONS)
+        .set_title(t!("playlists.cover_title"))
+        .add_filter(t!("playlists.images"), &EXTENSIONS)
         .pick_file()
         .await
         .map(|file| file.path().to_path_buf())

@@ -4,6 +4,7 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -46,9 +47,16 @@ impl Credentials {
                 api_key: api_key.trim().to_string(),
                 secret: secret.trim().to_string(),
             }),
-            (None, None) => Err(format!("{KEY_VAR} and {SECRET_VAR} are not set")),
-            (None, Some(_)) => Err(format!("{KEY_VAR} is not set")),
-            (Some(_), None) => Err(format!("{SECRET_VAR} is not set")),
+            (None, None) => Err(t!(
+                "lastfm.variables_missing",
+                key = KEY_VAR,
+                secret = SECRET_VAR
+            )
+            .into_owned()),
+            (None, Some(_)) => Err(t!("lastfm.variable_missing", variable = KEY_VAR).into_owned()),
+            (Some(_), None) => {
+                Err(t!("lastfm.variable_missing", variable = SECRET_VAR).into_owned())
+            }
         }
     }
 }
@@ -104,8 +112,12 @@ impl ApiError {
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ApiError::Network(error) => write!(f, "could not reach Last.fm: {error}"),
-            ApiError::Api { code, message } => write!(f, "Last.fm error {code}: {message}"),
+            ApiError::Network(error) => write!(f, "{}", t!("lastfm.unreachable", error = error)),
+            ApiError::Api { code, message } => write!(
+                f,
+                "{}",
+                t!("lastfm.api_error", code = code, message = message)
+            ),
         }
     }
 }
@@ -155,16 +167,16 @@ async fn call(
 
 /// Reads an answer: Last.fm reports errors as `{"error": code, "message": "…"}`.
 fn parse_answer(body: &str) -> Result<Value, ApiError> {
-    let value: Value = serde_json::from_str(body)
-        .map_err(|_| ApiError::Network(format!("unexpected answer: {}", short(body))))?;
+    let value: Value = serde_json::from_str(body).map_err(|_| {
+        ApiError::Network(t!("lastfm.unexpected_answer", answer = short(body)).into_owned())
+    })?;
     match value.get("error").and_then(Value::as_u64) {
         Some(code) => Err(ApiError::Api {
             code: u32::try_from(code).unwrap_or(u32::MAX),
             message: value
                 .get("message")
                 .and_then(Value::as_str)
-                .unwrap_or("no message")
-                .to_string(),
+                .map_or_else(|| t!("lastfm.no_message").into_owned(), str::to_string),
         }),
         None => Ok(value),
     }
@@ -181,7 +193,7 @@ pub async fn get_token(credentials: &Credentials) -> Result<String, ApiError> {
         .get("token")
         .and_then(Value::as_str)
         .map(str::to_string)
-        .ok_or_else(|| ApiError::Network("the answer has no token".to_string()))
+        .ok_or_else(|| ApiError::Network(t!("lastfm.no_token").into_owned()))
 }
 
 /// The page where the user approves `token` for Encore.
@@ -210,17 +222,19 @@ pub async fn connect(credentials: Credentials) -> Result<Session, String> {
             Err(error) => return Err(error.to_string()),
         }
     }
-    Err("Encore was not approved on Last.fm in time; try again".to_string())
+    Err(t!("lastfm.not_approved").into_owned())
 }
 
 fn session_from(answer: &Value) -> Result<Session, String> {
-    let session = answer.get("session").ok_or("the answer has no session")?;
+    let session = answer
+        .get("session")
+        .ok_or_else(|| t!("lastfm.no_session").into_owned())?;
     let text = |key: &str| {
         session
             .get(key)
             .and_then(Value::as_str)
             .map(str::to_string)
-            .ok_or(format!("the session has no {key}"))
+            .ok_or_else(|| t!("lastfm.session_lacks", field = key).into_owned())
     };
     Ok(Session {
         name: text("name")?,

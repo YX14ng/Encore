@@ -10,6 +10,7 @@
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+use rust_i18n::t;
 use tokio::process::Command;
 
 /// A video that has been on YouTube since 2005; yt-dlp needs some URL to run against.
@@ -46,10 +47,7 @@ pub enum ReadError {
 impl std::fmt::Display for ReadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ReadError::NoSession => write!(
-                f,
-                "no YouTube session was found there; sign in to music.youtube.com in that browser first"
-            ),
+            ReadError::NoSession => write!(f, "{}", t!("account.no_session")),
             ReadError::Failed(error) => write!(f, "{error}"),
         }
     }
@@ -120,7 +118,7 @@ pub fn zen_profile(home: &Path) -> Result<PathBuf, String> {
         })
         .max_by_key(|(modified, _): &(SystemTime, PathBuf)| *modified)
         .map(|(_, profile)| profile)
-        .ok_or_else(|| "no Zen profile with cookies was found".to_string())
+        .ok_or_else(|| t!("account.no_zen_profile").into_owned())
 }
 
 /// Keeps the comment header and the `youtube.com` cookies of a Netscape cookies file.
@@ -152,7 +150,7 @@ pub fn has_session(cookies_txt: &str) -> bool {
 pub async fn read_from_browser(browser: Browser) -> Result<String, ReadError> {
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
-        .ok_or(ReadError::Failed("HOME is not set".to_string()))?;
+        .ok_or_else(|| ReadError::Failed(t!("account.home_not_set").into_owned()))?;
     let spec = browser.ytdlp_spec(&home).map_err(ReadError::Failed)?;
 
     let dir = data_dir();
@@ -172,8 +170,9 @@ pub async fn read_from_browser(browser: Browser) -> Result<String, ReadError> {
     let all = std::fs::read_to_string(&raw);
     let _ = std::fs::remove_file(&raw);
 
-    let output =
-        output.map_err(|error| ReadError::Failed(format!("could not run yt-dlp: {error}")))?;
+    let output = output.map_err(|error| {
+        ReadError::Failed(t!("account.ytdlp_failed", error = error).into_owned())
+    })?;
     if !output.status.success() {
         let error = String::from_utf8_lossy(&output.stderr).trim().to_string();
         return Err(ReadError::Failed(error));
@@ -191,7 +190,7 @@ pub fn open_in_browser(url: &str) -> Result<(), String> {
         .arg(url)
         .spawn()
         .map(|_| ())
-        .map_err(|error| format!("could not open the browser: {error}"))
+        .map_err(|error| t!("account.browser_failed", error = error).into_owned())
 }
 
 /// Reads a cookies.txt exported by hand (plan B), keeping only the YouTube cookies.
@@ -200,14 +199,14 @@ pub fn read_from_file(path: &str) -> Result<String, String> {
     let path = match path.strip_prefix("~/") {
         Some(rest) => std::env::var_os("HOME")
             .map(|home| PathBuf::from(home).join(rest))
-            .ok_or("HOME is not set")?,
+            .ok_or_else(|| t!("account.home_not_set").into_owned())?,
         None => PathBuf::from(path),
     };
     let all =
         std::fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?;
     let cookies = youtube_only(&all);
     if !has_session(&cookies) {
-        return Err("that file has no signed-in YouTube session".to_string());
+        return Err(t!("account.file_no_session").into_owned());
     }
     Ok(cookies)
 }

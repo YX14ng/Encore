@@ -3,8 +3,9 @@
 //! The API itself lives in `lastfm.rs`.
 
 use iced::font::Weight;
-use iced::widget::{column, text};
-use iced::{Element, Font, Task};
+use iced::widget::{button, column, text};
+use iced::{Element, Font, Task, border};
+use rust_i18n::t;
 
 use crate::lastfm::{self, ApiError, Credentials, Scrobble, Session};
 use crate::youtube::SearchTrack;
@@ -137,7 +138,8 @@ impl LastFm {
         match result {
             Ok(session) => {
                 if let Err(error) = lastfm::save(SESSION_FILE, &session) {
-                    self.last_error = Some(format!("could not save the session: {error}"));
+                    self.last_error =
+                        Some(t!("scrobbler.save_session_failed", error = error).into_owned());
                 }
                 self.status = Status::Connected(session);
                 self.flush()
@@ -236,9 +238,7 @@ impl LastFm {
         };
         if error.is_invalid_session() {
             lastfm::remove(SESSION_FILE);
-            self.status = Status::Failed(
-                "Last.fm no longer accepts Encore's session; connect again".to_string(),
-            );
+            self.status = Status::Failed(t!("scrobbler.session_revoked").into_owned());
         }
         self.last_error = Some(error.to_string());
     }
@@ -260,7 +260,7 @@ impl LastFm {
             lastfm::save(PENDING_FILE, &self.pending)
         };
         if let Err(error) = saved {
-            self.last_error = Some(format!("could not save the scrobble queue: {error}"));
+            self.last_error = Some(t!("scrobbler.save_queue_failed", error = error).into_owned());
         }
     }
 
@@ -273,55 +273,57 @@ impl LastFm {
         let mut content = column![title].spacing(14).padding([8, 32]).max_width(720);
 
         content = match &self.status {
-            Status::MissingKeys(error) => content.push(
-                text(format!(
-                    "Scrobbling is off: {error}. Set both variables to your Last.fm API account \
-                     and restart Encore."
-                ))
-                .color(theme::accent()),
-            ),
+            Status::MissingKeys(error) => content
+                .push(text(t!("scrobbler.missing_keys", error = error)).color(theme::accent())),
             Status::SignedOut => content
-                .push(library::note(
-                    "Connect Last.fm to scrobble the songs you play in Encore.",
-                ))
-                .push(library::accent_button(
-                    "Connect Last.fm",
+                .push(library::note(t!("scrobbler.connect_note")))
+                .push(accent_button(
+                    t!("scrobbler.connect"),
                     Message::LastFmConnect,
                 )),
-            Status::Connecting => content.push(library::note(
-                "Approve Encore on the Last.fm page that opened in your browser; Encore notices \
-                 on its own within a few seconds.",
-            )),
+            Status::Connecting => content.push(library::note(t!("scrobbler.approve"))),
             Status::Connected(session) => content
-                .push(library::note(format!("Scrobbling as {}.", session.name)))
-                .push(library::accent_button(
-                    "Disconnect",
+                .push(library::note(t!(
+                    "scrobbler.scrobbling_as",
+                    name = session.name
+                )))
+                .push(accent_button(
+                    t!("scrobbler.disconnect"),
                     Message::LastFmDisconnect,
                 )),
             Status::Failed(error) => content
-                .push(text(format!("Could not connect: {error}")).color(theme::accent()))
-                .push(library::accent_button(
-                    "Connect Last.fm",
+                .push(text(t!("scrobbler.connect_failed", error = error)).color(theme::accent()))
+                .push(accent_button(
+                    t!("scrobbler.connect"),
                     Message::LastFmConnect,
                 )),
         };
 
         if !self.pending.is_empty() {
-            content = content.push(library::note(format!(
-                "{} {} waiting to be sent.",
-                self.pending.len(),
-                if self.pending.len() == 1 {
-                    "scrobble is"
-                } else {
-                    "scrobbles are"
-                }
-            )));
+            content = content.push(library::note(match self.pending.len() {
+                1 => t!("scrobbler.pending_one"),
+                count => t!("scrobbler.pending_many", count = count),
+            }));
         }
         if let Some(error) = &self.last_error {
             content = content.push(text(error).size(13).color(theme::text_secondary()));
         }
         content.into()
     }
+}
+
+/// A button in the accent color, drawn like the account screen's own.
+fn accent_button<'a>(label: impl text::IntoFragment<'a>, message: Message) -> Element<'a, Message> {
+    button(text(label).size(14).color(theme::text_primary()))
+        .on_press(message)
+        .padding([8, 22])
+        .style(|_, status| {
+            let mut style = theme::flat_button(status, false);
+            style.background = Some(theme::accent().into());
+            style.border = border::rounded(18);
+            style
+        })
+        .into()
 }
 
 #[cfg(test)]
