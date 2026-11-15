@@ -186,7 +186,7 @@ fn label(label: Cow<'static, str>) -> Element<'static, Message> {
         text(label)
             .size(12)
             .font(Font {
-                weight: Weight::Semibold,
+                weight: Weight::Bold,
                 ..theme::INTER
             })
             .color(theme::text_dim()),

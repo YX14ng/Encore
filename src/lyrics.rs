@@ -225,16 +225,11 @@ fn lyric(line: &str, is_current: bool, style: Style) -> Element<'_, Message> {
     } else {
         theme::text_primary().scale_alpha(0.3)
     };
-    let font = if is_current {
-        Font {
-            weight: Weight::Bold,
-            ..theme::INTER
-        }
-    } else {
-        Font {
-            weight: Weight::Semibold,
-            ..Font::MONOSPACE
-        }
+    // Every line in bold, the others dimmed, like Cider. Semibold is avoided: the system's
+    // Chinese and Japanese fonts have no such weight, and the fallback spaces the glyphs apart.
+    let font = Font {
+        weight: Weight::Bold,
+        ..theme::INTER
     };
 
     text(line)

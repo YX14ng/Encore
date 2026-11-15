@@ -130,7 +130,7 @@ impl Plugins {
                 toggler(self.is_on(plugin))
                     .label(plugin.name())
                     .font(iced::Font {
-                        weight: Weight::Semibold,
+                        weight: Weight::Bold,
                         ..theme::INTER
                     })
                     .on_toggle(move |on| Message::SetPlugin(plugin, on))
