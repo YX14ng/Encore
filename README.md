@@ -39,6 +39,13 @@ new one; in your own playlists the ✕ takes a song out. Any playlist can have a
 this computer, as a 600 px square in `~/.local/share/encore/covers/`, and shows in the sidebar, the
 cards and the playlist page.
 
+An artist opens on a page of its own: the banner with the name and subscribers, Play (the top
+songs), the artist's radio and Download, then the top songs (See all opens every song), albums,
+singles and EPs, playlists that feature the artist, similar artists and what YouTube Music says
+about them. Explore, in the sidebar, shows moods, new releases, the charts (YouTube Music gives
+them as playlists for your country), top artists, new music videos and genres; a mood or genre
+opens a page of playlists. Back goes to the screen you came from.
+
 Songs follow each other with no gap: once the next song is downloaded, it is queued in mpv, which
 goes on into it without reopening the sound output. With crossfade on, the fade takes over.
 
