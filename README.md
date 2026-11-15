@@ -54,6 +54,12 @@ YouTube Music's answer (`src/browse.rs`).
 
 Songs follow each other with no gap: once the next song is downloaded, it is queued in mpv, which
 goes on into it without reopening the sound output. With crossfade on, the fade takes over.
+The two songs after it are downloaded ahead too: YouTube holds every new download back for about
+six seconds, so a song that is not in the cache yet takes a while to start. Meanwhile the player
+bar already shows it with "Loading…" and the previous song stops.
+
+Synced lyrics can be scrolled by hand (they slide back to the line being sung four seconds
+later), and clicking a line jumps to where it starts.
 
 The audio screen (the equalizer button in the player bar) also picks the sound output (the
 system's default or any PipeWire device; a saved device that is unplugged gives way to the
