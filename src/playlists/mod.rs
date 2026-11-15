@@ -444,6 +444,10 @@ impl App {
 
     /// Shows `message` at the bottom for a few seconds.
     pub(crate) fn show_toast(&mut self, message: String) -> Task<Message> {
+        // Likes and playlist changes fail this way when YouTube refuses the session.
+        if message.contains(&edit::session_expired()) {
+            self.session_rejected();
+        }
         let serial = self.toast.as_ref().map_or(0, |(serial, _)| serial + 1);
         self.toast = Some((serial, message));
         Task::perform(tokio::time::sleep(TOAST_TIME), move |()| {

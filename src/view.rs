@@ -153,7 +153,12 @@ impl App {
             Screen::Explore => explore::view(&self.explore, self.online.shared_view()),
             Screen::Genre => explore::genre_view(&self.explore, self.online.shared_view()),
             Screen::Account => column![
-                library::account_view(&self.account, &self.cookie_path, self.profile_photo(),),
+                library::account_view(
+                    &self.account,
+                    self.session_notes(),
+                    &self.cookie_path,
+                    self.profile_photo(),
+                ),
                 self.lastfm.view()
             ]
             .into(),
@@ -166,6 +171,7 @@ impl App {
                 self.screen != Screen::Home,
                 self.together.is_active(),
             ),
+            self.session_banner(),
             content,
             player::view(
                 &self.now_playing,
@@ -240,6 +246,52 @@ impl App {
                 playlists::dialog(dialog, self.own_playlists(), self.online.shared_view())
             }))
             .into()
+    }
+
+    /// The banner over the center column once the session expired, with a button to sign in
+    /// again.
+    fn session_banner(&self) -> Option<Element<'_, Message>> {
+        use iced::widget::{button, row, text};
+        if !self.session_expired {
+            return None;
+        }
+        let again = button(text(rust_i18n::t!("session.sign_in_again")).size(13))
+            .on_press(Message::SignInWindow)
+            .padding([6, 14])
+            .style(|_, status| {
+                let mut style = theme::flat_button(status, false);
+                style.background = Some(theme::accent().into());
+                style.text_color = theme::text_primary();
+                style.border = iced::border::rounded(16);
+                style
+            });
+        let banner = row![
+            text(rust_i18n::t!("session.expired_banner"))
+                .size(13)
+                .width(Fill),
+            again
+        ]
+        .spacing(16)
+        .align_y(iced::Center)
+        .padding([10, 24]);
+        Some(
+            container(banner)
+                .width(Fill)
+                .style(|_| container::background(theme::tint(0.08)))
+                .into(),
+        )
+    }
+
+    /// How long the session has worked and how long the last one lasted, for the account
+    /// screen.
+    fn session_notes(&self) -> Vec<String> {
+        [
+            self.session_log.age_text(crate::session::now()),
+            self.session_log.last_text(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 
     /// The lyrics in `style`, scrolled to the current line.

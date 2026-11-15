@@ -290,6 +290,8 @@ pub async fn sign_in_with_cookie(rp: RustyPipe, cookie: String) -> Result<Librar
 pub enum RestoreError {
     /// There is no saved session (never signed in, or signed out).
     NoSession,
+    /// A session is saved but YouTube no longer accepts it.
+    Expired,
     /// The session is saved but checking it failed, for example without a connection.
     Failed(String),
 }
@@ -298,7 +300,11 @@ pub enum RestoreError {
 pub async fn restore(rp: RustyPipe) -> Result<LibraryData, RestoreError> {
     use rustypipe::error::{AuthError, Error};
 
+    // rustypipe answers "not logged in" both without a saved session and when YouTube
+    // refuses the saved one; only the second is an expired session.
+    let saved = rp.user_auth_cookie_header().is_some();
     match rp.user_auth_check_cookie().await {
+        Err(Error::Auth(AuthError::NoLogin)) if saved => return Err(RestoreError::Expired),
         Err(Error::Auth(AuthError::NoLogin)) => return Err(RestoreError::NoSession),
         Err(error) => return Err(RestoreError::Failed(error.to_string())),
         Ok(()) => {}
@@ -394,6 +400,7 @@ pub fn shelf_view<'a>(
 /// cookies file, or sign out.
 pub fn account_view<'a>(
     account: &'a Account,
+    session: Vec<String>,
     cookie_path: &'a str,
     photo: Option<iced::widget::image::Handle>,
 ) -> Element<'a, Message> {
@@ -434,9 +441,11 @@ pub fn account_view<'a>(
                         .align_y(iced::Center),
                 );
             }
-            content = content
-                .push(note(t!("library.signed_in_note")))
-                .push(accent_button(t!("library.sign_out"), Message::SignOut));
+            content = content.push(note(t!("library.signed_in_note")));
+            for line in session {
+                content = content.push(note(line));
+            }
+            content = content.push(accent_button(t!("library.sign_out"), Message::SignOut));
         }
         Account::Checking | Account::SigningIn => {
             content = content.push(note(t!("library.signing_in")));

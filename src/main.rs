@@ -42,6 +42,7 @@ mod queue_view;
 mod rating;
 mod scrobbler;
 mod search;
+mod session;
 mod settings_view;
 mod sidebar;
 mod sign_in_window;
@@ -135,6 +136,10 @@ struct App {
     lyrics_browse: Option<(f32, Instant)>,
     /// The song shown in the player bar while it downloads, so the bar changes at once.
     loading_shown: Option<String>,
+    /// How long YouTube Music sessions last, measured.
+    session_log: session::SessionLog,
+    /// YouTube stopped accepting the saved session; a banner asks to sign in again.
+    session_expired: bool,
     /// What the center column shows.
     screen: Screen,
     /// Search, downloads and audio.
@@ -382,6 +387,8 @@ impl App {
             lyrics_scroll: lyrics::scroll_animation(first_line as f32),
             lyrics_browse: None,
             loading_shown: None,
+            session_log: session::SessionLog::load(),
+            session_expired: false,
             screen: Screen::Home,
             online: Online::new(&audio_settings),
             now_playing,

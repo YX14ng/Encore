@@ -16,7 +16,7 @@ use crate::queue::Repeat;
 use crate::sidebar::NavItem;
 
 use crate::{
-    App, Message, Screen, account, audio_settings, discord, i18n, library, mini_player,
+    App, Message, Screen, account, audio_settings, discord, i18n, library, mini_player, session,
     sign_in_window, themes,
 };
 
@@ -266,8 +266,21 @@ impl App {
                 let cookies = account::read_from_file(&self.cookie_path);
                 return Task::perform(library::sign_in(client, cookies), Message::SignedIn);
             }
-            Message::SignedIn(result) => return self.library_loaded(result),
-            Message::Restored(Ok(data)) => return self.library_loaded(Ok(data)),
+            Message::SignedIn(result) => {
+                if result.is_ok() {
+                    self.session_log.signed_in(session::now());
+                    self.session_log.save();
+                    self.session_expired = false;
+                }
+                return self.library_loaded(result);
+            }
+            Message::Restored(Ok(data)) => {
+                self.session_log.working(session::now());
+                self.session_log.save();
+                self.session_expired = false;
+                return self.library_loaded(Ok(data));
+            }
+            Message::Restored(Err(library::RestoreError::Expired)) => self.session_rejected(),
             Message::Restored(Err(library::RestoreError::NoSession)) => {
                 self.account = Account::SignedOut;
                 library::clear_cache();
@@ -279,6 +292,9 @@ impl App {
                 }
             }
             Message::SignOut => {
+                self.session_log.signed_out();
+                self.session_log.save();
+                self.session_expired = false;
                 self.account = Account::SignedOut;
                 library::clear_cache();
                 if let Some(client) = self.online.client() {
@@ -418,5 +434,19 @@ impl App {
     fn apply_audio(&mut self) {
         self.audio_error = self.online.apply_audio(&self.audio_settings).err();
         self.audio_settings.save();
+    }
+
+    /// YouTube no longer accepts the saved session: remember how long it lasted and ask to
+    /// sign in again, keeping the saved library on screen meanwhile.
+    pub(crate) fn session_rejected(&mut self) {
+        if !self.session_expired {
+            self.session_expired = true;
+            self.session_log.expired(session::now());
+            self.session_log.save();
+        }
+        if !matches!(self.account, Account::SignedIn(_)) {
+            // Nothing saved to show: offer the sign-in buttons.
+            self.account = Account::SignedOut;
+        }
     }
 }
