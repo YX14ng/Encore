@@ -25,13 +25,13 @@ Reference list built from Cider (cider.sh) and the Pear plugins (`pear-devs/pear
 `src/plugins`):
 
 - **Interface (from Cider):** home page with recommendations and recent plays, album and artist
-  pages, synced lyrics in a side panel that follow the song line by line (with translation and
-  romanization), immersive mode, mini player, themes and customization. No karaoke mode: the
-  lyrics only move along with the song.
+  pages, synced lyrics in a side panel that follow the song line by line (from YouTube Music
+  only; no translations), immersive mode, mini player, themes and customization. No karaoke mode:
+  the lyrics only move along with the song.
 - **Audio:** 10-band equalizer, playback speed, crossfade, compressor, silence skipping, precise
   and exponential volume, output device selection.
 - **Integrations:** system media controls (MPRIS on Linux), notifications, Discord Rich Presence,
-  Last.fm scrobbling and remote control through a local API.
+  Last.fm scrobbling. No remote control API (dropped on 2026-11-15).
 - **YouTube-specific (from Pear):** SponsorBlock, skipping disliked tracks, switching between video
   and audio, quality selection, downloads, turning off autoplay, colors taken from the cover art, a
   visualizer and group listening.
