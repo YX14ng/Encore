@@ -4,6 +4,7 @@
 mod view;
 
 use iced::Task;
+use rust_i18n::t;
 use rustypipe::client::RustyPipe;
 use rustypipe::model::{MusicGenre, MusicGenreItem};
 
@@ -99,7 +100,7 @@ impl App {
             return Task::none();
         }
         let Some(client) = self.online.client() else {
-            self.explore.status = Status::Failed("the YouTube client could not start".into());
+            self.explore.status = Status::Failed(t!("explore.client_failed").into_owned());
             return Task::none();
         };
         self.explore.status = Status::Loading;

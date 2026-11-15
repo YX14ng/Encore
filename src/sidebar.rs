@@ -1,7 +1,10 @@
 //! The library sidebar on the left.
 
+use std::borrow::Cow;
+
 use iced::widget::{Column, button, column, container, row, scrollable, space, text, text_input};
 use iced::{Element, Fill, border};
+use rust_i18n::t;
 
 use crate::mock::Playlist;
 use crate::profile::Profile;
@@ -84,7 +87,7 @@ impl Default for SidebarState {
     }
 }
 
-/// One fixed entry of the sidebar: what it selects, its label and its icon.
+/// One fixed entry of the sidebar: what it selects, the key of its label and its icon.
 struct Entry {
     item: NavItem,
     label: &'static str,
@@ -94,17 +97,17 @@ struct Entry {
 const MUSIC: [Entry; 3] = [
     Entry {
         item: NavItem::Home,
-        label: "Home",
+        label: "sidebar.home",
         icon: include_bytes!("../assets/icons/home.svg"),
     },
     Entry {
         item: NavItem::Explore,
-        label: "Explore",
+        label: "explore.title",
         icon: include_bytes!("../assets/icons/explore.svg"),
     },
     Entry {
         item: NavItem::Radio,
-        label: "Radio & mixes",
+        label: "library.mixes",
         icon: include_bytes!("../assets/icons/radio.svg"),
     },
 ];
@@ -112,37 +115,37 @@ const MUSIC: [Entry; 3] = [
 const LIBRARY: [Entry; 7] = [
     Entry {
         item: NavItem::History,
-        label: "History",
+        label: "library.history",
         icon: include_bytes!("../assets/icons/history.svg"),
     },
     Entry {
         item: NavItem::Songs,
-        label: "Songs",
+        label: "library.songs",
         icon: include_bytes!("../assets/icons/songs.svg"),
     },
     Entry {
         item: NavItem::Albums,
-        label: "Albums",
+        label: "library.albums",
         icon: include_bytes!("../assets/icons/albums.svg"),
     },
     Entry {
         item: NavItem::Artists,
-        label: "Artists",
+        label: "library.artists",
         icon: include_bytes!("../assets/icons/artists.svg"),
     },
     Entry {
         item: NavItem::Subscriptions,
-        label: "Subscriptions",
+        label: "library.subscriptions",
         icon: include_bytes!("../assets/icons/subscriptions.svg"),
     },
     Entry {
         item: NavItem::Podcasts,
-        label: "Podcasts",
+        label: "library.podcasts",
         icon: include_bytes!("../assets/icons/podcasts.svg"),
     },
     Entry {
         item: NavItem::Downloads,
-        label: "Downloads",
+        label: "library.downloads",
         icon: include_bytes!("../assets/icons/download.svg"),
     },
 ];
@@ -150,12 +153,12 @@ const LIBRARY: [Entry; 7] = [
 const PLAYLIST_ACTIONS: [Entry; 2] = [
     Entry {
         item: NavItem::NewPlaylist,
-        label: "New playlist",
+        label: "sidebar.new_playlist",
         icon: include_bytes!("../assets/icons/plus.svg"),
     },
     Entry {
         item: NavItem::LikedMusic,
-        label: "Liked music",
+        label: "library.liked",
         icon: include_bytes!("../assets/icons/like.svg"),
     },
 ];
@@ -181,12 +184,12 @@ pub fn view<'a>(
         content = content.push(entries(&MUSIC, selected));
     }
 
-    content = content.push(section_header("Library", Section::Library));
+    content = content.push(section_header(&t!("sidebar.library"), Section::Library));
     if state.is_open(Section::Library) {
         content = content.push(entries(&LIBRARY, selected));
     }
 
-    content = content.push(section_header("Playlists", Section::Playlists));
+    content = content.push(section_header(&t!("search.playlists"), Section::Playlists));
     if state.is_open(Section::Playlists) {
         content = content.push(entries(&PLAYLIST_ACTIONS, selected));
         match account.playlists {
@@ -229,9 +232,9 @@ pub fn view<'a>(
     }
 
     let label = match (account.signed_in, account.profile) {
-        (true, Some(profile)) => profile.name.as_str(),
-        (true, None) => "Account",
-        (false, _) => "Sign in",
+        (true, Some(profile)) => Cow::Borrowed(profile.name.as_str()),
+        (true, None) => t!("sidebar.account"),
+        (false, _) => t!("library.sign_in"),
     };
     let glyph: Element<'a, Message> = match account.photo {
         Some(photo) => iced::widget::image(photo)
@@ -297,7 +300,7 @@ fn suggestion_list(suggestions: &[String]) -> Element<'_, Message> {
 
 /// The search field: typing updates the query and Enter runs the search.
 fn search_box(query: &str) -> Element<'_, Message> {
-    let input = text_input("Search", query)
+    let input = text_input(&t!("sidebar.search"), query)
         .on_input(Message::SearchChanged)
         .on_submit(Message::Search)
         .padding(0)
@@ -331,7 +334,7 @@ fn search_box(query: &str) -> Element<'_, Message> {
     .into()
 }
 
-fn section_header(label: &'static str, section: Section) -> Element<'static, Message> {
+fn section_header(label: &str, section: Section) -> Element<'static, Message> {
     let title = text(label.to_uppercase())
         .size(11)
         .color(theme::text_secondary());
@@ -353,14 +356,19 @@ fn entries(list: &[Entry], selected: NavItem) -> Column<'static, Message> {
     let mut entries = column![].spacing(1);
     for entry in list {
         let glyph = theme::icon(entry.icon, theme::accent(), 18.0);
-        entries = entries.push(nav_button(glyph.into(), entry.label, entry.item, selected));
+        entries = entries.push(nav_button(
+            glyph.into(),
+            t!(entry.label),
+            entry.item,
+            selected,
+        ));
     }
     entries
 }
 
 fn nav_button<'a>(
     glyph: Element<'a, Message>,
-    label: &'a str,
+    label: impl text::IntoFragment<'a>,
     item: NavItem,
     selected: NavItem,
 ) -> Element<'a, Message> {

@@ -1,10 +1,13 @@
 //! The home screen: greeting, recently played and mixes.
 
+use std::borrow::Cow;
+
 use iced::font::Weight;
 use iced::gradient::Linear;
 use iced::widget::text::Wrapping;
 use iced::widget::{Column, Row, column, container, image, row, scrollable, space, stack, text};
 use iced::{ContentFit, Degrees, Element, Fill, Font};
+use rust_i18n::t;
 
 use crate::mock::{self, Card};
 use crate::search::{self, Shared};
@@ -14,11 +17,11 @@ use crate::{Message, theme};
 const HERO_HEIGHT: f32 = 330.0;
 
 /// The greeting for an hour of the day, from 0 to 23.
-pub fn greeting(hour: u32) -> &'static str {
+pub fn greeting(hour: u32) -> Cow<'static, str> {
     match hour {
-        5..=11 => "Good morning",
-        12..=19 => "Good afternoon",
-        _ => "Good evening",
+        5..=11 => t!("home.good_morning"),
+        12..=19 => t!("home.good_afternoon"),
+        _ => t!("home.good_evening"),
     }
 }
 
@@ -57,8 +60,11 @@ pub fn view<'a>(
     let columns = recent_columns(width);
     let content = match sections {
         Sections::Sample { recents, mixes } => content
-            .push(section("Recently played", recents_grid(recents, columns)))
-            .push(section("Mixed for you", mixes_row(mixes))),
+            .push(section(
+                t!("home.recently_played"),
+                recents_grid(recents, columns),
+            ))
+            .push(section(t!("library.mixed_for_you"), mixes_row(mixes))),
         Sections::Personal {
             history,
             mixes,
@@ -68,20 +74,21 @@ pub fn view<'a>(
         } => content
             .push((!history.is_empty()).then(|| {
                 section(
-                    "Recently played",
+                    t!("home.recently_played"),
                     personal_recents(history, columns, shared),
                 )
             }))
             .push(
-                (!mixes.is_empty()).then(|| section("Mixed for you", search::shelf(mixes, shared))),
+                (!mixes.is_empty())
+                    .then(|| section(t!("library.mixed_for_you"), search::shelf(mixes, shared))),
             )
             .push(
                 (!playlists.is_empty())
-                    .then(|| section("Your playlists", search::shelf(playlists, shared))),
+                    .then(|| section(t!("home.your_playlists"), search::shelf(playlists, shared))),
             )
             .push(
                 (!albums.is_empty())
-                    .then(|| section("Saved albums", search::shelf(albums, shared))),
+                    .then(|| section(t!("home.saved_albums"), search::shelf(albums, shared))),
             ),
     };
 
@@ -150,7 +157,10 @@ fn hero(hour: u32, backdrop: Option<&image::Handle>, zoom: f32) -> Element<'_, M
     stack![background, fade, greeting].into()
 }
 
-fn section<'a>(title: &'a str, body: Element<'a, Message>) -> Element<'a, Message> {
+fn section<'a>(
+    title: impl text::IntoFragment<'a>,
+    body: Element<'a, Message>,
+) -> Element<'a, Message> {
     column![text(title).size(18).font(bold()), body]
         .spacing(12)
         .padding([12, 32])

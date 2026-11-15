@@ -3,6 +3,7 @@
 use iced::font::Weight;
 use iced::widget::{button, column, row, scrollable, space, text};
 use iced::{Center, Element, Fill, Font, border};
+use rust_i18n::t;
 
 use crate::offline::{Offline, State};
 use crate::search::{self, Shared, Status};
@@ -24,9 +25,9 @@ pub fn view<'a>(
         return crate::artist::view(collection, page, shared, offline);
     }
     let content = match (status, collection) {
-        (Status::Failed(error), _) => column![note(format!("Could not open it: {error}"))],
+        (Status::Failed(error), _) => column![note(t!("collection.open_failed", error = error))],
         (_, Some(collection)) => loaded(collection, shared, offline, own),
-        _ => column![note("Loading\u{2026}")],
+        _ => column![note(t!("search.loading"))],
     };
 
     scrollable(content.spacing(24).padding([28, 32]))
@@ -42,24 +43,27 @@ fn loaded<'a>(
 ) -> iced::widget::Column<'a, Message> {
     let round = collection.kind == TileKind::Artist;
     let kind = match collection.kind {
-        TileKind::Album => "ALBUM",
-        TileKind::Artist => "ARTIST",
-        TileKind::Playlist => "PLAYLIST",
-        TileKind::Radio => "MIX",
+        TileKind::Album => t!("collection.kind_album"),
+        TileKind::Artist => t!("collection.kind_artist"),
+        TileKind::Playlist => t!("collection.kind_playlist"),
+        TileKind::Radio => t!("collection.kind_mix"),
     };
 
-    let play = button(text("Play").size(14).color(theme::text_primary()))
-        .on_press_maybe(
-            (!collection.tracks.is_empty())
-                .then(|| Message::PlayQueue(collection.tracks.clone(), 0)),
-        )
-        .padding([8, 22])
-        .style(|_, status| {
-            let mut style = theme::flat_button(status, false);
-            style.background = Some(theme::accent().into());
-            style.border = border::rounded(18);
-            style
-        });
+    let play = button(
+        text(t!("search.play"))
+            .size(14)
+            .color(theme::text_primary()),
+    )
+    .on_press_maybe(
+        (!collection.tracks.is_empty()).then(|| Message::PlayQueue(collection.tracks.clone(), 0)),
+    )
+    .padding([8, 22])
+    .style(|_, status| {
+        let mut style = theme::flat_button(status, false);
+        style.background = Some(theme::accent().into());
+        style.border = border::rounded(18);
+        style
+    });
 
     let details = column![
         text(kind).size(11).color(theme::text_secondary()),
@@ -70,7 +74,7 @@ fn loaded<'a>(
         text(&collection.subtitle)
             .size(13)
             .color(theme::text_secondary()),
-        text(format!("{} songs", collection.tracks.len()))
+        text(t!("search.song_count", count = collection.tracks.len()))
             .size(13)
             .color(theme::text_secondary()),
         space().height(8),
@@ -99,7 +103,7 @@ fn loaded<'a>(
     .align_y(Center);
 
     let songs: iced::Element<'a, Message> = if collection.tracks.is_empty() {
-        note("No songs here.")
+        note(t!("collection.no_songs"))
     } else if own {
         search::playlist_track_list(&collection.tracks, &collection.id, shared)
     } else {
@@ -115,7 +119,7 @@ fn note<'a>(message: impl text::IntoFragment<'a>) -> Element<'a, Message> {
 
 /// Opens the dialog to give the playlist a cover of the user's own.
 fn cover_button(collection: &Collection) -> Element<'_, Message> {
-    button(text("Cover").size(14))
+    button(text(t!("collection.cover")).size(14))
         .on_press(Message::Playlist(playlists::Event::OpenCover {
             id: crate::playlists::edit::bare_id(&collection.id).to_string(),
             title: collection.title.clone(),
@@ -136,13 +140,16 @@ pub(crate) fn download_button<'a>(
 ) -> Element<'a, Message> {
     let (label, message) = match offline.state(&collection.id) {
         State::NotDownloaded => (
-            "Download".to_string(),
+            t!("collection.download"),
             (!collection.tracks.is_empty())
                 .then(|| Message::DownloadCollection(collection.clone())),
         ),
-        State::Downloading { done, total } => (format!("Downloading {done}/{total}\u{2026}"), None),
+        State::Downloading { done, total } => (
+            t!("collection.downloading", done = done, total = total),
+            None,
+        ),
         State::Downloaded => (
-            "Downloaded \u{b7} Remove".to_string(),
+            t!("collection.downloaded"),
             Some(Message::RemoveDownload(collection.id.clone())),
         ),
     };

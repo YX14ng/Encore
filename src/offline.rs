@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use iced::Task;
+use rust_i18n::t;
 
 use crate::Message;
 use crate::download;
@@ -85,7 +86,7 @@ impl Offline {
     /// Starts downloading every song of `collection`.
     pub fn start(&mut self, collection: Collection) -> Task<Message> {
         if self.job.is_some() {
-            self.error = Some("another download is in progress; wait for it to finish".to_string());
+            self.error = Some(t!("offline.busy").into_owned());
             return Task::none();
         }
         self.error = None;
@@ -125,18 +126,21 @@ impl Offline {
             return Task::none();
         };
         if job.failed > 0 {
-            self.error = Some(format!(
-                "{} of {} songs could not be downloaded",
-                job.failed,
-                job.collection.tracks.len()
-            ));
+            self.error = Some(
+                t!(
+                    "offline.some_failed",
+                    failed = job.failed,
+                    total = job.collection.tracks.len()
+                )
+                .into_owned(),
+            );
         }
         self.collections
             .retain(|collection| collection.id != job.collection.id);
         self.finished = Some(job.collection.clone());
         self.collections.insert(0, job.collection);
         if let Err(error) = save(&self.collections) {
-            self.error = Some(format!("could not save the downloads list: {error}"));
+            self.error = Some(t!("offline.save_failed", error = error).into_owned());
         }
         Task::none()
     }
@@ -163,7 +167,7 @@ impl Offline {
             }
         }
         if let Err(error) = save(&self.collections) {
-            self.error = Some(format!("could not save the downloads list: {error}"));
+            self.error = Some(t!("offline.save_failed", error = error).into_owned());
         }
     }
 }

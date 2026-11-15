@@ -6,6 +6,7 @@ use iced::font::Weight;
 use iced::gradient::Linear;
 use iced::widget::{Column, button, column, container, image, row, scrollable, space, stack, text};
 use iced::{Center, ContentFit, Degrees, Element, Fill, Font, border};
+use rust_i18n::t;
 use rustypipe::model::{AlbumType, MusicArtist};
 
 use crate::offline::Offline;
@@ -99,21 +100,21 @@ pub fn view<'a>(
         let see_all = page.songs_playlist.as_ref().map(|id| Tile {
             kind: TileKind::Playlist,
             id: id.clone(),
-            title: format!("{}: songs", collection.title),
-            subtitle: format!("Playlist \u{b7} {}", collection.title),
+            title: t!("artist.all_songs", artist = collection.title).into_owned(),
+            subtitle: t!("youtube.playlist_by", owner = collection.title).into_owned(),
             image_url: collection.image_url.clone(),
         });
         let songs = search::track_list(&collection.tracks, Some(TOP_SONGS), shared);
-        content = content.push(section("Top songs", see_all, songs));
+        content = content.push(section(t!("artist.top_songs"), see_all, songs));
     }
-    for (title, tiles) in [
-        ("Albums", &page.albums),
-        ("Singles & EPs", &page.singles),
-        ("Featured on", &page.playlists),
-        ("Fans also like", &page.similar),
+    for (key, tiles) in [
+        ("library.albums", &page.albums),
+        ("artist.singles", &page.singles),
+        ("artist.featured_on", &page.playlists),
+        ("artist.fans_also_like", &page.similar),
     ] {
         if !tiles.is_empty() {
-            content = content.push(section(title, None, search::shelf(tiles, shared)));
+            content = content.push(section(t!(key), None, search::shelf(tiles, shared)));
         }
     }
     if let Some(description) = &page.description {
@@ -121,7 +122,7 @@ pub fn view<'a>(
             .size(14)
             .color(theme::text_secondary())
             .width(Fill);
-        content = content.push(section("About", None, about.into()));
+        content = content.push(section(t!("artist.about"), None, about.into()));
     }
 
     scrollable(content.padding(iced::Padding::default().bottom(28)))
@@ -137,7 +138,9 @@ fn banner<'a>(
     shared: Shared<'a>,
 ) -> Element<'a, Message> {
     let name = column![
-        text("ARTIST").size(11).color(theme::text_secondary()),
+        text(t!("collection.kind_artist"))
+            .size(11)
+            .color(theme::text_secondary()),
         text(&collection.title).size(44).font(bold()),
     ]
     .push((!collection.subtitle.is_empty()).then(|| {
@@ -194,14 +197,14 @@ fn buttons<'a>(
         Message::OpenTile(Tile {
             kind: TileKind::Radio,
             id: id.clone(),
-            title: format!("{} radio", collection.title),
-            subtitle: "Mix \u{b7} YouTube Music".to_string(),
+            title: t!("artist.radio_title", artist = collection.title).into_owned(),
+            subtitle: t!("artist.radio_subtitle").into_owned(),
             image_url: collection.image_url.clone(),
         })
     });
     row![
-        pill("Play", play, true),
-        pill("Radio", radio, false),
+        pill(t!("search.play"), play, true),
+        pill(t!("artist.radio"), radio, false),
         crate::collection::download_button(collection, offline),
     ]
     .spacing(10)
@@ -211,16 +214,20 @@ fn buttons<'a>(
 
 /// A titled part of a page, with "See all" opening `see_all` when there is more.
 pub(crate) fn section<'a>(
-    title: &'a str,
+    title: impl text::IntoFragment<'a>,
     see_all: Option<Tile>,
     body: Element<'a, Message>,
 ) -> Element<'a, Message> {
     let header = row![text(title).size(20).font(bold()), space::horizontal()]
         .push(see_all.map(|tile| {
-            button(text("See all").size(13).color(theme::text_secondary()))
-                .on_press(Message::OpenTile(tile))
-                .padding([4, 10])
-                .style(|_, status| theme::flat_button(status, false))
+            button(
+                text(t!("artist.see_all"))
+                    .size(13)
+                    .color(theme::text_secondary()),
+            )
+            .on_press(Message::OpenTile(tile))
+            .padding([4, 10])
+            .style(|_, status| theme::flat_button(status, false))
         }))
         .align_y(Center);
     Column::new()
@@ -231,7 +238,11 @@ pub(crate) fn section<'a>(
         .into()
 }
 
-fn pill(label: &str, message: Option<Message>, primary: bool) -> Element<'_, Message> {
+fn pill<'a>(
+    label: impl text::IntoFragment<'a>,
+    message: Option<Message>,
+    primary: bool,
+) -> Element<'a, Message> {
     button(text(label).size(14).color(theme::text_primary()))
         .on_press_maybe(message)
         .padding([8, 22])

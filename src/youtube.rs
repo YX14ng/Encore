@@ -1,6 +1,7 @@
 //! The YouTube Music catalog through rustypipe: search, suggestions, albums, playlists and
 //! artists. Audio downloads live in `download.rs`.
 
+use rust_i18n::t;
 use rustypipe::client::RustyPipe;
 use rustypipe::model::{
     AlbumItem, AlbumType, ArtistItem, MusicItem, MusicPlaylistItem, Thumbnail, TrackItem,
@@ -308,7 +309,7 @@ pub(crate) fn playlist_tile(item: &MusicPlaylistItem) -> Tile {
         kind: TileKind::Playlist,
         id: item.id.clone(),
         title: item.name.clone(),
-        subtitle: format!("Playlist \u{b7} {owner}"),
+        subtitle: t!("youtube.playlist_by", owner = owner).into_owned(),
         image_url: best_image(&item.thumbnail),
     }
 }
@@ -358,11 +359,11 @@ pub fn pick_cover<'a>(
 /// "Single · Ado · 2021", leaving out what is unknown.
 pub fn album_subtitle(album_type: AlbumType, artists: &str, year: Option<u16>) -> String {
     let kind = match album_type {
-        AlbumType::Single => "Single",
-        AlbumType::Ep => "EP",
-        _ => "Album",
+        AlbumType::Single => t!("youtube.single"),
+        AlbumType::Ep => t!("youtube.ep"),
+        _ => t!("youtube.album"),
     };
-    let mut parts = vec![kind.to_string()];
+    let mut parts = vec![kind.into_owned()];
     if !artists.is_empty() {
         parts.push(artists.to_string());
     }
@@ -375,8 +376,8 @@ pub fn album_subtitle(album_type: AlbumType, artists: &str, year: Option<u16>) -
 /// "Artist · 38M subscribers", or just "Artist".
 pub fn artist_subtitle(subscribers: Option<u64>) -> String {
     match subscribers {
-        Some(count) => format!("Artist \u{b7} {} subscribers", compact_count(count)),
-        None => "Artist".to_string(),
+        Some(count) => t!("youtube.artist_subscribers", count = compact_count(count)).into_owned(),
+        None => t!("youtube.artist").into_owned(),
     }
 }
 

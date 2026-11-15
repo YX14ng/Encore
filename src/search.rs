@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use iced::font::Weight;
 use iced::widget::{Column, Row, button, column, container, image, row, scrollable, space, text};
 use iced::{Center, Element, Fill, Font, border};
+use rust_i18n::t;
 
 use crate::youtube::{Collection, SearchPage, SearchTrack, Tile, TileKind, TopResult};
 use crate::{Message, clock, playlists, theme};
@@ -36,13 +37,14 @@ pub enum Filter {
     Playlists,
 }
 
+/// Each chip's filter and the key of its label.
 const FILTERS: [(Filter, &str); 6] = [
-    (Filter::All, "All"),
-    (Filter::Songs, "Songs"),
-    (Filter::Videos, "Videos"),
-    (Filter::Albums, "Albums"),
-    (Filter::Artists, "Artists"),
-    (Filter::Playlists, "Playlists"),
+    (Filter::All, "search.all"),
+    (Filter::Songs, "library.songs"),
+    (Filter::Videos, "search.videos"),
+    (Filter::Albums, "library.albums"),
+    (Filter::Artists, "library.artists"),
+    (Filter::Playlists, "search.playlists"),
 ];
 
 /// Images and playback state that rows and cards need.
@@ -73,22 +75,20 @@ pub fn view(results: Results<'_>) -> Element<'_, Message> {
     let page = results.page;
 
     let mut content = column![
-        heading(format!("Results for \u{201c}{}\u{201d}", results.query)),
+        heading(t!("search.results_for", query = results.query)),
         chips(results.filter),
     ]
     .spacing(18)
     .padding([28, 32]);
 
     if let Some(error) = results.error {
-        content = content.push(note(format!("Could not play that song: {error}")));
+        content = content.push(note(t!("search.play_failed", error = error)));
     }
 
     match results.status {
         Status::Idle => {}
-        Status::Loading => content = content.push(note("Searching YouTube Music\u{2026}")),
-        Status::Failed(error) => {
-            content = content.push(note(format!("The search failed: {error}")))
-        }
+        Status::Loading => content = content.push(note(t!("search.searching"))),
+        Status::Failed(error) => content = content.push(note(t!("search.failed", error = error))),
         Status::Done => {
             content = match results.filter {
                 Filter::All => all_sections(content, page, shared),
@@ -114,41 +114,53 @@ fn all_sections<'a>(
         && page.albums.is_empty()
         && page.artists.is_empty()
     {
-        return content.push(note("Nothing found."));
+        return content.push(note(t!("search.nothing_found")));
     }
     if let Some(top) = &page.top {
-        content = content.push(section("Top result", None, top_card(top, shared)));
+        content = content.push(section(
+            t!("search.top_result"),
+            None,
+            top_card(top, shared),
+        ));
     }
     if !page.songs.is_empty() {
         let list = track_list(&page.songs, Some(PREVIEW_ROWS), shared);
-        content = content.push(section("Songs", Some(Filter::Songs), list));
+        content = content.push(section(t!("library.songs"), Some(Filter::Songs), list));
     }
     if !page.albums.is_empty() {
         content = content.push(section(
-            "Albums",
+            t!("library.albums"),
             Some(Filter::Albums),
             shelf(&page.albums, shared),
         ));
     }
     if !page.artists.is_empty() {
         let artists = shelf(&page.artists, shared);
-        content = content.push(section("Artists", Some(Filter::Artists), artists));
+        content = content.push(section(
+            t!("library.artists"),
+            Some(Filter::Artists),
+            artists,
+        ));
     }
     if !page.videos.is_empty() {
         let list = track_list(&page.videos, Some(PREVIEW_ROWS), shared);
-        content = content.push(section("Videos", Some(Filter::Videos), list));
+        content = content.push(section(t!("search.videos"), Some(Filter::Videos), list));
     }
     if !page.playlists.is_empty() {
         let playlists = shelf(&page.playlists, shared);
-        content = content.push(section("Playlists", Some(Filter::Playlists), playlists));
+        content = content.push(section(
+            t!("search.playlists"),
+            Some(Filter::Playlists),
+            playlists,
+        ));
     }
     content
 }
 
 fn chips(selected: Filter) -> Element<'static, Message> {
-    let chips = FILTERS.iter().map(|&(filter, label)| {
+    let chips = FILTERS.iter().map(|&(filter, key)| {
         let active = filter == selected;
-        button(text(label).size(13))
+        button(text(t!(key)).size(13))
             .on_press(Message::SetFilter(filter))
             .padding([6, 14])
             .style(move |_, status| {
@@ -168,16 +180,20 @@ fn chips(selected: Filter) -> Element<'static, Message> {
 }
 
 fn section<'a>(
-    title: &'a str,
+    title: impl text::IntoFragment<'a>,
     show_all: Option<Filter>,
     body: Element<'a, Message>,
 ) -> Element<'a, Message> {
     let header = row![text(title).size(20).font(bold()), space::horizontal()]
         .push(show_all.map(|filter| {
-            button(text("Show all").size(13).color(theme::text_secondary()))
-                .on_press(Message::SetFilter(filter))
-                .padding([4, 10])
-                .style(|_, status| theme::flat_button(status, false))
+            button(
+                text(t!("search.show_all"))
+                    .size(13)
+                    .color(theme::text_secondary()),
+            )
+            .on_press(Message::SetFilter(filter))
+            .padding([4, 10])
+            .style(|_, status| theme::flat_button(status, false))
         }))
         .align_y(Center);
 
@@ -188,7 +204,7 @@ fn top_card<'a>(top: &'a TopResult, shared: Shared<'a>) -> Element<'a, Message> 
     let (title, subtitle, image_url, round, open) = match top {
         TopResult::Track(track) => (
             track.title.as_str(),
-            format!("Song \u{b7} {}", track.artist),
+            t!("search.song_by", artist = track.artist).into_owned(),
             track.cover_url.as_deref(),
             false,
             None,
@@ -202,15 +218,19 @@ fn top_card<'a>(top: &'a TopResult, shared: Shared<'a>) -> Element<'a, Message> 
         ),
     };
 
-    let play = button(text("Play").size(14).color(theme::text_primary()))
-        .on_press(Message::PlayTop)
-        .padding([8, 22])
-        .style(|_, status| {
-            let mut style = theme::flat_button(status, false);
-            style.background = Some(theme::accent().into());
-            style.border = border::rounded(18);
-            style
-        });
+    let play = button(
+        text(t!("search.play"))
+            .size(14)
+            .color(theme::text_primary()),
+    )
+    .on_press(Message::PlayTop)
+    .padding([8, 22])
+    .style(|_, status| {
+        let mut style = theme::flat_button(status, false);
+        style.background = Some(theme::accent().into());
+        style.border = border::rounded(18);
+        style
+    });
 
     let details = column![
         text(title).size(26).font(bold()),
@@ -293,7 +313,7 @@ fn song_row<'a>(
     let is_loading = shared.loading == Some(track.id.as_str());
     let is_playing = shared.playing == Some(track.id.as_str());
     let right = if is_loading {
-        text("Loading\u{2026}").size(12).color(theme::accent())
+        text(t!("search.loading")).size(12).color(theme::accent())
     } else {
         // Some lists (an artist's top songs) come without durations.
         let duration = if track.duration == 0 {
@@ -355,7 +375,7 @@ pub fn shelf<'a>(tiles: &'a [Tile], shared: Shared<'a>) -> Element<'a, Message> 
 /// Cards in rows that wrap.
 pub fn card_grid<'a>(tiles: &'a [Tile], shared: Shared<'a>) -> Element<'a, Message> {
     if tiles.is_empty() {
-        return note("Nothing found.");
+        return note(t!("search.nothing_found"));
     }
     wrapping(tiles.iter().map(|tile| card(tile, shared)))
 }
@@ -416,14 +436,14 @@ fn card_parts<'a>(
 /// Downloaded collections as cards that open without a connection.
 pub fn offline_grid<'a>(collections: &'a [Collection], shared: Shared<'a>) -> Element<'a, Message> {
     if collections.is_empty() {
-        return note("Nothing downloaded yet. Open an album or playlist and press Download.");
+        return note(t!("search.nothing_downloaded"));
     }
     wrapping(collections.iter().map(|collection| {
         card_parts(
             &collection.id,
             collection.image_url.as_deref(),
             &collection.title,
-            format!("{} songs", collection.tracks.len()),
+            t!("search.song_count", count = collection.tracks.len()).into_owned(),
             collection.kind == TileKind::Artist,
             Message::OpenOffline(collection.id.clone()),
             shared,
@@ -474,7 +494,7 @@ pub fn cover_picture<'a>(
     }
 }
 
-fn heading<'a>(label: String) -> Element<'a, Message> {
+fn heading<'a>(label: impl text::IntoFragment<'a>) -> Element<'a, Message> {
     text(label).size(26).font(bold()).into()
 }
 

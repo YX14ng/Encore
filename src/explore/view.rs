@@ -3,6 +3,7 @@
 use iced::font::Weight;
 use iced::widget::{Row, button, column, container, row, scrollable, space, text};
 use iced::{Center, Color, Element, Fill, Font, border};
+use rust_i18n::t;
 
 use super::{Event, Explore, Genre};
 use crate::artist::section;
@@ -15,51 +16,51 @@ pub(super) const CHART_ROWS: usize = 10;
 
 /// The Explore screen.
 pub fn view<'a>(explore: &'a Explore, shared: Shared<'a>) -> Element<'a, Message> {
-    let mut content = column![heading("Explore")].spacing(4);
+    let mut content = column![heading(t!("explore.title"))].spacing(4);
     match (&explore.status, &explore.data) {
         (Status::Failed(error), _) => {
-            content = content.push(padded(note(format!("Could not load Explore: {error}"))));
+            content = content.push(padded(note(t!("explore.load_failed", error = error))));
         }
         (_, Some(data)) => {
             if !data.moods.is_empty() {
-                content = content.push(section("Moods & moments", None, chips(&data.moods)));
+                content = content.push(section(t!("explore.moods"), None, chips(&data.moods)));
             }
             if !data.new_albums.is_empty() {
                 let shelf = search::shelf(&data.new_albums, shared);
-                content = content.push(section("New releases", None, shelf));
+                content = content.push(section(t!("explore.new_releases"), None, shelf));
             }
             if !data.charts.is_empty() {
                 let shelf = search::shelf(&data.charts, shared);
-                content = content.push(section("Charts", None, shelf));
+                content = content.push(section(t!("explore.charts"), None, shelf));
             }
             if !data.top_songs.is_empty() {
                 let see_all = data.top_playlist.as_ref().map(|id| Tile {
                     kind: TileKind::Playlist,
                     id: id.clone(),
-                    title: "Top songs".to_string(),
-                    subtitle: "Playlist \u{b7} YouTube Music".to_string(),
+                    title: t!("artist.top_songs").into_owned(),
+                    subtitle: t!("youtube.playlist_by", owner = "YouTube Music").into_owned(),
                     image_url: None,
                 });
                 let list = search::track_list(&data.top_songs, Some(CHART_ROWS), shared);
-                content = content.push(section("Top songs", see_all, list));
+                content = content.push(section(t!("artist.top_songs"), see_all, list));
             }
             if !data.trending.is_empty() {
                 let list = search::track_list(&data.trending, Some(CHART_ROWS), shared);
-                content = content.push(section("Trending", None, list));
+                content = content.push(section(t!("explore.trending"), None, list));
             }
             if !data.top_artists.is_empty() {
                 let shelf = search::shelf(&data.top_artists, shared);
-                content = content.push(section("Top artists", None, shelf));
+                content = content.push(section(t!("explore.top_artists"), None, shelf));
             }
             if !data.new_videos.is_empty() {
                 let list = search::track_list(&data.new_videos, Some(CHART_ROWS), shared);
-                content = content.push(section("New music videos", None, list));
+                content = content.push(section(t!("explore.new_videos"), None, list));
             }
             if !data.genres.is_empty() {
-                content = content.push(section("Genres", None, chips(&data.genres)));
+                content = content.push(section(t!("explore.genres"), None, chips(&data.genres)));
             }
         }
-        _ => content = content.push(padded(note("Loading\u{2026}"))),
+        _ => content = content.push(padded(note(t!("search.loading")))),
     }
     scrollable(content.padding([14, 0])).height(Fill).into()
 }
@@ -70,17 +71,17 @@ pub fn genre_view<'a>(explore: &'a Explore, shared: Shared<'a>) -> Element<'a, M
     let mut content = column![heading(name)].spacing(4);
     match (&explore.genre_status, &explore.genre) {
         (Status::Failed(error), _) => {
-            content = content.push(padded(note(format!("Could not open it: {error}"))));
+            content = content.push(padded(note(t!("collection.open_failed", error = error))));
         }
         (Status::Done, Some(page)) if page.sections.is_empty() => {
-            content = content.push(padded(note("No playlists here.")));
+            content = content.push(padded(note(t!("explore.no_playlists"))));
         }
         (Status::Done, Some(page)) => {
             for (title, tiles) in &page.sections {
                 content = content.push(section(title, None, search::shelf(tiles, shared)));
             }
         }
-        _ => content = content.push(padded(note("Loading\u{2026}"))),
+        _ => content = content.push(padded(note(t!("search.loading")))),
     }
     scrollable(content.padding([14, 0])).height(Fill).into()
 }
@@ -118,7 +119,7 @@ fn chips(genres: &[Genre]) -> Element<'_, Message> {
         .into()
 }
 
-fn heading(label: &str) -> Element<'_, Message> {
+fn heading<'a>(label: impl text::IntoFragment<'a>) -> Element<'a, Message> {
     padded(text(label).size(26).font(Font {
         weight: Weight::Bold,
         ..theme::INTER

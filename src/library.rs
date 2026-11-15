@@ -4,6 +4,7 @@
 use iced::font::Weight;
 use iced::widget::{Row, button, column, scrollable, text, text_input};
 use iced::{Element, Fill, Font, border};
+use rust_i18n::t;
 use rustypipe::client::RustyPipe;
 use serde::{Deserialize, Serialize};
 
@@ -206,7 +207,7 @@ pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
                     if let Some(owner) = &owner
                         && own_playlists.contains(&playlist.id)
                     {
-                        tile.subtitle = format!("Playlist \u{b7} {owner}");
+                        tile.subtitle = t!("youtube.playlist_by", owner = owner).into_owned();
                     }
                     tile
                 })
@@ -249,8 +250,8 @@ pub fn mixes_from(history: &[SearchTrack], count: usize) -> Vec<Tile> {
         .map(|track| Tile {
             kind: TileKind::Radio,
             id: track.id.clone(),
-            title: format!("{} Mix", track.artist),
-            subtitle: format!("Based on {}", track.title),
+            title: t!("library.artist_mix", artist = track.artist).into_owned(),
+            subtitle: t!("library.based_on", title = track.title).into_owned(),
             image_url: track.cover_url.clone(),
         })
         .collect()
@@ -346,15 +347,15 @@ pub fn shelf_view<'a>(
     shared: Shared<'a>,
 ) -> Element<'a, Message> {
     let title = match shelf {
-        Shelf::History => "History",
-        Shelf::Songs => "Songs",
-        Shelf::Liked => "Liked music",
-        Shelf::Albums => "Albums",
-        Shelf::Artists => "Artists",
-        Shelf::Subscriptions => "Subscriptions",
-        Shelf::Podcasts => "Podcasts",
-        Shelf::Mixes => "Radio & mixes",
-        Shelf::Downloads => "Downloads",
+        Shelf::History => t!("library.history"),
+        Shelf::Songs => t!("library.songs"),
+        Shelf::Liked => t!("library.liked"),
+        Shelf::Albums => t!("library.albums"),
+        Shelf::Artists => t!("library.artists"),
+        Shelf::Subscriptions => t!("library.subscriptions"),
+        Shelf::Podcasts => t!("library.podcasts"),
+        Shelf::Mixes => t!("library.mixes"),
+        Shelf::Downloads => t!("library.downloads"),
     };
 
     let body: Element<'a, Message> = match account {
@@ -375,12 +376,10 @@ pub fn shelf_view<'a>(
             Shelf::Mixes => mixes(data, shared),
             Shelf::Downloads => search::offline_grid(downloads, shared),
         },
-        Account::Checking | Account::SigningIn | Account::Waiting => {
-            note("Loading your library\u{2026}")
-        }
+        Account::Checking | Account::SigningIn | Account::Waiting => note(t!("library.loading")),
         Account::SignedOut | Account::Failed(_) => column![
-            note("Sign in to see your library."),
-            accent_button("Sign in", Message::OpenAccount),
+            note(t!("library.signed_out")),
+            accent_button(t!("library.sign_in"), Message::OpenAccount),
         ]
         .spacing(12)
         .into(),
@@ -398,7 +397,7 @@ pub fn account_view<'a>(
     cookie_path: &'a str,
     photo: Option<iced::widget::image::Handle>,
 ) -> Element<'a, Message> {
-    let mut content = column![heading("Your YouTube Music account")]
+    let mut content = column![heading(t!("library.account_title"))]
         .spacing(18)
         .padding([28, 32])
         .max_width(720);
@@ -436,24 +435,19 @@ pub fn account_view<'a>(
                 );
             }
             content = content
-                .push(note(
-                    "You are signed in. Your library and playlists are in the sidebar.",
-                ))
-                .push(accent_button("Sign out", Message::SignOut));
+                .push(note(t!("library.signed_in_note")))
+                .push(accent_button(t!("library.sign_out"), Message::SignOut));
         }
         Account::Checking | Account::SigningIn => {
-            content = content.push(note("Signing in and loading your library\u{2026}"));
+            content = content.push(note(t!("library.signing_in")));
         }
         Account::Waiting => {
-            content = content.push(note(
-                "Sign in with your Google account in the window Encore opened. It closes on its \
-                 own once YouTube Music opens signed in.",
-            ));
+            content = content.push(note(t!("library.waiting")));
         }
         Account::SignedOut | Account::Failed(_) => {
             if let Account::Failed(error) = account {
                 content = content
-                    .push(text(format!("Could not sign in: {error}")).color(theme::accent()));
+                    .push(text(t!("library.sign_in_failed", error = error)).color(theme::accent()));
             }
             let browsers = BROWSERS.iter().map(|&(browser, name)| {
                 button(text(name).size(14))
@@ -467,28 +461,18 @@ pub fn account_view<'a>(
                     .into()
             });
             content = content
-                .push(note(
-                    "Encore opens a small window of its own where you sign in with your Google \
-                     account, like a browser only Encore uses. Only the YouTube cookies are \
-                     kept, on this computer.",
-                ))
-                .push(accent_button("Sign in", Message::SignInWindow))
-                .push(note(
-                    "Or read the session from a browser you are signed in to. It stops working \
-                     when that browser renews it, often within minutes:",
-                ))
+                .push(note(t!("library.sign_in_window_note")))
+                .push(accent_button(t!("library.sign_in"), Message::SignInWindow))
+                .push(note(t!("library.browser_note")))
                 .push(Row::with_children(browsers).spacing(8))
-                .push(note(
-                    "Or import a cookies.txt. Export it from a private window and close the \
-                     window, so the browser never renews it:",
-                ))
+                .push(note(t!("library.cookies_note")))
                 .push(
                     iced::widget::row![
                         text_input("~/Downloads/cookies.txt", cookie_path)
                             .on_input(Message::CookiePathChanged)
                             .on_submit(Message::ImportCookies)
                             .padding([8, 12]),
-                        accent_button("Import", Message::ImportCookies),
+                        accent_button(t!("library.import"), Message::ImportCookies),
                     ]
                     .spacing(8),
                 );
@@ -498,7 +482,10 @@ pub fn account_view<'a>(
     scrollable(content).height(Fill).into()
 }
 
-pub(crate) fn accent_button(label: &str, message: Message) -> Element<'_, Message> {
+pub(crate) fn accent_button<'a>(
+    label: impl text::IntoFragment<'a>,
+    message: Message,
+) -> Element<'a, Message> {
     button(text(label).size(14).color(theme::text_primary()))
         .on_press(message)
         .padding([8, 22])
@@ -514,12 +501,12 @@ pub(crate) fn accent_button(label: &str, message: Message) -> Element<'_, Messag
 /// "Radio & mixes": the mixes YouTube Music makes for the user, then radios from the history.
 fn mixes<'a>(data: &'a LibraryData, shared: Shared<'a>) -> Element<'a, Message> {
     let mut sections = column![].spacing(28);
-    for (title, tiles) in [
-        ("Mixed for you", &data.made_for_you),
-        ("From your history", &data.mixes),
+    for (key, tiles) in [
+        ("library.mixed_for_you", &data.made_for_you),
+        ("library.from_history", &data.mixes),
     ] {
         if !tiles.is_empty() {
-            let title = text(title).size(18).font(Font {
+            let title = text(t!(key)).size(18).font(Font {
                 weight: Weight::Bold,
                 ..theme::INTER
             });
@@ -527,12 +514,12 @@ fn mixes<'a>(data: &'a LibraryData, shared: Shared<'a>) -> Element<'a, Message> 
         }
     }
     if data.made_for_you.is_empty() && data.mixes.is_empty() {
-        return note("No mixes yet: play some songs and YouTube Music makes them.");
+        return note(t!("library.no_mixes"));
     }
     sections.into()
 }
 
-fn heading(label: &str) -> Element<'_, Message> {
+fn heading<'a>(label: impl text::IntoFragment<'a>) -> Element<'a, Message> {
     text(label)
         .size(26)
         .font(Font {
