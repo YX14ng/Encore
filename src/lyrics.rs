@@ -3,8 +3,14 @@
 
 use iced::font::Weight;
 use iced::gradient::Linear;
-use iced::widget::{Column, column, container, pin, scrollable, space, stack, text};
-use iced::{Color, Degrees, Element, Fill, Font};
+use std::time::Duration;
+
+use iced::animation::{Animation, Easing};
+use iced::mouse::ScrollDelta;
+use iced::widget::{
+    Column, button, column, container, mouse_area, pin, scrollable, space, stack, text,
+};
+use iced::{Color, Degrees, Element, Fill, Font, mouse};
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 
@@ -127,13 +133,30 @@ fn fraction_to_millis(fraction: &str) -> Option<u32> {
     digits.parse().ok()
 }
 
+/// The animation that scrolls synced lyrics from line to line.
+pub fn scroll_animation(line: f32) -> Animation<f32> {
+    Animation::new(line)
+        .duration(Duration::from_millis(500))
+        .easing(Easing::EaseOutCubic)
+}
+
+/// How many lines a turn of the wheel (or a swipe on a touchpad) moves synced lyrics drawn in
+/// `style`: a notch is a line, pixels count by the line's height.
+pub fn scrolled_lines(delta: ScrollDelta, style: Style) -> f32 {
+    match delta {
+        ScrollDelta::Lines { y, .. } => -y,
+        ScrollDelta::Pixels { y, .. } => -y / style.row_height,
+    }
+}
+
 /// The index of the line being sung at `elapsed_ms`, or `None` before the first one.
 pub fn current_line(lines: &[LyricLine], elapsed_ms: u32) -> Option<usize> {
     lines.iter().rposition(|line| line.start_ms <= elapsed_ms)
 }
 
 /// The lyrics in `style`: synced ones scrolled so the line at `scroll` (a line index, animated
-/// between whole numbers) sits near the top, plain ones as a scrollable text, or a note.
+/// between whole numbers) sits near the top, plain ones as a scrollable text, or a note. The
+/// wheel scrolls synced lyrics by hand, and clicking a line jumps to where it starts.
 pub fn view(
     lyrics: &Lyrics,
     current: Option<usize>,
@@ -143,16 +166,33 @@ pub fn view(
     let content: Element<'_, Message> = match lyrics {
         Lyrics::Synced(lines) if !lines.is_empty() => {
             let rows = lines.iter().enumerate().map(|(index, line)| {
-                container(lyric(&line.text, Some(index) == current, style))
-                    .height(style.row_height)
-                    .clip(true)
-                    .into()
+                let is_current = Some(index) == current;
+                button(
+                    container(lyric(&line.text, is_current, style))
+                        .padding([0, 10])
+                        .clip(true),
+                )
+                .on_press(Message::LyricLine(index))
+                .height(style.row_height)
+                .width(Fill)
+                .padding(0)
+                .style(|_, status| button::Style {
+                    // A line under the pointer shows it can be clicked.
+                    background: matches!(status, button::Status::Hovered)
+                        .then(|| theme::tint(0.05).into()),
+                    border: iced::border::rounded(10),
+                    ..button::Style::default()
+                })
+                .into()
             });
             let list = Column::with_children(rows)
                 .width(style.width)
-                .padding([0, 26]);
+                .padding([0, 16]);
             let offset = style.height_hint * FOCUS - scroll * style.row_height;
-            pin(list).y(offset).into()
+            mouse_area(pin(list).y(offset).width(Fill).height(Fill))
+                .on_scroll(move |delta| Message::LyricsScrolled(scrolled_lines(delta, style)))
+                .interaction(mouse::Interaction::Pointer)
+                .into()
         }
         Lyrics::Plain(lines) => {
             let rows = lines.iter().map(|line| {

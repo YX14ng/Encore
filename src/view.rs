@@ -244,7 +244,10 @@ impl App {
     /// The lyrics in `style`, scrolled to the current line.
     pub(crate) fn lyrics_view(&self, style: lyrics::Style) -> Element<'_, Message> {
         let current = lyrics::current_line(self.lyrics.synced(), self.position_ms());
-        let scroll = self.lyrics_scroll.interpolate_with(|line| line, self.now);
+        let scroll = match self.lyrics_browse {
+            Some((at, _)) => at,
+            None => self.lyrics_scroll.interpolate_with(|line| line, self.now),
+        };
         lyrics::view(&self.lyrics, current, scroll, style)
     }
 
@@ -290,6 +293,7 @@ impl App {
         } else if self.lyrics_scroll.is_animating(self.now)
             || (self.immersive && self.visualizer.is_showing())
             || self.page_sliding()
+            || self.lyrics_browse.is_some()
         {
             Subscription::batch([frames, resize])
         } else {

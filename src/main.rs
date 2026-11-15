@@ -59,9 +59,8 @@ mod visualizer;
 mod youtube;
 
 use std::fs;
-use std::time::Duration;
 
-use iced::animation::{Animation, Easing};
+use iced::animation::Animation;
 use iced::time::Instant;
 use iced::widget::image;
 use iced::{Task, Theme};
@@ -131,6 +130,9 @@ struct App {
     now: Instant,
     /// The lyric line the panel is scrolled to, animated when it changes.
     lyrics_scroll: Animation<f32>,
+    /// Where the user scrolled the lyrics by hand (a line index) and when; `None` follows the
+    /// song.
+    lyrics_browse: Option<(f32, Instant)>,
     /// What the center column shows.
     screen: Screen,
     /// Search, downloads and audio.
@@ -268,6 +270,10 @@ enum Message {
     LastFmAnswered(Result<(), lastfm::ApiError>),
     Scrobbled(Result<(), lastfm::ApiError>),
     Previous,
+    /// The lyrics were scrolled by hand, this many lines down (up when negative).
+    LyricsScrolled(f32),
+    /// A line of the synced lyrics was clicked.
+    LyricLine(usize),
     Seeking(f32),
     SeekDone,
     VolumeChanged(f32),
@@ -369,9 +375,8 @@ impl App {
             window_width: 1280.0,
             started: now,
             now,
-            lyrics_scroll: Animation::new(first_line as f32)
-                .duration(Duration::from_millis(500))
-                .easing(Easing::EaseOutCubic),
+            lyrics_scroll: lyrics::scroll_animation(first_line as f32),
+            lyrics_browse: None,
             screen: Screen::Home,
             online: Online::new(&audio_settings),
             now_playing,

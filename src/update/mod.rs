@@ -3,6 +3,7 @@
 //! player, looks) and `places` (sidebar entries and the library).
 
 mod display;
+mod lyric_scroll;
 mod places;
 mod playback;
 
@@ -111,6 +112,7 @@ impl App {
             }
             Message::Frame(now) => {
                 self.now = now;
+                self.step_lyrics_browse();
                 // Keep the lyrics on the beat between the one-second ticks.
                 if self.online.is_active() && self.playback.is_playing {
                     if let Some(started) = self.went_on() {
@@ -320,6 +322,8 @@ impl App {
             Message::LastFmAnswered(result) => self.lastfm.answered(result),
             Message::Scrobbled(result) => return self.lastfm.scrobbled(result),
             Message::Previous => return self.previous(),
+            Message::LyricsScrolled(lines) => self.lyrics_scrolled(lines),
+            Message::LyricLine(index) => self.lyric_clicked(index),
             Message::Seeking(seconds) => self.seeking = Some(seconds),
             Message::SeekDone => {
                 if let Some(seconds) = self.seeking.take() {
