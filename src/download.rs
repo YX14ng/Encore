@@ -225,6 +225,13 @@ pub async fn video(id: String) -> Result<PathBuf, String> {
         .ok_or_else(|| t!("download.video_not_reported").into_owned())
 }
 
+/// Whether song `id` would play without downloading: kept offline, or in the cache of the
+/// quality `source` downloads.
+pub fn is_cached(id: &str, source: &Source) -> bool {
+    find_cached(&offline_dir(), id).is_some()
+        || find_cached(&cache_dir().join(source.quality().cache_folder()), id).is_some()
+}
+
 /// Keeps a song offline: copies it from the cache if it is there, else downloads it.
 pub async fn keep_offline(id: String) -> Result<PathBuf, String> {
     let offline = offline_dir();

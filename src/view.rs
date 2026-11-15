@@ -46,6 +46,7 @@ impl App {
             shuffle: settings.shuffle,
             repeat: settings.repeat,
             compact: self.player_width() < player::COMPACT_WIDTH,
+            loading: self.loading_shown.is_some(),
         }
     }
 

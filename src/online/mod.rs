@@ -67,6 +67,8 @@ pub struct Online {
     skip_silence: bool,
     /// How good the downloaded audio is.
     quality: download::Quality,
+    /// Songs being downloaded ahead of time, so each is asked for once.
+    warming: HashSet<String>,
     /// The file of the song that is playing, for the visualizer.
     playing_file: Option<std::path::PathBuf>,
     /// The song whose radio autoplay last asked for, so it is asked only once.
@@ -107,6 +109,7 @@ impl Online {
             skip_silence: settings.skip_silence,
             quality: settings.quality,
             playing_file: None,
+            warming: HashSet::new(),
             radio_for: None,
             covers: crate::playlists::covers::load(),
         }

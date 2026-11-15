@@ -25,6 +25,7 @@ impl App {
     /// then tells the desktop's media controls what is playing.
     pub(crate) fn update(&mut self, message: Message) -> Task<Message> {
         let task = self.handle(message);
+        self.show_loading_song();
         self.publish_media();
         task
     }
@@ -206,6 +207,7 @@ impl App {
             }
             Message::AudioReady(index, path) => return self.start_online(index, path),
             Message::Prefetched(id, path) => self.online.prefetched(id, path),
+            Message::WarmedUp(id) => self.online.warmed_up(&id),
             Message::RadioLoaded(seed, songs) => {
                 // A guest plays what the host plays; its own queue does not go on.
                 if !self.together.is_guest() {

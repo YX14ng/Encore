@@ -23,6 +23,8 @@ pub struct Controls {
     pub can_video: bool,
     /// The bar is narrow: the song goes on a row of its own above the buttons.
     pub compact: bool,
+    /// The song in the bar is still downloading.
+    pub loading: bool,
     /// Where the progress bar is being dragged to, in seconds.
     pub seeking: Option<f32>,
     /// From 0 to 100.
@@ -212,19 +214,23 @@ fn buttons<'a>(
 
     if controls.compact {
         return column![
-            now_playing(song, format),
+            now_playing(song, format, controls.loading),
             row![transport, space::horizontal(), extras].align_y(Center)
         ]
         .spacing(8)
         .into();
     }
-    row![transport, now_playing(song, format), extras]
-        .spacing(14)
-        .align_y(Center)
-        .into()
+    row![
+        transport,
+        now_playing(song, format, controls.loading),
+        extras
+    ]
+    .spacing(14)
+    .align_y(Center)
+    .into()
 }
 
-fn now_playing<'a>(song: &'a Song, format: Option<&'a str>) -> Element<'a, Message> {
+fn now_playing<'a>(song: &'a Song, format: Option<&'a str>, loading: bool) -> Element<'a, Message> {
     let cover: Element<'_, Message> = match &song.cover {
         Some(handle) => image(handle.clone())
             .width(40)
@@ -251,7 +257,13 @@ fn now_playing<'a>(song: &'a Song, format: Option<&'a str>) -> Element<'a, Messa
     .width(Fill)
     .clip(true);
 
-    let badge = format.map(|format| {
+    let loading = loading.then(|| {
+        text(rust_i18n::t!("queue.loading"))
+            .size(12)
+            .color(theme::accent())
+            .wrapping(iced::widget::text::Wrapping::None)
+    });
+    let badge = format.filter(|_| loading.is_none()).map(|format| {
         container(text(format).size(10).color(theme::text_secondary()))
             .padding([2, 6])
             .style(|_| {
@@ -260,19 +272,25 @@ fn now_playing<'a>(song: &'a Song, format: Option<&'a str>) -> Element<'a, Messa
     });
 
     // Clicking the song opens the now playing page, like YouTube Music's player bar.
-    let card = button(row![cover, details].push(badge).spacing(11).align_y(Center))
-        .on_press(Message::NowPlaying(crate::now_playing::Event::Toggle))
-        .width(Fill)
-        .padding([6, 10])
-        .style(|_, status| {
-            let hover = matches!(status, button::Status::Hovered | button::Status::Pressed);
-            button::Style {
-                background: Some(theme::tint(if hover { 0.09 } else { 0.05 }).into()),
-                text_color: theme::text_primary(),
-                border: border::rounded(9).color(theme::line()).width(1),
-                ..button::Style::default()
-            }
-        });
+    let card = button(
+        row![cover, details]
+            .push(loading)
+            .push(badge)
+            .spacing(11)
+            .align_y(Center),
+    )
+    .on_press(Message::NowPlaying(crate::now_playing::Event::Toggle))
+    .width(Fill)
+    .padding([6, 10])
+    .style(|_, status| {
+        let hover = matches!(status, button::Status::Hovered | button::Status::Pressed);
+        button::Style {
+            background: Some(theme::tint(if hover { 0.09 } else { 0.05 }).into()),
+            text_color: theme::text_primary(),
+            border: border::rounded(9).color(theme::line()).width(1),
+            ..button::Style::default()
+        }
+    });
     let card = container(card).max_width(460);
 
     container(card).center_x(Fill).into()

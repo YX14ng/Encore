@@ -234,4 +234,29 @@ impl App {
             self.lyrics_scroll.go_mut(line, self.now);
         }
     }
+
+    /// Shows the song being downloaded in the player bar at once, with "Loading…", instead of
+    /// keeping the previous one there until YouTube lets the download start.
+    pub(super) fn show_loading_song(&mut self) {
+        let Some(track) = self.online.loading_track().cloned() else {
+            self.loading_shown = None;
+            return;
+        };
+        if self.loading_shown.as_deref() == Some(track.id.as_str()) {
+            return;
+        }
+        self.loading_shown = Some(track.id.clone());
+        let cover = track
+            .cover_url
+            .as_deref()
+            .and_then(|url| self.online.image(url));
+        self.now_playing = Song::from_search(&track, cover);
+        self.playback = Playback {
+            elapsed: 0,
+            duration: track.duration,
+            is_playing: true,
+        };
+        self.audio_format = None;
+        self.lyrics = Lyrics::Loading;
+    }
 }

@@ -133,6 +133,8 @@ struct App {
     /// Where the user scrolled the lyrics by hand (a line index) and when; `None` follows the
     /// song.
     lyrics_browse: Option<(f32, Instant)>,
+    /// The song shown in the player bar while it downloads, so the bar changes at once.
+    loading_shown: Option<String>,
     /// What the center column shows.
     screen: Screen,
     /// Search, downloads and audio.
@@ -239,6 +241,8 @@ enum Message {
     PlayTop,
     AudioReady(usize, Result<silence::SongFile, String>),
     Prefetched(String, Result<silence::SongFile, String>),
+    /// A song after the next one finished downloading ahead.
+    WarmedUp(String),
     /// Similar songs for autoplay, for the song with this id.
     RadioLoaded(String, Result<Vec<youtube::SearchTrack>, String>),
     ToggleAutoplay,
@@ -377,6 +381,7 @@ impl App {
             now,
             lyrics_scroll: lyrics::scroll_animation(first_line as f32),
             lyrics_browse: None,
+            loading_shown: None,
             screen: Screen::Home,
             online: Online::new(&audio_settings),
             now_playing,

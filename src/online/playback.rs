@@ -5,6 +5,9 @@ use iced::Task;
 use rust_i18n::t;
 
 use super::{Online, Poll};
+
+/// How many songs after the next one are downloaded ahead.
+const WARM_AHEAD: usize = 2;
 use crate::Message;
 use crate::audio_settings::AudioSettings;
 use crate::download;
@@ -167,7 +170,8 @@ impl Online {
         if self.following().is_none() {
             return self.fill_from_radio();
         }
-        self.following()
+        let next = self
+            .following()
             .and_then(|next| self.queue.get(next))
             .map_or_else(Task::none, |next| {
                 let id = next.id.clone();
@@ -175,7 +179,38 @@ impl Online {
                     silence::song_file(id.clone(), self.source(), self.skip_silence),
                     move |song| Message::Prefetched(id.clone(), song),
                 )
+            });
+        Task::batch([next, self.warm_up()])
+    }
+
+    /// Downloads the songs after the next one into the cache, so skipping ahead does not wait
+    /// for YouTube (which holds every new download back for several seconds).
+    fn warm_up(&mut self) -> Task<Message> {
+        if self.repeat == Repeat::One {
+            return Task::none();
+        }
+        let source = self.source();
+        let ids: Vec<String> = self
+            .queue
+            .upcoming()
+            .iter()
+            .skip(1)
+            .take(WARM_AHEAD)
+            .filter_map(|&index| self.queue.get(index))
+            .map(|track| track.id.clone())
+            .filter(|id| !download::is_cached(id, &source))
+            .filter(|id| self.warming.insert(id.clone()))
+            .collect();
+        Task::batch(ids.into_iter().map(|id| {
+            Task::perform(download::audio(id.clone(), source.clone()), move |_| {
+                Message::WarmedUp(id.clone())
             })
+        }))
+    }
+
+    /// A song downloaded ahead finished (or failed: it is tried again when it comes up).
+    pub fn warmed_up(&mut self, id: &str) {
+        self.warming.remove(id);
     }
 
     fn forget_queued(&mut self) {
@@ -300,8 +335,12 @@ impl Online {
         };
         self.error = None;
         self.loading = Some(id.clone());
-        // The song playing now must not go on into the queued one while this one downloads.
+        // The song playing now must not go on into the queued one while this one downloads,
+        // nor keep playing under the new song's name.
         self.forget_queued();
+        if let Some(mixer) = &mut self.mixer {
+            mixer.set_paused(true);
+        }
         Task::perform(
             silence::song_file(id, self.source(), self.skip_silence),
             move |song| Message::AudioReady(index, song),
@@ -344,6 +383,14 @@ impl Online {
         (self.queue.get(index).cloned(), self.prefetch_next())
     }
 
+    /// The song being downloaded to play, while it is.
+    pub fn loading_track(&self) -> Option<&SearchTrack> {
+        let id = self.loading.as_deref()?;
+        (0..)
+            .map_while(|index| self.queue.get(index))
+            .find(|track| track.id == id)
+    }
+
     /// Whether a YouTube song is (or was last) playing.
     pub fn is_active(&self) -> bool {
         self.queue.playing().is_some()
@@ -361,6 +408,10 @@ impl Online {
 
     /// Pauses or resumes the audio.
     pub fn set_paused(&mut self, paused: bool) {
+        // While a new song downloads, the old one stays paused; the new one starts by itself.
+        if !paused && self.loading.is_some() {
+            return;
+        }
         if let Some(mixer) = &mut self.mixer {
             mixer.set_paused(paused);
         }
@@ -385,6 +436,10 @@ impl Online {
         let Some(mixer) = &self.mixer else {
             return Poll::Waiting;
         };
+        // The paused song's position must not show under the one being downloaded.
+        if self.loading.is_some() {
+            return Poll::Waiting;
+        }
         if let Some(position) = mixer.position() {
             self.heard = true;
             return Poll::Position(position as u32);
@@ -403,6 +458,9 @@ impl Online {
 
     /// Milliseconds into the playing song, for keeping lyrics in sync between ticks.
     pub fn position_ms(&self) -> Option<u32> {
+        if self.loading.is_some() {
+            return None;
+        }
         let seconds = self.mixer.as_ref()?.position()?;
         Some((seconds * 1000.0) as u32)
     }
@@ -421,5 +479,42 @@ impl Online {
     /// The song before the one that is playing; with `wrap`, the last before the first.
     pub fn previous_index(&self, wrap: bool) -> Option<usize> {
         self.queue.previous(wrap)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::audio_settings::AudioSettings;
+
+    fn track(id: &str) -> SearchTrack {
+        SearchTrack {
+            id: id.to_string(),
+            title: id.to_string(),
+            artist: String::new(),
+            album: String::new(),
+            duration: 200,
+            cover_url: None,
+            entry: None,
+        }
+    }
+
+    #[test]
+    fn a_downloading_song_shows_and_hides_the_old_position() {
+        let mut online = Online::new(&AudioSettings::default());
+        online.queue.replace(
+            vec![track("a"), track("b")],
+            0,
+            false,
+            &mut fastrand::Rng::with_seed(1),
+        );
+        assert!(online.loading_track().is_none());
+        online.loading = Some("b".to_string());
+        assert_eq!(
+            online.loading_track().map(|track| track.id.as_str()),
+            Some("b")
+        );
+        assert!(matches!(online.poll(), Poll::Waiting));
+        assert_eq!(online.position_ms(), None);
     }
 }
