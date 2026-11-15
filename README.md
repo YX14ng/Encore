@@ -108,6 +108,13 @@ host's song, position and pauses. Friends on the internet need your router to fo
 They connect straight to your computer, so they see its address and you see theirs. Details:
 [`docs/superpowers/specs/2026-11-14-encore-together-design.md`](docs/superpowers/specs/2026-11-14-encore-together-design.md).
 
+The interface comes in 14 languages (`src/i18n.rs`, texts in `locales/*.yml`): English,
+简体中文, 繁體中文, हिन्दी, Español, العربية, Français, বাংলা, Português (Brasil), Русский, Bahasa
+Indonesia, Deutsch, 日本語 and 한국어 — the ten most spoken languages, Traditional Chinese and
+three of the largest music markets. It follows the system's language unless another is picked
+under Settings → Appearance, and YouTube Music is asked for its own texts in the same language.
+Arabic is translated, but the layout is not mirrored right to left.
+
 Runtime requirements: `mpv` (libmpv) and `yt-dlp` installed on the system; `ffmpeg` for skipping
 silence, the visualizer and music videos (without it songs play whole, with no bars or video).
 
