@@ -5,13 +5,13 @@ Status: built (2026-11-13)
 
 ## Lyrics
 
-- Source order for the song that starts: disk cache (`~/.cache/encore/lyrics/<video id>.json`),
-  then LRCLIB (`/api/get` with title, first artist, album and length; then `/api/search`, keeping
-  the result within 4 s of the song's length and preferring synced lyrics), then the plain lyrics
-  YouTube Music shows (rustypipe `music_details` → `music_lyrics`).
-- Title variants tried on LRCLIB: as is, without bracketed parts like "(feat. …)", and each side
-  of "Original - Romanized" titles such as "うっせぇわ - Usseewa".
-- "Not found" is not cached, so a later try can find lyrics added to LRCLIB.
+- Lyrics come from YouTube Music only (changed 2026-11-15; LRCLIB was dropped, and so were
+  translations). Source order for the song that starts: disk cache
+  (`~/.cache/encore/lyrics/<video id>.ytm.json`), then the synced lyrics YouTube Music's phone app
+  shows (the `browse` request for the song's "MPLYt…" lyrics id, sent as the `ANDROID_MUSIC`
+  client, which answers a `timedLyricsModel` with each line's start), then the plain lyrics of the
+  Lyrics tab (rustypipe `music_details` → `music_lyrics`).
+- "Not found" is not cached, so a later try (after a failed request) can find them.
 - LRC times are read to the millisecond. While a song plays, the panel follows mpv's position on
   every animation frame (about 30 per second), not only on the one-second clock.
 - The panel shows synced lines (animated), plain lines (scrollable), "Instrumental", "Looking

@@ -50,7 +50,8 @@ Reference list built from Cider (cider.sh) and the Pear plugins (`pear-devs/pear
 Each phase gets its own design document when its turn comes. The planned data sources for phase 2
 onward (not part of phase 1) are: the YouTube Music internal API (InnerTube), probably through the
 `rustypipe` crate with `yt-dlp` as a fallback for streams; an audio engine (mpv or GStreamer, to be
-decided in phase 2); and LRCLIB for synced lyrics.
+decided in phase 2); and YouTube Music itself for synced lyrics (LRCLIB was the first plan,
+dropped on 2026-11-15).
 
 ## 3. Non-goals and anti-goals
 

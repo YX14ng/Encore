@@ -68,6 +68,10 @@ in Liked Music and as disliked when it was disliked in Encore, which keeps those
 `~/.local/share/encore/disliked.json`. With the "Skip disliked songs" plugin (on by default),
 disliking the playing song skips it, and so does a disliked song that comes up again.
 
+Lyrics come from YouTube Music alone (`src/lyrics_source.rs`): the synced lyrics its phone app
+shows, which follow the song line by line, or the plain lyrics of its Lyrics tab when a song has
+no synced ones. There are no translations.
+
 The mini player button in the player bar shrinks the window to the cover, the song and the
 controls and keeps it above other windows; the same button brings the full window back. The badge
 next to the song shows the playing file's codec and average bitrate (YouTube's Opus is usually
