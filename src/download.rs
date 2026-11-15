@@ -4,9 +4,11 @@
 //! and YouTube refuses to stream its audio URLs straight into mpv, so every song is downloaded
 //! with yt-dlp first and then played from the cache.
 
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
@@ -39,11 +41,12 @@ impl Quality {
     /// Every quality, in the order the audio screen shows them.
     pub const ALL: [Self; 3] = [Self::Low, Self::Normal, Self::High];
 
-    pub fn label(self) -> &'static str {
+    /// The quality's name, in the interface's language.
+    pub fn label(self) -> Cow<'static, str> {
         match self {
-            Self::Low => "Low",
-            Self::Normal => "Normal",
-            Self::High => "High (Premium)",
+            Self::Low => t!("audio.quality_low"),
+            Self::Normal => t!("audio.quality_normal"),
+            Self::High => t!("audio.quality_high"),
         }
     }
 
@@ -161,9 +164,9 @@ fn write_cookies(header: &str) -> Result<PathBuf, String> {
         .truncate(true)
         .mode(0o600)
         .open(&path)
-        .map_err(|error| format!("could not write the session for yt-dlp: {error}"))?;
+        .map_err(|error| t!("download.session_not_written", error = error).into_owned())?;
     file.write_all(cookies_txt(header, now + COOKIE_LIFETIME).as_bytes())
-        .map_err(|error| format!("could not write the session for yt-dlp: {error}"))?;
+        .map_err(|error| t!("download.session_not_written", error = error).into_owned())?;
     Ok(path)
 }
 
@@ -210,7 +213,7 @@ pub async fn video(id: String) -> Result<PathBuf, String> {
         .arg(format!("https://www.youtube.com/watch?v={id}"))
         .output()
         .await
-        .map_err(|error| format!("could not run yt-dlp: {error}"))?;
+        .map_err(|error| t!("download.ytdlp_not_run", error = error).into_owned())?;
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
     }
@@ -219,7 +222,7 @@ pub async fn video(id: String) -> Result<PathBuf, String> {
         .last()
         .map(PathBuf::from)
         .filter(|path| path.exists())
-        .ok_or_else(|| "yt-dlp did not report the downloaded video".to_string())
+        .ok_or_else(|| t!("download.video_not_reported").into_owned())
 }
 
 /// Keeps a song offline: copies it from the cache if it is there, else downloads it.
@@ -236,7 +239,9 @@ pub async fn keep_offline(id: String) -> Result<PathBuf, String> {
         .into_iter()
         .find_map(|quality| find_cached(&cache_dir().join(quality.cache_folder()), &id));
     if let Some(cached) = cached {
-        let name = cached.file_name().ok_or("bad cache file name")?;
+        let name = cached
+            .file_name()
+            .ok_or_else(|| t!("download.bad_cache_name").into_owned())?;
         let target = offline.join(name);
         tokio::fs::copy(&cached, &target)
             .await
@@ -269,7 +274,8 @@ async fn audio_into(
         // yt-dlp writes the cookies back when it ends; the session must not linger on disk.
         let _ = std::fs::remove_file(cookies);
     }
-    let output = output.map_err(|error| format!("could not run yt-dlp: {error}"))?;
+    let output =
+        output.map_err(|error| t!("download.ytdlp_not_run", error = error).into_owned())?;
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
     }
@@ -280,7 +286,7 @@ async fn audio_into(
         .last()
         .map(PathBuf::from)
         .filter(|path| path.exists())
-        .ok_or_else(|| "yt-dlp did not report the downloaded file".to_string())
+        .ok_or_else(|| t!("download.file_not_reported").into_owned())
 }
 
 /// Downloads a small file, such as a cover image.

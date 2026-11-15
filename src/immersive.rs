@@ -5,6 +5,8 @@ use iced::font::Weight;
 use iced::widget::{button, column, container, image, row, space, stack, text};
 use iced::{Center, Color, ContentFit, Element, Fill, Font, border};
 
+use rust_i18n::t;
+
 use crate::song::Song;
 use crate::{Message, theme};
 
@@ -57,7 +59,7 @@ pub fn view<'a>(
     };
 
     let exit = button(
-        text("Exit full screen")
+        text(t!("immersive.exit"))
             .size(13)
             .color(theme::text_secondary()),
     )

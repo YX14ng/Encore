@@ -12,6 +12,7 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use iced::Task;
+use rust_i18n::t;
 use rustypipe::client::{ClientType, RustyPipe};
 use serde_json::{Value, json};
 
@@ -123,7 +124,7 @@ pub async fn set(rp: RustyPipe, id: String, rating: Rating) -> Result<(), String
         })?;
     serde_json::from_str::<Value>(&response)
         .map(|_| ())
-        .map_err(|error| format!("YouTube's answer is not JSON: {error}"))
+        .map_err(|error| t!("rating.not_json", error = error).into_owned())
 }
 
 impl App {
@@ -134,7 +135,7 @@ impl App {
         (self.rating == Rating::Dislike && self.plugins.skip_disliked).then(|| {
             Task::batch([
                 self.handle(Message::Next),
-                self.show_toast(format!("Skipped {}, which you disliked", track.title)),
+                self.show_toast(t!("rating.skipped", title = track.title).into_owned()),
             ])
         })
     }
@@ -173,7 +174,9 @@ impl App {
                     if self.is_playing(&track.id) {
                         self.rating = previous;
                     }
-                    self.show_toast(format!("Could not rate {}: {error}", track.title))
+                    self.show_toast(
+                        t!("rating.failed", title = track.title, error = error).into_owned(),
+                    )
                 }
             },
         }

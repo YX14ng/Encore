@@ -5,6 +5,7 @@
 use std::path::PathBuf;
 
 use iced::Color;
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 
 use crate::theme::{ENCORE, Palette};
@@ -235,7 +236,9 @@ pub fn load_all() -> (Vec<Theme>, Vec<String>) {
                 themes.retain(|known| known.name != theme.name);
                 themes.push(theme);
             }
-            Err(error) => errors.push(format!("{name}: {error}")),
+            Err(error) => {
+                errors.push(t!("themes.file_error", file = name, error = error).into_owned())
+            }
         }
     }
     (themes, errors)
@@ -253,7 +256,10 @@ pub fn parse_theme(json: &str) -> Result<Theme, String> {
         ENCORE
     };
     let color = |field: &str, value: &Option<String>, fallback: Color| match value {
-        Some(hex) => parse_hex(hex).ok_or(format!("{field} is not a #rrggbb color: {hex:?}")),
+        Some(hex) => parse_hex(hex).ok_or_else(|| {
+            let value = format!("{hex:?}");
+            t!("themes.not_a_color", field = field, value = value).into_owned()
+        }),
         None => Ok(fallback),
     };
     Ok(Theme {

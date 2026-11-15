@@ -3,8 +3,10 @@
 //! silence skipping, speed and crossfade. Kept in
 //! `$XDG_CONFIG_HOME/encore/audio.json` (or `~/.config/encore/audio.json`).
 
+use std::borrow::Cow;
 use std::path::PathBuf;
 
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 
 use crate::download::Quality;
@@ -38,12 +40,13 @@ impl Compressor {
     /// Every strength, in the order the audio screen shows them.
     pub const ALL: [Self; 4] = [Self::Off, Self::Light, Self::Medium, Self::Strong];
 
-    pub fn label(self) -> &'static str {
+    /// The strength's name, in the interface's language.
+    pub fn label(self) -> Cow<'static, str> {
         match self {
-            Self::Off => "Off",
-            Self::Light => "Light",
-            Self::Medium => "Medium",
-            Self::Strong => "Strong",
+            Self::Off => t!("audio.compressor_off"),
+            Self::Light => t!("audio.compressor_light"),
+            Self::Medium => t!("audio.compressor_medium"),
+            Self::Strong => t!("audio.compressor_strong"),
         }
     }
 
@@ -67,38 +70,46 @@ impl Compressor {
 
 /// A named equalizer curve.
 pub struct Preset {
-    pub name: &'static str,
+    /// The key of its name in `locales/player.yml`.
+    key: &'static str,
     pub gains: [f32; 10],
+}
+
+impl Preset {
+    /// The curve's name, in the interface's language.
+    pub fn name(&self) -> Cow<'static, str> {
+        t!(self.key)
+    }
 }
 
 /// The curves offered above the equalizer.
 pub const PRESETS: [Preset; 7] = [
     Preset {
-        name: "Flat",
+        key: "audio.preset_flat",
         gains: [0.0; 10],
     },
     Preset {
-        name: "Bass boost",
+        key: "audio.preset_bass_boost",
         gains: [6.0, 5.0, 4.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     },
     Preset {
-        name: "Treble boost",
+        key: "audio.preset_treble_boost",
         gains: [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 4.0, 5.0, 6.0],
     },
     Preset {
-        name: "Vocal",
+        key: "audio.preset_vocal",
         gains: [-2.0, -2.0, -1.0, 1.0, 3.0, 4.0, 3.0, 1.0, 0.0, -1.0],
     },
     Preset {
-        name: "Rock",
+        key: "audio.preset_rock",
         gains: [5.0, 4.0, 3.0, 1.0, -1.0, -1.0, 1.0, 3.0, 4.0, 5.0],
     },
     Preset {
-        name: "Electronic",
+        key: "audio.preset_electronic",
         gains: [5.0, 4.0, 1.0, 0.0, -2.0, 1.0, 0.0, 1.0, 4.0, 5.0],
     },
     Preset {
-        name: "Acoustic",
+        key: "audio.preset_acoustic",
         gains: [4.0, 3.0, 2.0, 1.0, 1.0, 1.0, 2.0, 3.0, 3.0, 2.0],
     },
 ];

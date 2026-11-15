@@ -7,6 +7,8 @@ use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{Receiver, TryRecvError, sync_channel};
 
+use rust_i18n::t;
+
 pub const WIDTH: u32 = 960;
 pub const HEIGHT: u32 = 540;
 pub const FPS: f64 = 30.0;
@@ -64,8 +66,11 @@ impl Decoder {
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()
-            .map_err(|error| format!("could not run ffmpeg: {error}"))?;
-        let mut stdout = child.stdout.take().ok_or("ffmpeg gave no output")?;
+            .map_err(|error| t!("video.ffmpeg_not_run", error = error).into_owned())?;
+        let mut stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| t!("video.ffmpeg_no_output").into_owned())?;
         let (sender, frames) = sync_channel(AHEAD);
         std::thread::spawn(move || {
             let size = (WIDTH * HEIGHT * 4) as usize;

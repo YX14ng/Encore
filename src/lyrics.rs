@@ -5,6 +5,7 @@ use iced::font::Weight;
 use iced::gradient::Linear;
 use iced::widget::{Column, column, container, pin, scrollable, space, stack, text};
 use iced::{Color, Degrees, Element, Fill, Font};
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 
 use crate::{Message, theme};
@@ -169,9 +170,9 @@ pub fn view(
             .height(Fill)
             .into()
         }
-        Lyrics::Loading => note("Looking for lyrics\u{2026}"),
-        Lyrics::Instrumental => note("Instrumental"),
-        Lyrics::Missing | Lyrics::Synced(_) => note("No lyrics for this track"),
+        Lyrics::Loading => note(t!("lyrics.looking")),
+        Lyrics::Instrumental => note(t!("lyrics.instrumental")),
+        Lyrics::Missing | Lyrics::Synced(_) => note(t!("lyrics.missing")),
     };
 
     let fade_into = style.fade.then(theme::lyrics_bg);
@@ -198,7 +199,7 @@ pub fn view(
     }
 }
 
-fn note(message: &str) -> Element<'_, Message> {
+fn note<'a>(message: impl text::IntoFragment<'a>) -> Element<'a, Message> {
     container(text(message).color(theme::text_secondary()))
         .padding([48, 26])
         .into()

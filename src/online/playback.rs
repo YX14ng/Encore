@@ -2,6 +2,7 @@
 //! autoplay's similar songs, and mpv through the mixer.
 
 use iced::Task;
+use rust_i18n::t;
 
 use super::{Online, Poll};
 use crate::Message;
@@ -326,7 +327,7 @@ impl Online {
             let mixer = self
                 .mixer
                 .as_mut()
-                .ok_or("mpv could not start; is libmpv installed?")?;
+                .ok_or_else(|| t!("online.mpv_not_started").into_owned())?;
             mixer.play(&song)?;
             Ok(song.path)
         });

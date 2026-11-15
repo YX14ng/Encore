@@ -9,6 +9,8 @@ use iced::widget::{
 };
 use iced::{Center, Element, Fill, Font, border};
 
+use rust_i18n::t;
+
 use crate::audio::Device;
 use crate::audio_settings::{
     AudioChange, AudioSettings, BANDS, Compressor, MAX_CROSSFADE, MAX_GAIN, MAX_SPEED, MIN_SPEED,
@@ -40,14 +42,14 @@ pub fn view<'a>(
 
 fn equalizer(settings: &AudioSettings) -> Element<'_, Message> {
     let switch = toggler(settings.equalizer)
-        .label("Equalizer")
+        .label(t!("audio.equalizer"))
         .on_toggle(|on| change(AudioChange::Equalizer(on)))
         .style(theme::switch);
 
     let selected = settings.preset();
     let presets = Row::with_children(PRESETS.iter().enumerate().map(|(index, preset)| {
         chip(
-            preset.name,
+            preset.name(),
             settings.equalizer && selected == Some(index),
             change(AudioChange::Preset(index)),
         )
@@ -84,7 +86,7 @@ fn equalizer(settings: &AudioSettings) -> Element<'_, Message> {
     let dimmed = if settings.equalizer {
         None
     } else {
-        Some("Switch the equalizer on to hear these bands.")
+        Some(t!("audio.equalizer_off_note"))
     };
     column![switch, presets, bands]
         .push(dimmed.map(note))
@@ -98,7 +100,7 @@ fn output<'a>(settings: &'a AudioSettings, devices: &'a [Device]) -> Element<'a,
     let chosen = settings.output.as_deref();
     let missing = chosen.filter(|name| !devices.iter().any(|device| device.name == *name));
     let mut list = Column::new().push(choice(
-        "System default".to_string(),
+        t!("audio.system_default").into_owned(),
         chosen.is_none() || missing.is_some(),
         Message::AudioOutput(None),
     ));
@@ -111,14 +113,17 @@ fn output<'a>(settings: &'a AudioSettings, devices: &'a [Device]) -> Element<'a,
     }
     if let Some(name) = missing {
         list = list.push(choice(
-            format!("{name} (not connected)"),
+            t!("audio.not_connected", name = name).into_owned(),
             false,
             Message::AudioOutput(Some(name.to_string())),
         ));
     }
-    column![heading("Sound output", 16.0), list.spacing(2).width(460)]
-        .spacing(10)
-        .into()
+    column![
+        heading(t!("audio.sound_output"), 16.0),
+        list.spacing(2).width(460)
+    ]
+    .spacing(10)
+    .into()
 }
 
 /// A row of the output list, with a check mark when it is the one in use.
@@ -150,19 +155,15 @@ fn quality(settings: &AudioSettings) -> Element<'_, Message> {
     .spacing(8)
     .wrap();
     let explanation = match settings.quality {
-        Quality::Low => "Opus around 60 kbit/s, for slow or metered connections.",
-        Quality::Normal => "Opus around 130 kbit/s, the best YouTube gives without Premium.",
-        Quality::High => {
-            "Opus around 256 kbit/s with YouTube Music Premium (signed in); without Premium it \
-             is the same as Normal. yt-dlp downloads with your session, which YouTube may \
-             notice: yt-dlp warns that accounts used this way can get blocked for a while."
-        }
+        Quality::Low => t!("audio.quality_low_note"),
+        Quality::Normal => t!("audio.quality_normal_note"),
+        Quality::High => t!("audio.quality_high_note"),
     };
     column![
-        heading("Audio quality", 16.0),
+        heading(t!("audio.quality"), 16.0),
         choices,
         note(explanation),
-        note("Takes effect from the next song that downloads."),
+        note(t!("audio.quality_next_song")),
     ]
     .spacing(10)
     .into()
@@ -179,9 +180,9 @@ fn compressor(settings: &AudioSettings) -> Element<'_, Message> {
     .spacing(8)
     .wrap();
     column![
-        heading("Compressor", 16.0),
+        heading(t!("audio.compressor"), 16.0),
         strengths,
-        note("Evens out the loud and quiet parts inside a song."),
+        note(t!("audio.compressor_note")),
     ]
     .spacing(10)
     .into()
@@ -190,13 +191,10 @@ fn compressor(settings: &AudioSettings) -> Element<'_, Message> {
 fn silence(settings: &AudioSettings) -> Element<'_, Message> {
     column![
         toggler(settings.skip_silence)
-            .label("Skip silence")
+            .label(t!("audio.skip_silence"))
             .on_toggle(|on| change(AudioChange::SkipSilence(on)))
             .style(theme::switch),
-        note(
-            "Starts songs where the music starts and ends them where it ends. Silences inside \
-             a song stay. Takes effect from the next song.",
-        ),
+        note(t!("audio.skip_silence_note")),
     ]
     .spacing(8)
     .into()
@@ -205,10 +203,10 @@ fn silence(settings: &AudioSettings) -> Element<'_, Message> {
 fn normalization(settings: &AudioSettings) -> Element<'_, Message> {
     column![
         toggler(settings.normalize)
-            .label("Normalize volume")
+            .label(t!("audio.normalize"))
             .on_toggle(|on| change(AudioChange::Normalize(on)))
             .style(theme::switch),
-        note("Plays every song at about the same loudness, so quiet and loud tracks match."),
+        note(t!("audio.normalize_note")),
     ]
     .spacing(8)
     .into()
@@ -226,12 +224,12 @@ fn speed(settings: &AudioSettings) -> Element<'_, Message> {
     .style(|_, status| theme::thin_slider(status, theme::accent()));
 
     column![
-        heading("Playback speed", 16.0),
+        heading(t!("audio.speed"), 16.0),
         row![control, text(format!("{:.2}\u{d7}", settings.speed))]
             .spacing(14)
             .align_y(Center),
         toggler(settings.keep_pitch)
-            .label("Keep the pitch when changing speed")
+            .label(t!("audio.keep_pitch"))
             .on_toggle(|on| change(AudioChange::KeepPitch(on)))
             .style(theme::switch),
     ]
@@ -251,14 +249,14 @@ fn crossfade(settings: &AudioSettings) -> Element<'_, Message> {
     .height(18)
     .style(|_, status| theme::thin_slider(status, theme::accent()));
     let label = match settings.crossfade {
-        0 => "Off".to_string(),
-        seconds => format!("{seconds} s"),
+        0 => t!("audio.crossfade_off"),
+        seconds => t!("audio.crossfade_seconds", seconds = seconds),
     };
 
     column![
-        heading("Crossfade", 16.0),
+        heading(t!("audio.crossfade"), 16.0),
         row![control, text(label)].spacing(14).align_y(Center),
-        note("Fades the end of each song into the start of the next one."),
+        note(t!("audio.crossfade_note")),
     ]
     .spacing(10)
     .into()
@@ -277,7 +275,11 @@ fn frequency_label(hertz: u32) -> String {
     }
 }
 
-fn chip(label: &str, selected: bool, message: Message) -> Element<'_, Message> {
+fn chip<'a>(
+    label: impl text::IntoFragment<'a>,
+    selected: bool,
+    message: Message,
+) -> Element<'a, Message> {
     button(text(label).size(13))
         .on_press(message)
         .padding([6, 14])
@@ -293,7 +295,7 @@ fn chip(label: &str, selected: bool, message: Message) -> Element<'_, Message> {
         .into()
 }
 
-fn heading(label: &str, size: f32) -> Element<'_, Message> {
+fn heading<'a>(label: impl text::IntoFragment<'a>, size: f32) -> Element<'a, Message> {
     text(label)
         .size(size)
         .font(Font {
@@ -307,7 +309,7 @@ fn small<'a>(label: String) -> Element<'a, Message> {
     text(label).size(11).color(theme::text_secondary()).into()
 }
 
-fn note(message: &str) -> Element<'_, Message> {
+fn note<'a>(message: impl text::IntoFragment<'a>) -> Element<'a, Message> {
     container(text(message).size(13).color(theme::text_secondary())).into()
 }
 

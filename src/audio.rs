@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use libmpv2::Mpv;
+use rust_i18n::t;
 use serde::Deserialize;
 
 use crate::silence::Trim;
@@ -64,7 +65,9 @@ impl Audio {
 
     /// mpv's `loadfile`, with `trim` as the file's own start and end.
     fn load(&self, path: &Path, flag: &str, trim: &Trim) -> Result<(), String> {
-        let path = path.to_str().ok_or("the audio path is not valid UTF-8")?;
+        let path = path
+            .to_str()
+            .ok_or_else(|| t!("audio.path_not_utf8").into_owned())?;
         let options = trim.mpv_options();
         let mut args = vec![path, flag];
         if let Some(options) = &options {
@@ -109,7 +112,10 @@ impl Audio {
         }
         self.mpv
             .set_property("audio-device", device)
-            .map_err(|error| format!("mpv refused the sound output {device:?}: {error}"))
+            .map_err(|error| {
+                let device = format!("{device:?}");
+                t!("audio.output_refused", device = device, error = error).into_owned()
+            })
     }
 
     /// Takes the queued file (and any finished one) out of mpv's playlist, keeping the
@@ -170,9 +176,10 @@ impl Audio {
 
     /// Sets mpv's audio filter chain (the `af` option); an empty text removes every filter.
     pub fn set_filters(&self, chain: &str) -> Result<(), String> {
-        self.mpv
-            .set_property("af", chain)
-            .map_err(|error| format!("mpv refused the audio filters {chain:?}: {error}"))
+        self.mpv.set_property("af", chain).map_err(|error| {
+            let chain = format!("{chain:?}");
+            t!("audio.filters_refused", chain = chain, error = error).into_owned()
+        })
     }
 
     /// Sets the playback speed (1.0 is normal) and whether the pitch stays the same.

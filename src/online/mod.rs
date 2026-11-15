@@ -7,6 +7,7 @@ use std::collections::{HashMap, HashSet};
 
 use iced::Task;
 use iced::widget::image;
+use rust_i18n::t;
 use rustypipe::client::RustyPipe;
 
 use crate::Message;
@@ -157,7 +158,7 @@ impl Online {
             return Task::none();
         }
         let Some(client) = self.client.clone() else {
-            self.status = Status::Failed("the YouTube client could not start".to_string());
+            self.status = Status::Failed(t!("online.client_not_started").into_owned());
             return Task::none();
         };
         self.status = Status::Loading;
@@ -256,8 +257,7 @@ impl Online {
     /// Opens an album, artist or playlist.
     pub fn open(&mut self, tile: Tile) -> Task<Message> {
         let Some(client) = self.client.clone() else {
-            self.collection_status =
-                Status::Failed("the YouTube client could not start".to_string());
+            self.collection_status = Status::Failed(t!("online.client_not_started").into_owned());
             return Task::none();
         };
         self.collection = None;

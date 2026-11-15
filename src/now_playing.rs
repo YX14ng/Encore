@@ -3,11 +3,14 @@
 //! video or the cover in the middle, a Song / Video switch above it, and the queue and the
 //! lyrics in tabs beside it. The player bar stays below.
 
+use std::borrow::Cow;
 use std::time::{Duration, Instant};
 
 use iced::font::Weight;
 use iced::widget::{Space, button, column, container, image, row, space, stack, text};
 use iced::{Center, Color, ContentFit, Element, Fill, Font, Task, border};
+
+use rust_i18n::t;
 
 use crate::{App, Message, lyrics, queue_view, theme};
 
@@ -228,7 +231,7 @@ impl App {
 
 /// The Song / Video switch, like YouTube Music's.
 fn switch(video: bool) -> Element<'static, Message> {
-    let side = |label: &'static str, selected: bool, on: bool| {
+    let side = |label: Cow<'static, str>, selected: bool, on: bool| {
         button(text(label).size(13))
             .on_press(Message::NowPlaying(Event::ShowVideo(on)))
             .padding([6, 18])
@@ -242,18 +245,24 @@ fn switch(video: bool) -> Element<'static, Message> {
                 style
             })
     };
-    container(row![side("Song", !video, false), side("Video", video, true)].spacing(2))
-        .padding(3)
-        .style(|_| {
-            container::background(theme::tint(0.06))
-                .border(border::rounded(19).color(theme::line()).width(1))
-        })
-        .into()
+    container(
+        row![
+            side(t!("page.song"), !video, false),
+            side(t!("page.video"), video, true)
+        ]
+        .spacing(2),
+    )
+    .padding(3)
+    .style(|_| {
+        container::background(theme::tint(0.06))
+            .border(border::rounded(19).color(theme::line()).width(1))
+    })
+    .into()
 }
 
 /// "Up next" and "Lyrics", the open one underlined.
 fn tab_bar(open: Tab) -> Element<'static, Message> {
-    let tab = |label: &'static str, tab: Tab| {
+    let tab = |label: Cow<'static, str>, tab: Tab| {
         let selected = open == tab;
         let underline = container(space()).width(Fill).height(2).style(move |_| {
             container::background(if selected {
@@ -286,9 +295,12 @@ fn tab_bar(open: Tab) -> Element<'static, Message> {
             style
         })
     };
-    row![tab("Up next", Tab::UpNext), tab("Lyrics", Tab::Lyrics)]
-        .padding(iced::Padding::default().top(10))
-        .into()
+    row![
+        tab(t!("page.up_next"), Tab::UpNext),
+        tab(t!("page.lyrics"), Tab::Lyrics)
+    ]
+    .padding(iced::Padding::default().top(10))
+    .into()
 }
 
 #[cfg(test)]

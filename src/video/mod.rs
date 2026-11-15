@@ -14,6 +14,7 @@ use std::time::{Duration, Instant};
 
 use iced::widget::{column, container, image, text};
 use iced::{Center, ContentFit, Element, Fill, Task};
+use rust_i18n::t;
 use rustypipe::client::{ClientType, RustyPipe};
 use serde_json::{Value, json};
 
@@ -85,11 +86,11 @@ impl Video {
             return None;
         }
         match self.status()? {
-            Status::Finding => Some("Looking for the video\u{2026}".to_string()),
-            Status::Downloading => Some("Downloading the video\u{2026}".to_string()),
+            Status::Finding => Some(t!("video.finding").into_owned()),
+            Status::Downloading => Some(t!("video.downloading").into_owned()),
             Status::Playing => None,
-            Status::None => Some("This song has no music video.".to_string()),
-            Status::Failed(error) => Some(format!("The video could not play: {error}")),
+            Status::None => Some(t!("video.none").into_owned()),
+            Status::Failed(error) => Some(t!("video.failed", error = error).into_owned()),
         }
     }
 

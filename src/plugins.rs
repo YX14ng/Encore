@@ -1,9 +1,12 @@
 //! Plugins, Pear-style: optional features the user switches on and off from the settings.
 //! The choices are kept in `~/.config/encore/plugins.json`.
 
+use std::borrow::Cow;
+
 use iced::Element;
 use iced::font::Weight;
 use iced::widget::{column, text, toggler};
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 
 use crate::themes::config_dir;
@@ -30,36 +33,25 @@ impl Plugin {
         Plugin::Visualizer,
     ];
 
-    fn name(self) -> &'static str {
+    fn name(self) -> Cow<'static, str> {
         match self {
-            Plugin::Discord => "Discord Rich Presence",
-            Plugin::LastFm => "Last.fm scrobbling",
-            Plugin::Notifications => "Desktop notifications",
-            Plugin::SponsorBlock => "SponsorBlock",
-            Plugin::SkipDisliked => "Skip disliked songs",
-            Plugin::Visualizer => "Visualizer",
+            Plugin::Discord => t!("plugins.discord_name"),
+            Plugin::LastFm => t!("plugins.lastfm_name"),
+            Plugin::Notifications => t!("plugins.notifications_name"),
+            Plugin::SponsorBlock => t!("plugins.sponsorblock_name"),
+            Plugin::SkipDisliked => t!("plugins.skip_disliked_name"),
+            Plugin::Visualizer => t!("plugins.visualizer_name"),
         }
     }
 
-    fn description(self) -> &'static str {
+    fn description(self) -> Cow<'static, str> {
         match self {
-            Plugin::Discord => "Shows the song you are listening to on your Discord profile.",
-            Plugin::LastFm => {
-                "Scrobbles the songs you play to Last.fm (connect your account on the account \
-                 screen)."
-            }
-            Plugin::Notifications => "Shows a notification with the cover when a song starts.",
-            Plugin::SponsorBlock => {
-                "Skips the parts of music videos that are not music (intros, skits, outros), as \
-                 marked by the SponsorBlock community."
-            }
-            Plugin::SkipDisliked => {
-                "Skips a song when you dislike it, and songs you disliked before when they come \
-                 up (signed in)."
-            }
-            Plugin::Visualizer => {
-                "Shows bars that move with the music under the lyrics in the full screen view."
-            }
+            Plugin::Discord => t!("plugins.discord_description"),
+            Plugin::LastFm => t!("plugins.lastfm_description"),
+            Plugin::Notifications => t!("plugins.notifications_description"),
+            Plugin::SponsorBlock => t!("plugins.sponsorblock_description"),
+            Plugin::SkipDisliked => t!("plugins.skip_disliked_description"),
+            Plugin::Visualizer => t!("plugins.visualizer_description"),
         }
     }
 }

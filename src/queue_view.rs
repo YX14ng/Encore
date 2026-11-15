@@ -1,9 +1,13 @@
 //! The queue panel at the right of the window, in the lyrics panel's place: the song that is
 //! playing and the songs that come after it, which can be played, moved up or taken out.
 
+use std::borrow::Cow;
+
 use iced::font::Weight;
 use iced::widget::{Column, button, column, container, row, scrollable, space, text, toggler};
 use iced::{Center, Element, Fill, Font};
+
+use rust_i18n::t;
 
 use crate::queue::Queue;
 use crate::search::{Shared, picture, subtitle};
@@ -22,28 +26,32 @@ pub fn view<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element
 pub fn list<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element<'a, Message> {
     let upcoming = queue.upcoming();
     let clear = (!upcoming.is_empty()).then(|| {
-        button(text("Clear").size(13).color(theme::text_secondary()))
-            .on_press(Message::QueueClear)
-            .padding([4, 10])
-            .style(|_, status| theme::flat_button(status, false))
+        button(
+            text(t!("queue.clear"))
+                .size(13)
+                .color(theme::text_secondary()),
+        )
+        .on_press(Message::QueueClear)
+        .padding([4, 10])
+        .style(|_, status| theme::flat_button(status, false))
     });
-    let header = row![heading("Queue", 20.0), space::horizontal()]
+    let header = row![heading(t!("queue.title"), 20.0), space::horizontal()]
         .push(clear)
         .align_y(Center);
 
     let mut content = column![header].spacing(10);
     match queue.playing() {
         Some(playing) => {
-            content = content.push(label("Now playing".to_string())).push(song(
+            content = content.push(label(t!("queue.now_playing"))).push(song(
                 queue,
                 playing,
                 Place::Playing,
                 shared,
             ));
             let count = label(match upcoming.len() {
-                0 => "Nothing up next".to_string(),
-                1 => "Up next \u{b7} 1 song".to_string(),
-                count => format!("Up next \u{b7} {count} songs"),
+                0 => t!("queue.nothing_up_next"),
+                1 => t!("queue.up_next_one"),
+                count => t!("queue.up_next_count", count = count),
             });
             content = content
                 .push(row![count, space::horizontal(), autoplay_switch(autoplay)].align_y(Center));
@@ -51,7 +59,7 @@ pub fn list<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element
             let mut rows = Column::new().spacing(2);
             for (place, &index) in upcoming.iter().enumerate() {
                 if Some(place) == first_suggested {
-                    rows = rows.push(label("Autoplay \u{b7} similar songs".to_string()));
+                    rows = rows.push(label(t!("queue.autoplay_similar")));
                 }
                 let place = if place == 0 {
                     Place::Next
@@ -63,7 +71,7 @@ pub fn list<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element
             content = content.push(rows);
             if upcoming.is_empty() && autoplay {
                 content = content.push(
-                    text("Autoplay will go on with similar songs.")
+                    text(t!("queue.autoplay_note"))
                         .size(13)
                         .color(theme::text_secondary()),
                 );
@@ -71,12 +79,9 @@ pub fn list<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element
         }
         None => {
             content = content.push(
-                text(
-                    "Play a song, an album or a playlist to fill the queue, and add songs to it \
-                     with the + next to any song.",
-                )
-                .size(13)
-                .color(theme::text_secondary()),
+                text(t!("queue.empty"))
+                    .size(13)
+                    .color(theme::text_secondary()),
             );
         }
     }
@@ -116,7 +121,7 @@ fn song<'a>(
 
     let is_loading = shared.loading == Some(track.id.as_str());
     let right: Element<'a, Message> = if is_loading {
-        text("Loading\u{2026}")
+        text(t!("queue.loading"))
             .size(12)
             .color(theme::accent())
             .into()
@@ -159,7 +164,7 @@ fn song<'a>(
 /// The switch that turns autoplay on and off.
 fn autoplay_switch(on: bool) -> Element<'static, Message> {
     toggler(on)
-        .label("Autoplay")
+        .label(t!("queue.autoplay"))
         .size(16)
         .text_size(12)
         .on_toggle(|_| Message::ToggleAutoplay)
@@ -176,7 +181,7 @@ fn small_button(bytes: &'static [u8], message: Message) -> Element<'static, Mess
         .into()
 }
 
-fn label(label: String) -> Element<'static, Message> {
+fn label(label: Cow<'static, str>) -> Element<'static, Message> {
     container(
         text(label)
             .size(12)
@@ -190,7 +195,7 @@ fn label(label: String) -> Element<'static, Message> {
     .into()
 }
 
-fn heading(label: &str, size: f32) -> Element<'_, Message> {
+fn heading<'a>(label: impl text::IntoFragment<'a>, size: f32) -> Element<'a, Message> {
     text(label)
         .size(size)
         .font(Font {
