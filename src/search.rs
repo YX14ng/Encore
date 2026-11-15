@@ -276,14 +276,19 @@ fn song_row<'a>(
     shared: Shared<'a>,
 ) -> Element<'a, Message> {
     let track = &tracks[index];
+    // One line each, cut at the row's edge: long titles must not stretch the row.
     let details = column![
-        text(&track.title).size(14),
+        text(&track.title)
+            .size(14)
+            .wrapping(iced::widget::text::Wrapping::None),
         text(subtitle(track))
             .size(12)
-            .color(theme::text_secondary()),
+            .color(theme::text_secondary())
+            .wrapping(iced::widget::text::Wrapping::None),
     ]
     .spacing(2)
-    .width(Fill);
+    .width(Fill)
+    .clip(true);
 
     let is_loading = shared.loading == Some(track.id.as_str());
     let is_playing = shared.playing == Some(track.id.as_str());

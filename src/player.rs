@@ -9,6 +9,9 @@ use crate::rating::Rating;
 use crate::song::Song;
 use crate::{Message, theme};
 
+/// Below this width the player bar puts the song above the buttons, so neither is squeezed.
+pub const COMPACT_WIDTH: f32 = 1000.0;
+
 /// The state of the player's buttons and sliders.
 #[derive(Debug, Clone, Copy)]
 pub struct Controls {
@@ -18,6 +21,8 @@ pub struct Controls {
     /// Whether the music video shows, and whether a YouTube song plays so it can.
     pub video: bool,
     pub can_video: bool,
+    /// The bar is narrow: the song goes on a row of its own above the buttons.
+    pub compact: bool,
     /// Where the progress bar is being dragged to, in seconds.
     pub seeking: Option<f32>,
     /// From 0 to 100.
@@ -205,6 +210,14 @@ fn buttons<'a>(
     .spacing(8)
     .align_y(Center);
 
+    if controls.compact {
+        return column![
+            now_playing(song, format),
+            row![transport, space::horizontal(), extras].align_y(Center)
+        ]
+        .spacing(8)
+        .into();
+    }
     row![transport, now_playing(song, format), extras]
         .spacing(14)
         .align_y(Center)
@@ -226,13 +239,17 @@ fn now_playing<'a>(song: &'a Song, format: Option<&'a str>) -> Element<'a, Messa
     };
 
     let details = column![
-        text(&song.title).size(14),
+        text(&song.title)
+            .size(14)
+            .wrapping(iced::widget::text::Wrapping::None),
         text(format!("{} \u{b7} {}", song.artist, song.album))
             .size(12)
-            .color(theme::text_secondary()),
+            .color(theme::text_secondary())
+            .wrapping(iced::widget::text::Wrapping::None),
     ]
     .spacing(2)
-    .width(Fill);
+    .width(Fill)
+    .clip(true);
 
     let badge = format.map(|format| {
         container(text(format).size(10).color(theme::text_secondary()))

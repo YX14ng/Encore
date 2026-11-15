@@ -45,7 +45,18 @@ impl App {
             muted: settings.muted,
             shuffle: settings.shuffle,
             repeat: settings.repeat,
+            compact: self.player_width() < player::COMPACT_WIDTH,
         }
+    }
+
+    /// How wide the player bar is: the center column, or the whole window in full screen.
+    fn player_width(&self) -> f32 {
+        if self.immersive {
+            return self.window_width;
+        }
+        let columns =
+            layout::visible_columns(self.window_width, self.show_sidebar, self.panel.is_some());
+        layout::center_width(self.window_width, columns)
     }
 
     /// The whole window: sidebar, center column and lyrics, or the immersive view.
@@ -101,6 +112,7 @@ impl App {
                 };
                 home::view(
                     hour,
+                    layout::center_width(self.window_width, columns),
                     self.backdrop.as_ref(),
                     backdrop::zoom_at(seconds),
                     sections,

@@ -24,6 +24,8 @@ pub fn greeting(hour: u32) -> &'static str {
 
 /// How many recently played songs the home screen shows (three rows of three).
 const RECENT_SONGS: usize = 9;
+/// The narrowest a recently played song gets before the rows hold fewer songs.
+const RECENT_MIN_WIDTH: f32 = 300.0;
 
 /// What the home screen shows below the greeting.
 pub enum Sections<'a> {
@@ -46,14 +48,16 @@ pub enum Sections<'a> {
 /// user's playlists and albums.
 pub fn view<'a>(
     hour: u32,
+    width: f32,
     backdrop: Option<&'a image::Handle>,
     zoom: f32,
     sections: Sections<'a>,
 ) -> Element<'a, Message> {
     let content = column![hero(hour, backdrop, zoom)];
+    let columns = recent_columns(width);
     let content = match sections {
         Sections::Sample { recents, mixes } => content
-            .push(section("Recently played", recents_grid(recents)))
+            .push(section("Recently played", recents_grid(recents, columns)))
             .push(section("Mixed for you", mixes_row(mixes))),
         Sections::Personal {
             history,
@@ -62,10 +66,12 @@ pub fn view<'a>(
             albums,
             shared,
         } => content
-            .push(
-                (!history.is_empty())
-                    .then(|| section("Recently played", personal_recents(history, shared))),
-            )
+            .push((!history.is_empty()).then(|| {
+                section(
+                    "Recently played",
+                    personal_recents(history, columns, shared),
+                )
+            }))
             .push(
                 (!mixes.is_empty()).then(|| section("Mixed for you", search::shelf(mixes, shared))),
             )
@@ -82,11 +88,22 @@ pub fn view<'a>(
     scrollable(content).height(Fill).into()
 }
 
-/// The latest songs of the history in rows of three; clicking one plays the history from there.
-fn personal_recents<'a>(history: &'a [SearchTrack], shared: Shared<'a>) -> Element<'a, Message> {
+/// How many recently played songs fit side by side in `width`: up to three.
+fn recent_columns(width: f32) -> usize {
+    // The sections' side padding, and the room a row needs for a readable title.
+    ((width - 64.0) / RECENT_MIN_WIDTH).floor().clamp(1.0, 3.0) as usize
+}
+
+/// The latest songs of the history in rows of `columns`; clicking one plays the history from
+/// there.
+fn personal_recents<'a>(
+    history: &'a [SearchTrack],
+    columns: usize,
+    shared: Shared<'a>,
+) -> Element<'a, Message> {
     let shown = RECENT_SONGS.min(history.len());
     let indexes: Vec<usize> = (0..shown).collect();
-    let rows = indexes.chunks(3).map(|chunk| {
+    let rows = indexes.chunks(columns).map(|chunk| {
         Row::with_children(
             chunk
                 .iter()
@@ -140,9 +157,9 @@ fn section<'a>(title: &'a str, body: Element<'a, Message>) -> Element<'a, Messag
         .into()
 }
 
-fn recents_grid(recents: &[Card]) -> Element<'_, Message> {
+fn recents_grid(recents: &[Card], columns: usize) -> Element<'_, Message> {
     let rows = recents
-        .chunks(3)
+        .chunks(columns)
         .map(|chunk| row(chunk.iter().map(recent_row)).spacing(18).into());
 
     Column::with_children(rows).into()
@@ -150,11 +167,15 @@ fn recents_grid(recents: &[Card]) -> Element<'_, Message> {
 
 fn recent_row(card: &Card) -> Element<'_, Message> {
     let details = column![
-        text(&card.title).size(14),
-        text(&card.subtitle).size(12).color(theme::text_secondary()),
+        text(&card.title).size(14).wrapping(Wrapping::None),
+        text(&card.subtitle)
+            .size(12)
+            .color(theme::text_secondary())
+            .wrapping(Wrapping::None),
     ]
     .spacing(2)
-    .width(Fill);
+    .width(Fill)
+    .clip(true);
 
     container(
         row![
@@ -213,6 +234,13 @@ fn bold() -> Font {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn recent_songs_take_as_many_columns_as_fit() {
+        assert_eq!(recent_columns(1300.0 - 236.0 - 300.0), 2);
+        assert_eq!(recent_columns(1600.0), 3);
+        assert_eq!(recent_columns(300.0), 1);
+    }
 
     #[test]
     fn greets_by_time_of_day() {
