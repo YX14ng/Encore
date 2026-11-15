@@ -1,7 +1,7 @@
 # Encore — keeping the YouTube Music session alive
 
 Date: 2026-11-15
-Status: researched, not built
+Status: steps 1 and 2 built (2026-11-15); step 3 not built
 
 ## What happens today
 
@@ -45,6 +45,11 @@ A wrong rotation is not harmless: once Google issues a new `__Secure-1PSIDTS`, t
 superseded, so a rotation whose answer is not stored signs Encore out.
 
 ## Plan
+
+Steps 1 and 2 are in `src/session.rs` (the log in `~/.local/share/encore/session.json`), the
+`RestoreError::Expired` case of `library::restore` (rustypipe answers "not logged in" both
+without a saved session and when YouTube refuses it; a saved cookie tells them apart) and the
+banner in `view.rs`. Likes and playlist changes refused for the session show the same banner.
 
 1. **Measure first, no risk.** Record when the session was created (sign-in time in Encore's
    data dir) and, whenever YouTube answers 401, how old it was. Show "Signed in N days ago" on
