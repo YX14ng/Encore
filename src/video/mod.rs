@@ -73,6 +73,26 @@ impl Video {
         self.song.as_ref().map(|(_, status)| status)
     }
 
+    /// The picture on screen, once there is one.
+    pub fn frame(&self) -> Option<&image::Handle> {
+        self.frame.as_ref()
+    }
+
+    /// A line about the video while there is no picture: looking for it, downloading it, or
+    /// why there is none.
+    pub fn note(&self) -> Option<String> {
+        if self.frame.is_some() {
+            return None;
+        }
+        match self.status()? {
+            Status::Finding => Some("Looking for the video\u{2026}".to_string()),
+            Status::Downloading => Some("Downloading the video\u{2026}".to_string()),
+            Status::Playing => None,
+            Status::None => Some("This song has no music video.".to_string()),
+            Status::Failed(error) => Some(format!("The video could not play: {error}")),
+        }
+    }
+
     /// The picture, as large as fits, or a line about where it is.
     pub fn view(&self) -> Element<'_, Message> {
         if let Some(frame) = &self.frame {
@@ -82,13 +102,7 @@ impl Video {
                 .content_fit(ContentFit::Contain)
                 .into();
         }
-        let message = match self.status() {
-            Some(Status::Finding) | None => "Looking for the video\u{2026}".to_string(),
-            Some(Status::Downloading) => "Downloading the video\u{2026}".to_string(),
-            Some(Status::Playing) => String::new(),
-            Some(Status::None) => "This song has no music video.".to_string(),
-            Some(Status::Failed(error)) => format!("The video could not play: {error}"),
-        };
+        let message = self.note().unwrap_or_default();
         container(column![
             text(message).size(16).color(crate::theme::text_secondary())
         ])
@@ -239,16 +253,19 @@ fn collect<'a>(value: &'a Value, key: &str, found: &mut Vec<&'a Value>) {
 }
 
 impl App {
-    /// Turns the video on (in the immersive view) or off.
+    /// The video button: opens the now playing page with the video, or turns the video off.
+    /// In the full screen view the video shows there instead.
     pub(crate) fn toggle_video(&mut self) -> Task<Message> {
         if self.video.on {
             self.video.on = false;
             self.video.reset();
             return Task::none();
         }
+        if !self.immersive {
+            self.open_page();
+        }
         self.video.on = true;
-        let find = self.find_video();
-        Task::batch([self.set_immersive(true), find])
+        self.find_video()
     }
 
     /// Stops the video, when the immersive view closes.

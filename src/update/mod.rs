@@ -136,6 +136,7 @@ impl App {
             Message::Rating(event) => return self.rating_event(event),
             Message::Video(event) => return self.video_event(event),
             Message::ToggleVideo => return self.toggle_video(),
+            Message::NowPlaying(event) => return self.now_playing_event(event),
             Message::Visualizer(event) => self.visualizer.event(event),
             Message::Next => {
                 if self.online.is_active() {

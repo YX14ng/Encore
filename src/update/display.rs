@@ -13,7 +13,7 @@ impl App {
             return Task::none();
         }
         self.immersive = immersive;
-        if !immersive {
+        if !immersive && self.page.is_none() {
             self.stop_video();
         }
         let mode = if immersive {

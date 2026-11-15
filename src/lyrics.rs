@@ -70,6 +70,16 @@ pub const PANEL: Style = Style {
     fade: true,
 };
 
+/// The lyrics tab of the now playing page.
+pub const PAGE: Style = Style {
+    width: 420.0,
+    height_hint: 760.0,
+    current_size: 26.0,
+    other_size: 22.0,
+    row_height: 88.0,
+    fade: false,
+};
+
 /// The large lyrics of the immersive view.
 pub const IMMERSIVE: Style = Style {
     width: 620.0,

@@ -11,6 +11,15 @@ use crate::{Message, clock, lyrics, theme};
 
 /// The panel for `queue`, with the autoplay switch.
 pub fn view<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element<'a, Message> {
+    container(list(queue, autoplay, shared))
+        .width(lyrics::WIDTH)
+        .height(Fill)
+        .style(|_| theme::panel(theme::lyrics_bg()))
+        .into()
+}
+
+/// The queue as a scrollable list: the song playing, then what comes next.
+pub fn list<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element<'a, Message> {
     let upcoming = queue.upcoming();
     let clear = (!upcoming.is_empty()).then(|| {
         button(text("Clear").size(13).color(theme::text_secondary()))
@@ -72,11 +81,7 @@ pub fn view<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element
         }
     }
 
-    container(scrollable(content.padding([20, 16])).height(Fill))
-        .width(lyrics::WIDTH)
-        .height(Fill)
-        .style(|_| theme::panel(theme::lyrics_bg()))
-        .into()
+    scrollable(content.padding([20, 16])).height(Fill).into()
 }
 
 /// Where a song is in the queue, which decides its buttons.

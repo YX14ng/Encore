@@ -51,7 +51,7 @@ impl App {
 
     /// How wide the player bar is: the center column, or the whole window in full screen.
     fn player_width(&self) -> f32 {
-        if self.immersive {
+        if self.immersive || self.page.is_some() {
             return self.window_width;
         }
         let columns =
@@ -176,43 +176,57 @@ impl App {
         .height(Fill)
         .style(|_| theme::panel(theme::center_bg()));
 
-        let main: Element<'_, Message> = row![]
-            .push(columns.sidebar.then(|| {
-                sidebar::view(
-                    &self.sidebar,
-                    &self.playlists,
-                    &self.online.query,
-                    self.online.suggestions(),
-                    SidebarAccount {
-                        signed_in: matches!(self.account, Account::SignedIn(_)),
-                        profile: self.profile(),
-                        photo: self.profile_photo(),
-                        playlists: match &self.account {
-                            Account::SignedIn(data) => Some(&data.playlists),
-                            _ => None,
-                        },
-                        covers: self.online.shared_view().covers,
-                        highlight: matches!(
-                            self.screen,
-                            Screen::Home | Screen::Library(_) | Screen::Account
-                        ),
-                    },
+        let main: Element<'_, Message> = if let Some(page) = self.page {
+            // The page takes the window above the player bar.
+            column![
+                self.page_view(page),
+                player::view(
+                    &self.now_playing,
+                    &self.playback,
+                    self.player_controls(),
+                    self.audio_format.as_deref(),
                 )
-            }))
-            .push(center)
-            .push(
-                self.panel
-                    .filter(|_| columns.panel)
-                    .map(|panel| match panel {
-                        Panel::Lyrics => self.lyrics_view(lyrics::PANEL),
-                        Panel::Queue => queue_view::view(
-                            self.online.queue(),
-                            self.online.autoplay(),
-                            self.online.shared_view(),
-                        ),
-                    }),
-            )
-            .into();
+            ]
+            .into()
+        } else {
+            row![]
+                .push(columns.sidebar.then(|| {
+                    sidebar::view(
+                        &self.sidebar,
+                        &self.playlists,
+                        &self.online.query,
+                        self.online.suggestions(),
+                        SidebarAccount {
+                            signed_in: matches!(self.account, Account::SignedIn(_)),
+                            profile: self.profile(),
+                            photo: self.profile_photo(),
+                            playlists: match &self.account {
+                                Account::SignedIn(data) => Some(&data.playlists),
+                                _ => None,
+                            },
+                            covers: self.online.shared_view().covers,
+                            highlight: matches!(
+                                self.screen,
+                                Screen::Home | Screen::Library(_) | Screen::Account
+                            ),
+                        },
+                    )
+                }))
+                .push(center)
+                .push(
+                    self.panel
+                        .filter(|_| columns.panel)
+                        .map(|panel| match panel {
+                            Panel::Lyrics => self.lyrics_view(lyrics::PANEL),
+                            Panel::Queue => queue_view::view(
+                                self.online.queue(),
+                                self.online.autoplay(),
+                                self.online.shared_view(),
+                            ),
+                        }),
+                )
+                .into()
+        };
 
         stack![main]
             .push(
@@ -238,12 +252,21 @@ impl App {
     pub(crate) fn subscription(&self) -> Subscription<Message> {
         let resize = window::resize_events().map(|(_id, size)| Message::WindowResized(size.width));
         // Escape leaves the immersive view.
+        // Escape leaves the immersive view, else closes the now playing page.
         let escape = if self.immersive {
             iced::keyboard::listen().filter_map(|event| match event {
                 iced::keyboard::Event::KeyPressed {
                     key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape),
                     ..
                 } => Some(Message::ExitImmersive),
+                _ => None,
+            })
+        } else if self.page.is_some() {
+            iced::keyboard::listen().filter_map(|event| match event {
+                iced::keyboard::Event::KeyPressed {
+                    key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape),
+                    ..
+                } => Some(Message::NowPlaying(crate::now_playing::Event::Close)),
                 _ => None,
             })
         } else {
@@ -265,6 +288,7 @@ impl App {
             Subscription::batch([tick, frames, resize])
         } else if self.lyrics_scroll.is_animating(self.now)
             || (self.immersive && self.visualizer.is_showing())
+            || self.page_sliding()
         {
             Subscription::batch([frames, resize])
         } else {

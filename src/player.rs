@@ -259,13 +259,21 @@ fn now_playing<'a>(song: &'a Song, format: Option<&'a str>) -> Element<'a, Messa
             })
     });
 
-    let card = container(row![cover, details].push(badge).spacing(11).align_y(Center))
-        .max_width(460)
+    // Clicking the song opens the now playing page, like YouTube Music's player bar.
+    let card = button(row![cover, details].push(badge).spacing(11).align_y(Center))
+        .on_press(Message::NowPlaying(crate::now_playing::Event::Toggle))
+        .width(Fill)
         .padding([6, 10])
-        .style(|_| {
-            container::background(theme::tint(0.05))
-                .border(border::rounded(9).color(theme::line()).width(1))
+        .style(|_, status| {
+            let hover = matches!(status, button::Status::Hovered | button::Status::Pressed);
+            button::Style {
+                background: Some(theme::tint(if hover { 0.09 } else { 0.05 }).into()),
+                text_color: theme::text_primary(),
+                border: border::rounded(9).color(theme::line()).width(1),
+                ..button::Style::default()
+            }
         });
+    let card = container(card).max_width(460);
 
     container(card).center_x(Fill).into()
 }

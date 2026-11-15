@@ -26,6 +26,7 @@ mod mixer;
 mod mock;
 mod navigation;
 mod notifications;
+mod now_playing;
 mod offline;
 mod online;
 mod player;
@@ -113,6 +114,8 @@ struct App {
     disliked: rating::Disliked,
     /// The music video of the playing song, in the immersive view.
     video: video::Video,
+    /// The now playing page, when it is open.
+    page: Option<now_playing::Page>,
     /// The bars that move with the music in the immersive view.
     visualizer: visualizer::Visualizer,
     current: usize,
@@ -202,6 +205,7 @@ enum Message {
     Rating(rating::Event),
     Video(video::Event),
     ToggleVideo,
+    NowPlaying(now_playing::Event),
     Visualizer(visualizer::Event),
     Next,
     WindowResized(f32),
@@ -349,6 +353,7 @@ impl App {
             rating: rating::Rating::None,
             disliked: rating::Disliked::load(),
             video: video::Video::default(),
+            page: None,
             visualizer: visualizer::Visualizer::default(),
             current: 0,
             lyrics,
