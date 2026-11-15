@@ -13,7 +13,6 @@ use crate::{Message, clock, playlists, theme};
 /// How many songs or videos the "All" view shows before "Show all".
 const PREVIEW_ROWS: usize = 4;
 /// Cards per row in a full album, artist or playlist list.
-const GRID_COLUMNS: usize = 5;
 /// The size of a card's image.
 const CARD_SIZE: f32 = 160.0;
 
@@ -348,17 +347,22 @@ pub fn shelf<'a>(tiles: &'a [Tile], shared: Shared<'a>) -> Element<'a, Message> 
         .into()
 }
 
-/// Cards in rows of `GRID_COLUMNS`.
+/// Cards in rows that wrap.
 pub fn card_grid<'a>(tiles: &'a [Tile], shared: Shared<'a>) -> Element<'a, Message> {
     if tiles.is_empty() {
         return note("Nothing found.");
     }
-    let rows = tiles.chunks(GRID_COLUMNS).map(|chunk| {
-        Row::with_children(chunk.iter().map(|tile| card(tile, shared)))
-            .spacing(16)
-            .into()
-    });
-    Column::with_children(rows).spacing(20).into()
+    wrapping(tiles.iter().map(|tile| card(tile, shared)))
+}
+
+/// Cards in as many columns as fit, so none is cut off when the window or the side panels
+/// leave less room.
+fn wrapping<'a>(cards: impl Iterator<Item = Element<'a, Message>>) -> Element<'a, Message> {
+    Row::with_children(cards)
+        .spacing(16)
+        .wrap()
+        .vertical_spacing(20)
+        .into()
 }
 
 fn card<'a>(tile: &'a Tile, shared: Shared<'a>) -> Element<'a, Message> {
@@ -409,21 +413,17 @@ pub fn offline_grid<'a>(collections: &'a [Collection], shared: Shared<'a>) -> El
     if collections.is_empty() {
         return note("Nothing downloaded yet. Open an album or playlist and press Download.");
     }
-    let rows = collections.chunks(GRID_COLUMNS).map(|chunk| {
-        let cards = chunk.iter().map(|collection| {
-            card_parts(
-                &collection.id,
-                collection.image_url.as_deref(),
-                &collection.title,
-                format!("{} songs", collection.tracks.len()),
-                collection.kind == TileKind::Artist,
-                Message::OpenOffline(collection.id.clone()),
-                shared,
-            )
-        });
-        Row::with_children(cards).spacing(16).into()
-    });
-    Column::with_children(rows).spacing(20).into()
+    wrapping(collections.iter().map(|collection| {
+        card_parts(
+            &collection.id,
+            collection.image_url.as_deref(),
+            &collection.title,
+            format!("{} songs", collection.tracks.len()),
+            collection.kind == TileKind::Artist,
+            Message::OpenOffline(collection.id.clone()),
+            shared,
+        )
+    }))
 }
 
 /// An image from the network, or a placeholder until it arrives. Round for artists.
