@@ -119,6 +119,8 @@ pub struct Appearance {
     /// The name of the chosen theme.
     pub theme: String,
     pub accent: Accent,
+    /// The interface's language (a code of `i18n::LANGUAGES`); `None` follows the system.
+    pub language: Option<String>,
 }
 
 impl Default for Appearance {
@@ -126,6 +128,7 @@ impl Default for Appearance {
         Self {
             theme: "Encore".to_string(),
             accent: Accent::Theme,
+            language: None,
         }
     }
 }
@@ -405,6 +408,7 @@ mod tests {
         let mut appearance = Appearance {
             theme: "Nord".to_string(),
             accent: Accent::Theme,
+            language: None,
         };
         assert_eq!(
             appearance.palette(&themes, None).accent,

@@ -1,5 +1,8 @@
 //! Encore: a YouTube Music desktop player written with iced.
 
+// The interface's texts in every language, from `locales/`; English fills any gap.
+rust_i18n::i18n!("locales", fallback = "en");
+
 mod account;
 mod artist;
 mod audio;
@@ -14,6 +17,7 @@ mod discord_ipc;
 mod download;
 mod explore;
 mod home;
+mod i18n;
 mod immersive;
 mod lastfm;
 mod layout;
@@ -274,6 +278,8 @@ enum Message {
     OpenSettings(settings_view::Tab),
     PickTheme(String),
     PickAccent(themes::Accent),
+    /// A language picked on the appearance screen; `None` follows the system.
+    PickLanguage(Option<String>),
     ReloadThemes,
     SetPlugin(plugins::Plugin, bool),
     SegmentsLoaded(String, Result<Vec<sponsorblock::Segment>, String>),
@@ -321,6 +327,9 @@ impl App {
     }
 
     fn new() -> Self {
+        // The language comes first: the YouTube client below asks in it.
+        let appearance = themes::Appearance::load();
+        i18n::apply(appearance.language.as_deref());
         let tracks = mock::parse_tracks(include_str!("../assets/mock/tracks.tsv"));
         let first = tracks.first().expect("tracks.tsv lists at least one track");
         let duration = first.duration;
@@ -377,7 +386,7 @@ impl App {
             seeking: None,
             audio_error: None,
             audio_devices: Vec::new(),
-            appearance: themes::Appearance::load(),
+            appearance,
             themes,
             theme_errors,
             cover_color,

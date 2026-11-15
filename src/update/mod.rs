@@ -15,8 +15,8 @@ use crate::queue::Repeat;
 use crate::sidebar::NavItem;
 
 use crate::{
-    App, Message, Screen, account, audio_settings, discord, library, mini_player, sign_in_window,
-    themes,
+    App, Message, Screen, account, audio_settings, discord, i18n, library, mini_player,
+    sign_in_window, themes,
 };
 
 impl App {
@@ -359,6 +359,11 @@ impl App {
                 self.appearance.theme = name;
                 self.appearance.save();
                 self.apply_appearance();
+            }
+            Message::PickLanguage(language) => {
+                i18n::apply(language.as_deref());
+                self.appearance.language = language;
+                self.appearance.save();
             }
             Message::PickAccent(accent) => {
                 self.appearance.accent = accent;

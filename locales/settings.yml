@@ -1,0 +1,241 @@
+_version: 2
+settings.title:
+  en: Settings
+  zh-CN: 设置
+  zh-TW: 設定
+  hi: सेटिंग्स
+  es: Ajustes
+  ar: الإعدادات
+  fr: Paramètres
+  bn: সেটিংস
+  pt-BR: Configurações
+  ru: Настройки
+  id: Setelan
+  de: Einstellungen
+  ja: 設定
+  ko: 설정
+settings.appearance:
+  en: Appearance
+  zh-CN: 外观
+  zh-TW: 外觀
+  hi: रूप-रंग
+  es: Apariencia
+  ar: المظهر
+  fr: Apparence
+  bn: চেহারা
+  pt-BR: Aparência
+  ru: Оформление
+  id: Tampilan
+  de: Darstellung
+  ja: 外観
+  ko: 화면
+settings.audio:
+  en: Audio
+  zh-CN: 音频
+  zh-TW: 音訊
+  hi: ऑडियो
+  es: Audio
+  ar: الصوت
+  fr: Audio
+  bn: অডিও
+  pt-BR: Áudio
+  ru: Звук
+  id: Audio
+  de: Audio
+  ja: オーディオ
+  ko: 오디오
+settings.plugins:
+  en: Plugins
+  zh-CN: 插件
+  zh-TW: 外掛程式
+  hi: प्लगइन
+  es: Plugins
+  ar: الإضافات
+  fr: Modules
+  bn: প্লাগইন
+  pt-BR: Plugins
+  ru: Плагины
+  id: Plugin
+  de: Plugins
+  ja: プラグイン
+  ko: 플러그인
+settings.language:
+  en: Language
+  zh-CN: 语言
+  zh-TW: 語言
+  hi: भाषा
+  es: Idioma
+  ar: اللغة
+  fr: Langue
+  bn: ভাষা
+  pt-BR: Idioma
+  ru: Язык
+  id: Bahasa
+  de: Sprache
+  ja: 言語
+  ko: 언어
+settings.language_system:
+  en: System
+  zh-CN: 跟随系统
+  zh-TW: 跟隨系統
+  hi: सिस्टम
+  es: Sistema
+  ar: النظام
+  fr: Système
+  bn: সিস্টেম
+  pt-BR: Sistema
+  ru: Системный
+  id: Sistem
+  de: System
+  ja: システム
+  ko: 시스템
+settings.language_system_named:
+  en: System (%{name})
+  zh-CN: 跟随系统（%{name}）
+  zh-TW: 跟隨系統（%{name}）
+  hi: सिस्टम (%{name})
+  es: Sistema (%{name})
+  ar: النظام (%{name})
+  fr: Système (%{name})
+  bn: সিস্টেম (%{name})
+  pt-BR: Sistema (%{name})
+  ru: Системный (%{name})
+  id: Sistem (%{name})
+  de: System (%{name})
+  ja: システム（%{name}）
+  ko: 시스템 (%{name})
+settings.language_note:
+  en: YouTube Music's own texts (Explore, the names of mixes) follow on the next start.
+  zh-CN: YouTube Music 自身的文字（探索、合辑名称）将在下次启动时切换。
+  zh-TW: YouTube Music 本身的文字（探索、合輯名稱）會在下次啟動時切換。
+  hi: YouTube Music के अपने टेक्स्ट (एक्सप्लोर, मिक्स के नाम) अगली बार शुरू करने पर बदलेंगे।
+  es: Los textos propios de YouTube Music (Explorar, los nombres de los mixes) cambian en el próximo inicio.
+  ar: تتغير نصوص YouTube Music نفسها (استكشاف وأسماء المزيجات) عند التشغيل التالي.
+  fr: Les textes de YouTube Music (Explorer, les noms des mix) suivront au prochain démarrage.
+  bn: YouTube Music-এর নিজস্ব লেখা (এক্সপ্লোর, মিক্সের নাম) পরের বার চালু করলে বদলাবে।
+  pt-BR: Os textos do próprio YouTube Music (Explorar, os nomes dos mixes) mudam na próxima vez que abrir.
+  ru: Тексты самого YouTube Music (обзор, названия миксов) сменятся при следующем запуске.
+  id: Teks milik YouTube Music (Jelajahi, nama mix) ikut berubah saat dibuka berikutnya.
+  de: Die Texte von YouTube Music selbst (Entdecken, die Namen der Mixe) folgen beim nächsten Start.
+  ja: YouTube Music 側の表示（探索、ミックス名）は次回の起動から切り替わります。
+  ko: YouTube Music 자체의 텍스트(둘러보기, 믹스 이름)는 다음 실행부터 바뀝니다.
+settings.theme:
+  en: Theme
+  zh-CN: 主题
+  zh-TW: 主題
+  hi: थीम
+  es: Tema
+  ar: السمة
+  fr: Thème
+  bn: থিম
+  pt-BR: Tema
+  ru: Тема
+  id: Tema
+  de: Design
+  ja: テーマ
+  ko: 테마
+settings.accent:
+  en: Accent color
+  zh-CN: 强调色
+  zh-TW: 強調色
+  hi: एक्सेंट रंग
+  es: Color de acento
+  ar: لون التمييز
+  fr: Couleur d'accent
+  bn: অ্যাকসেন্ট রং
+  pt-BR: Cor de destaque
+  ru: Акцентный цвет
+  id: Warna aksen
+  de: Akzentfarbe
+  ja: アクセントカラー
+  ko: 강조 색상
+settings.accent_theme:
+  en: Theme
+  zh-CN: 跟随主题
+  zh-TW: 跟隨主題
+  hi: थीम से
+  es: Del tema
+  ar: من السمة
+  fr: Du thème
+  bn: থিম থেকে
+  pt-BR: Do tema
+  ru: Из темы
+  id: Dari tema
+  de: Vom Design
+  ja: テーマに合わせる
+  ko: 테마 따라가기
+settings.accent_cover:
+  en: From cover
+  zh-CN: 取自封面
+  zh-TW: 取自封面
+  hi: कवर से
+  es: De la tapa
+  ar: من الغلاف
+  fr: De la pochette
+  bn: কভার থেকে
+  pt-BR: Da capa
+  ru: Из обложки
+  id: Dari sampul
+  de: Vom Cover
+  ja: ジャケットから
+  ko: 커버에서
+settings.accent_cover_note:
+  en: The accent changes with each song's cover.
+  zh-CN: 强调色会随每首歌的封面变化。
+  zh-TW: 強調色會隨每首歌的封面變化。
+  hi: एक्सेंट हर गाने के कवर के साथ बदलता है।
+  es: El acento cambia con la tapa de cada tema.
+  ar: يتغير لون التمييز مع غلاف كل أغنية.
+  fr: L'accent change avec la pochette de chaque titre.
+  bn: প্রতিটি গানের কভারের সাথে অ্যাকসেন্ট বদলায়।
+  pt-BR: O destaque muda com a capa de cada música.
+  ru: Акцент меняется вместе с обложкой каждой песни.
+  id: Aksen berubah mengikuti sampul setiap lagu.
+  de: Die Akzentfarbe wechselt mit dem Cover jedes Songs.
+  ja: アクセントは曲ごとのジャケットに合わせて変わります。
+  ko: 강조 색상이 곡마다 커버에 맞춰 바뀝니다.
+settings.custom_themes:
+  en: Custom themes
+  zh-CN: 自定义主题
+  zh-TW: 自訂主題
+  hi: कस्टम थीम
+  es: Temas propios
+  ar: سمات مخصصة
+  fr: Thèmes personnalisés
+  bn: নিজস্ব থিম
+  pt-BR: Temas personalizados
+  ru: Свои темы
+  id: Tema kustom
+  de: Eigene Designs
+  ja: カスタムテーマ
+  ko: 사용자 테마
+settings.custom_themes_note:
+  en: 'Add your own themes as JSON files in %{folder}. Colors are #rrggbb; the ones left out come from Encore''s dark theme, or from Daylight with "light": true.'
+  zh-CN: '将自定义主题以 JSON 文件放在 %{folder}。颜色格式为 #rrggbb；未填写的颜色取自 Encore 的深色主题，若设置 "light": true 则取自 Daylight。'
+  zh-TW: '將自訂主題以 JSON 檔案放在 %{folder}。顏色格式為 #rrggbb；未填寫的顏色取自 Encore 的深色主題，若設定 "light": true 則取自 Daylight。'
+  hi: 'अपनी थीम JSON फ़ाइलों के रूप में %{folder} में जोड़ें। रंग #rrggbb होते हैं; छोड़े गए रंग Encore की डार्क थीम से, या "light": true होने पर Daylight से आते हैं।'
+  es: 'Agregá tus temas como archivos JSON en %{folder}. Los colores van como #rrggbb; los que falten salen del tema oscuro de Encore, o de Daylight con "light": true.'
+  ar: 'أضف سماتك كملفات JSON في %{folder}. الألوان بصيغة #rrggbb؛ وما لم يُحدَّد منها يُؤخذ من سمة Encore الداكنة، أو من Daylight مع "light": true.'
+  fr: 'Ajoutez vos thèmes en fichiers JSON dans %{folder}. Les couleurs sont au format #rrggbb ; celles qui manquent viennent du thème sombre d''Encore, ou de Daylight avec "light": true.'
+  bn: 'নিজের থিম JSON ফাইল হিসেবে %{folder}-এ যোগ করুন। রং #rrggbb আকারে; বাদ পড়া রংগুলো Encore-এর ডার্ক থিম থেকে, বা "light": true থাকলে Daylight থেকে আসে।'
+  pt-BR: 'Adicione seus temas como arquivos JSON em %{folder}. As cores são #rrggbb; as que faltarem vêm do tema escuro do Encore, ou do Daylight com "light": true.'
+  ru: 'Добавляйте свои темы как JSON-файлы в %{folder}. Цвета — #rrggbb; недостающие берутся из тёмной темы Encore или из Daylight при "light": true.'
+  id: 'Tambahkan tema sendiri sebagai file JSON di %{folder}. Warna ditulis #rrggbb; yang tidak diisi diambil dari tema gelap Encore, atau dari Daylight dengan "light": true.'
+  de: 'Lege eigene Designs als JSON-Dateien in %{folder} ab. Farben sind #rrggbb; fehlende kommen aus Encores dunklem Design oder mit "light": true aus Daylight.'
+  ja: '自作テーマは JSON ファイルとして %{folder} に置きます。色は #rrggbb 形式で、省いた色は Encore のダークテーマ（"light": true なら Daylight）から取られます。'
+  ko: '사용자 테마는 %{folder}에 JSON 파일로 넣으세요. 색상은 #rrggbb 형식이며, 빠진 색은 Encore의 어두운 테마(또는 "light": true면 Daylight)에서 가져옵니다.'
+settings.reload_themes:
+  en: Reload themes
+  zh-CN: 重新加载主题
+  zh-TW: 重新載入主題
+  hi: थीम फिर से लोड करें
+  es: Recargar temas
+  ar: إعادة تحميل السمات
+  fr: Recharger les thèmes
+  bn: থিম আবার লোড করুন
+  pt-BR: Recarregar temas
+  ru: Перезагрузить темы
+  id: Muat ulang tema
+  de: Designs neu laden
+  ja: テーマを再読み込み
+  ko: 테마 다시 불러오기

@@ -12,6 +12,7 @@ iced = { version = "0.14", features = ["tokio", "image", "svg"] }
 image = "0.25.10"
 libmpv2 = "7"
 rustfft = "6"
+rust-i18n = "3"
 md5 = "0.8"
 notify-rust = { version = "4", default-features = false, features = ["z-with-tokio"] }
 reqwest = "0.12"
@@ -29,3 +30,6 @@ webkit2gtk = { version = "2", features = ["v2_40"] }
 [lints.clippy]
 unwrap_used = "deny"
 
+
+[dev-dependencies]
+serde_yaml = "0.9"

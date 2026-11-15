@@ -135,6 +135,7 @@ impl App {
                 match tab {
                     settings_view::Tab::Appearance => settings_view::appearance(
                         &self.appearance,
+                        self.appearance.language.as_deref(),
                         &self.themes,
                         &self.theme_errors,
                         self.cover_color,

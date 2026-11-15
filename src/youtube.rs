@@ -89,6 +89,7 @@ pub fn client() -> Result<RustyPipe, String> {
     crate::account::private_dir(&storage)?;
     RustyPipe::builder()
         .storage_dir(storage)
+        .lang(crate::i18n::youtube_language())
         .build()
         .map_err(|error| error.to_string())
 }
