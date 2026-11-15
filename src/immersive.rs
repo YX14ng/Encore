@@ -11,12 +11,16 @@ use crate::{Message, theme};
 /// The size of the cover.
 const COVER_SIZE: f32 = 380.0;
 
-/// The immersive view around the large `lyrics` and the `player` bar.
+/// The immersive view around the large `lyrics` and the `player` bar. With a `video`, the music
+/// video takes the place of the cover and the lyrics; `bars` (the visualizer) go above the
+/// player.
 pub fn view<'a>(
     song: &'a Song,
     backdrop: Option<&'a image::Handle>,
     zoom: f32,
     lyrics: Element<'a, Message>,
+    video: Option<Element<'a, Message>>,
+    bars: Option<Element<'a, Message>>,
     player: Element<'a, Message>,
 ) -> Element<'a, Message> {
     let background: Element<'a, Message> = match backdrop {
@@ -65,6 +69,32 @@ pub fn view<'a>(
         style
     });
 
+    if let Some(video) = video {
+        let caption = row![
+            column![
+                text(&song.title).size(22).font(Font {
+                    weight: Weight::Bold,
+                    ..theme::INTER
+                }),
+                text(format!("{} \u{b7} {}", song.artist, song.album))
+                    .size(15)
+                    .color(theme::text_secondary()),
+            ]
+            .spacing(4),
+            space::horizontal(),
+            exit,
+        ]
+        .align_y(Center);
+        let stage = column![container(video).height(Fill).width(Fill), caption]
+            .spacing(16)
+            .padding([24, 48]);
+        let backdrop = container(space())
+            .width(Fill)
+            .height(Fill)
+            .style(|_| container::background(Color::BLACK));
+        return stack![backdrop, column![stage, player]].into();
+    }
+
     let details = column![
         cover,
         text(&song.title).size(30).font(Font {
@@ -85,5 +115,6 @@ pub fn view<'a>(
         .height(Fill)
         .padding([40, 48]);
 
-    stack![background, shade, column![stage, player]].into()
+    let bars = bars.map(|bars| container(bars).padding([0, 48]));
+    stack![background, shade, column![stage].push(bars).push(player)].into()
 }

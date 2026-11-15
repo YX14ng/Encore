@@ -15,6 +15,9 @@ pub struct Controls {
     /// How the playing song is rated; the buttons only work with `can_rate`.
     pub rating: crate::rating::Rating,
     pub can_rate: bool,
+    /// Whether the music video shows, and whether a YouTube song plays so it can.
+    pub video: bool,
+    pub can_video: bool,
     /// Where the progress bar is being dragged to, in seconds.
     pub seeking: Option<f32>,
     /// From 0 to 100.
@@ -179,6 +182,12 @@ fn buttons<'a>(
             theme::text_secondary(),
             18.0,
             Some(Message::OpenSettings(crate::settings_view::Tab::Audio))
+        ),
+        icon_button(
+            include_bytes!("../assets/icons/video.svg"),
+            toggle_color(controls.video),
+            18.0,
+            controls.can_video.then_some(Message::ToggleVideo)
         ),
         icon_button(
             include_bytes!("../assets/icons/miniplayer.svg"),

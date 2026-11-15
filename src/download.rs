@@ -13,6 +13,10 @@ use tokio::process::Command;
 /// Audio formats yt-dlp may leave in the cache, in order of preference.
 const AUDIO_EXTENSIONS: [&str; 4] = ["webm", "opus", "m4a", "mp4"];
 
+/// The picture of a music video: up to 720p, preferring VP9 in WebM, without sound (the song
+/// plays from its own file).
+const VIDEO_FORMAT: &str = "bestvideo[height<=720][ext=webm]/bestvideo[height<=720]";
+
 /// How long the session cookies handed to yt-dlp say they last, in seconds. The file is deleted
 /// once yt-dlp is done, so this only has to outlast one download.
 const COOKIE_LIFETIME: u64 = 24 * 60 * 60;
@@ -178,6 +182,44 @@ pub async fn audio(id: String, source: Source) -> Result<PathBuf, String> {
     let dir = cache_dir().join(quality.cache_folder());
     let cookie = source.cookie.filter(|_| quality == Quality::High);
     audio_into(id, dir, quality, cookie.as_deref()).await
+}
+
+/// Downloads the picture of video `id` alone (up to 720p, no sound) into the cache, unless it
+/// is already there.
+pub async fn video(id: String) -> Result<PathBuf, String> {
+    let dir = cache_dir().join("video");
+    tokio::fs::create_dir_all(&dir)
+        .await
+        .map_err(|error| error.to_string())?;
+    if let Some(path) = find_cached(&dir, &id) {
+        return Ok(path);
+    }
+    let template = dir.join("%(id)s.%(ext)s");
+    let output = Command::new("yt-dlp")
+        .args([
+            "--no-config",
+            "--no-playlist",
+            "--quiet",
+            "--no-warnings",
+            "-f",
+        ])
+        .arg(VIDEO_FORMAT)
+        .arg("-o")
+        .arg(&template)
+        .args(["--print", "after_move:filepath"])
+        .arg(format!("https://www.youtube.com/watch?v={id}"))
+        .output()
+        .await
+        .map_err(|error| format!("could not run yt-dlp: {error}"))?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+    }
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .last()
+        .map(PathBuf::from)
+        .filter(|path| path.exists())
+        .ok_or_else(|| "yt-dlp did not report the downloaded video".to_string())
 }
 
 /// Keeps a song offline: copies it from the cache if it is there, else downloads it.

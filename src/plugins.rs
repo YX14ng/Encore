@@ -17,15 +17,17 @@ pub enum Plugin {
     Notifications,
     SponsorBlock,
     SkipDisliked,
+    Visualizer,
 }
 
 impl Plugin {
-    pub const ALL: [Plugin; 5] = [
+    pub const ALL: [Plugin; 6] = [
         Plugin::Discord,
         Plugin::LastFm,
         Plugin::Notifications,
         Plugin::SponsorBlock,
         Plugin::SkipDisliked,
+        Plugin::Visualizer,
     ];
 
     fn name(self) -> &'static str {
@@ -35,6 +37,7 @@ impl Plugin {
             Plugin::Notifications => "Desktop notifications",
             Plugin::SponsorBlock => "SponsorBlock",
             Plugin::SkipDisliked => "Skip disliked songs",
+            Plugin::Visualizer => "Visualizer",
         }
     }
 
@@ -54,6 +57,9 @@ impl Plugin {
                 "Skips a song when you dislike it, and songs you disliked before when they come \
                  up (signed in)."
             }
+            Plugin::Visualizer => {
+                "Shows bars that move with the music under the lyrics in the full screen view."
+            }
         }
     }
 }
@@ -67,6 +73,7 @@ pub struct Plugins {
     pub notifications: bool,
     pub sponsorblock: bool,
     pub skip_disliked: bool,
+    pub visualizer: bool,
 }
 
 impl Default for Plugins {
@@ -77,6 +84,7 @@ impl Default for Plugins {
             notifications: false,
             sponsorblock: true,
             skip_disliked: true,
+            visualizer: true,
         }
     }
 }
@@ -107,6 +115,7 @@ impl Plugins {
             Plugin::Notifications => self.notifications,
             Plugin::SponsorBlock => self.sponsorblock,
             Plugin::SkipDisliked => self.skip_disliked,
+            Plugin::Visualizer => self.visualizer,
         }
     }
 
@@ -117,6 +126,7 @@ impl Plugins {
             Plugin::Notifications => &mut self.notifications,
             Plugin::SponsorBlock => &mut self.sponsorblock,
             Plugin::SkipDisliked => &mut self.skip_disliked,
+            Plugin::Visualizer => &mut self.visualizer,
         };
         *slot = on;
     }

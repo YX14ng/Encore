@@ -14,6 +14,9 @@ use crate::{
     search, settings_view, sidebar, theme, together, top_bar,
 };
 
+/// How tall the visualizer's bars get in the immersive view.
+const VISUALIZER_HEIGHT: f32 = 90.0;
+
 impl App {
     /// Who is signed in, if the library knows.
     pub(crate) fn profile(&self) -> Option<&profile::Profile> {
@@ -35,6 +38,8 @@ impl App {
         player::Controls {
             rating: self.rating,
             can_rate: self.can_rate(),
+            video: self.video.on,
+            can_video: self.online.is_active(),
             seeking: self.seeking,
             volume: settings.volume,
             muted: settings.muted,
@@ -63,6 +68,9 @@ impl App {
                 self.backdrop.as_ref(),
                 backdrop::zoom_at(seconds),
                 self.lyrics_view(lyrics::IMMERSIVE),
+                self.video.on.then(|| self.video.view()),
+                (self.plugins.visualizer && self.visualizer.is_showing())
+                    .then(|| self.visualizer.view(VISUALIZER_HEIGHT)),
                 player::view(
                     &self.now_playing,
                     &self.playback,
@@ -243,7 +251,9 @@ impl App {
         if self.playback.is_playing {
             let tick = time::every(Duration::from_secs(1)).map(Message::Tick);
             Subscription::batch([tick, frames, resize])
-        } else if self.lyrics_scroll.is_animating(self.now) {
+        } else if self.lyrics_scroll.is_animating(self.now)
+            || (self.immersive && self.visualizer.is_showing())
+        {
             Subscription::batch([frames, resize])
         } else {
             resize

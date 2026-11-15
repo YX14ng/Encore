@@ -64,6 +64,8 @@ pub struct Online {
     skip_silence: bool,
     /// How good the downloaded audio is.
     quality: download::Quality,
+    /// The file of the song that is playing, for the visualizer.
+    playing_file: Option<std::path::PathBuf>,
     /// The song whose radio autoplay last asked for, so it is asked only once.
     radio_for: Option<String>,
     /// The covers the user picked for playlists, by playlist id.
@@ -101,6 +103,7 @@ impl Online {
             autoplay: settings.autoplay,
             skip_silence: settings.skip_silence,
             quality: settings.quality,
+            playing_file: None,
             radio_for: None,
             covers: crate::playlists::covers::load(),
         }
@@ -491,11 +494,16 @@ impl Online {
             return None;
         }
         self.queued = None;
-        self.next_file = None;
+        self.playing_file = self.next_file.take().map(|(_, song)| song.path);
         self.queue.set_playing(next);
         self.heard = false;
         let track = self.queue.get(next)?.clone();
         Some((track, self.prefetch_next()))
+    }
+
+    /// The file of the song that is playing.
+    pub fn playing_file(&self) -> Option<&std::path::Path> {
+        self.playing_file.as_deref()
     }
 
     /// Fades into the next song when the current one is `seconds` from its end (in real time,
@@ -526,6 +534,7 @@ impl Online {
             self.error = Some(error);
             return None;
         }
+        self.playing_file = Some(song.path.clone());
         self.next_file = None;
         self.queued = None;
         self.queue.set_playing(next);
@@ -602,11 +611,15 @@ impl Online {
                 .mixer
                 .as_mut()
                 .ok_or("mpv could not start; is libmpv installed?")?;
-            mixer.play(&song)
+            mixer.play(&song)?;
+            Ok(song.path)
         });
-        if let Err(error) = started {
-            self.error = Some(error);
-            return (None, Task::none());
+        match started {
+            Ok(path) => self.playing_file = Some(path),
+            Err(error) => {
+                self.error = Some(error);
+                return (None, Task::none());
+            }
         }
 
         self.queue.set_playing(index);

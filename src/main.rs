@@ -48,7 +48,9 @@ mod themes;
 mod together;
 mod top_bar;
 mod update;
+mod video;
 mod view;
+mod visualizer;
 mod youtube;
 
 use std::fs;
@@ -109,6 +111,10 @@ struct App {
     rating: rating::Rating,
     /// The songs disliked in Encore, skipped when they come up again.
     disliked: rating::Disliked,
+    /// The music video of the playing song, in the immersive view.
+    video: video::Video,
+    /// The bars that move with the music in the immersive view.
+    visualizer: visualizer::Visualizer,
     current: usize,
     lyrics: Lyrics,
     window_width: f32,
@@ -194,6 +200,9 @@ enum Message {
     ToggleSection(Section),
     Select(NavItem),
     Rating(rating::Event),
+    Video(video::Event),
+    ToggleVideo,
+    Visualizer(visualizer::Event),
     Next,
     WindowResized(f32),
     SearchChanged(String),
@@ -339,6 +348,8 @@ impl App {
             panel: Some(layout::Panel::Lyrics),
             rating: rating::Rating::None,
             disliked: rating::Disliked::load(),
+            video: video::Video::default(),
+            visualizer: visualizer::Visualizer::default(),
             current: 0,
             lyrics,
             window_width: 1280.0,

@@ -11,6 +11,7 @@ gtk = "0.18"
 iced = { version = "0.14", features = ["tokio", "image", "svg"] }
 image = "0.25.10"
 libmpv2 = "7"
+rustfft = "6"
 md5 = "0.8"
 notify-rust = { version = "4", default-features = false, features = ["z-with-tokio"] }
 reqwest = "0.12"

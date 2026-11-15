@@ -119,6 +119,13 @@ impl App {
                     }
                     self.online.step_fade();
                     self.follow_lyrics();
+                    self.video_step();
+                }
+                if self.immersive && self.plugins.visualizer {
+                    let playing = self.playback.is_playing && self.online.is_active();
+                    let position = self.online.position_ms().filter(|_| playing);
+                    self.visualizer
+                        .step(position.map(|millis| f64::from(millis) / 1000.0));
                 }
             }
             Message::ToggleSidebar => self.show_sidebar = !self.show_sidebar,
@@ -128,6 +135,9 @@ impl App {
             Message::ToggleSection(section) => self.sidebar.toggle(section),
             Message::Select(item) => return self.select(item),
             Message::Rating(event) => return self.rating_event(event),
+            Message::Video(event) => return self.video_event(event),
+            Message::ToggleVideo => return self.toggle_video(),
+            Message::Visualizer(event) => self.visualizer.event(event),
             Message::Next => {
                 if self.online.is_active() {
                     return self.play_next_online();
@@ -481,12 +491,22 @@ impl App {
         } else {
             Task::none()
         };
+        let visualizer = match self.online.playing_file() {
+            Some(path) if self.plugins.visualizer => self
+                .visualizer
+                .analyze(track.id.clone(), path.to_path_buf()),
+            _ => {
+                self.visualizer.clear();
+                Task::none()
+            }
+        };
+        let video = self.find_video();
         let id = track.id.clone();
         let lyrics = Task::perform(
             lyrics_source::fetch(track, self.online.client()),
             move |lyrics| Message::LyricsLoaded(id.clone(), lyrics),
         );
-        Task::batch([lyrics, now_playing, notice, segments])
+        Task::batch([lyrics, now_playing, notice, segments, visualizer, video])
     }
 
     /// With SponsorBlock on, jumps over the part of the video that is playing if the community
@@ -517,6 +537,9 @@ impl App {
             return Task::none();
         }
         self.immersive = immersive;
+        if !immersive {
+            self.stop_video();
+        }
         let mode = if immersive {
             window::Mode::Fullscreen
         } else {
