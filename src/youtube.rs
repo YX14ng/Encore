@@ -76,6 +76,9 @@ pub struct Collection {
     pub subtitle: String,
     pub image_url: Option<String>,
     pub tracks: Vec<SearchTrack>,
+    /// The rest of an artist's page; only artists have it, and it is not kept with downloads.
+    #[serde(skip)]
+    pub artist: Option<Box<crate::artist::ArtistPage>>,
 }
 
 /// A rustypipe client. Its storage holds the session cookies after signing in, so it lives in
@@ -184,13 +187,17 @@ pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
                 ),
                 image_url: cover,
                 tracks,
+                artist: None,
             })
         }
         TileKind::Radio => {
-            let mut radio = q
-                .music_radio_track(&tile.id)
-                .await
-                .map_err(|error| error.to_string())?;
+            // A song's radio, or a radio YouTube Music made (an artist's), by its playlist id.
+            let radio = if is_song_id(&tile.id) {
+                q.music_radio_track(&tile.id).await
+            } else {
+                q.music_radio(&tile.id).await
+            };
+            let mut radio = radio.map_err(|error| error.to_string())?;
             // A radio is endless; one more page is plenty for a session.
             let _ = radio.extend(&q).await;
             Ok(Collection {
@@ -200,6 +207,7 @@ pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
                 subtitle: tile.subtitle.clone(),
                 image_url: tile.image_url.clone(),
                 tracks: radio.items.iter().map(track).collect(),
+                artist: None,
             })
         }
         TileKind::Playlist => {
@@ -223,6 +231,7 @@ pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
                 subtitle: tile.subtitle,
                 image_url: best_image(&playlist.thumbnail),
                 tracks: playlist.tracks.items.iter().map(track).collect(),
+                artist: None,
             })
         }
         TileKind::Artist => {
@@ -237,6 +246,7 @@ pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
                 subtitle: artist_subtitle(artist.subscriber_count),
                 image_url: best_image(&artist.header_image).or(tile.image_url),
                 tracks: artist.tracks.iter().map(track).collect(),
+                artist: Some(Box::new(crate::artist::page(&artist))),
             })
         }
     }
@@ -311,12 +321,22 @@ fn artist_names(artists: &[rustypipe::model::ArtistId]) -> String {
 }
 
 fn best_image(thumbnails: &[Thumbnail]) -> Option<String> {
+    image_up_to(thumbnails, COVER_MAX_WIDTH)
+}
+
+/// The largest of `thumbnails` that is at most `max_width` wide.
+pub(crate) fn image_up_to(thumbnails: &[Thumbnail], max_width: u32) -> Option<String> {
     pick_cover(
         thumbnails
             .iter()
             .map(|thumbnail| (thumbnail.width, thumbnail.url.as_str())),
-        COVER_MAX_WIDTH,
+        max_width,
     )
+}
+
+/// Whether `id` is a song's (a video id is 11 characters), not a playlist's.
+fn is_song_id(id: &str) -> bool {
+    id.len() == 11
 }
 
 /// From `(width, url)` pairs, the largest image that is at most `max_width` wide, or the

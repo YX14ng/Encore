@@ -18,6 +18,11 @@ pub fn view<'a>(
     offline: &'a Offline,
     own: bool,
 ) -> Element<'a, Message> {
+    if let (Status::Done, Some(collection)) = (status, collection)
+        && let Some(page) = &collection.artist
+    {
+        return crate::artist::view(collection, page, shared, offline);
+    }
     let content = match (status, collection) {
         (Status::Failed(error), _) => column![note(format!("Could not open it: {error}"))],
         (_, Some(collection)) => loaded(collection, shared, offline, own),
@@ -125,7 +130,10 @@ fn cover_button(collection: &Collection) -> Element<'_, Message> {
 }
 
 /// Download, the progress while downloading, or Remove download once it is on disk.
-fn download_button<'a>(collection: &'a Collection, offline: &'a Offline) -> Element<'a, Message> {
+pub(crate) fn download_button<'a>(
+    collection: &'a Collection,
+    offline: &'a Offline,
+) -> Element<'a, Message> {
     let (label, message) = match offline.state(&collection.id) {
         State::NotDownloaded => (
             "Download".to_string(),

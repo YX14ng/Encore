@@ -164,7 +164,7 @@ impl App {
                 }
             }
             Message::OpenTile(tile) => {
-                self.screen = Screen::Collection;
+                self.go_to(Screen::Collection);
                 return self.online.open(tile);
             }
             Message::CollectionLoaded(result) => return self.online.collection_loaded(result),
@@ -188,7 +188,7 @@ impl App {
             Message::PlayTop => {
                 let (opens, task) = self.online.play_top();
                 if opens {
-                    self.screen = Screen::Collection;
+                    self.go_to(Screen::Collection);
                 }
                 return task;
             }
@@ -201,17 +201,21 @@ impl App {
                 }
             }
             Message::Playlist(event) => return self.playlist_event(event),
+            Message::Explore(event) => return self.explore_event(event),
             Message::ToggleAutoplay => {
                 self.audio_settings.autoplay = !self.audio_settings.autoplay;
                 self.audio_settings.save();
                 return self.online.set_autoplay(self.audio_settings.autoplay);
             }
-            Message::Back => {
-                self.screen = match self.screen {
-                    Screen::Collection => Screen::Search,
-                    _ => Screen::Home,
-                };
-            }
+            Message::Back => match self.history.pop() {
+                Some((screen, collection)) => {
+                    self.screen = screen;
+                    if let Some(collection) = collection {
+                        return self.online.show_collection(collection);
+                    }
+                }
+                None => self.screen = Screen::Home,
+            },
             Message::OpenAccount => return self.select(NavItem::Account),
             Message::SignInWith(browser) => {
                 let Some(client) = self.online.client() else {
@@ -370,7 +374,7 @@ impl App {
             Message::AudioChangeDone => self.apply_audio(),
             Message::OpenOffline(id) => {
                 if let Some(collection) = self.offline.get(&id).cloned() {
-                    self.screen = Screen::Collection;
+                    self.go_to(Screen::Collection);
                     return self.online.show_collection(collection);
                 }
             }
@@ -553,6 +557,7 @@ impl App {
             return self.playlist_event(crate::playlists::Event::OpenNew);
         }
         self.sidebar.selected = item;
+        self.history.clear();
         self.screen = match item {
             NavItem::History => Screen::Library(Shelf::History),
             NavItem::Songs => Screen::Library(Shelf::Songs),
@@ -561,6 +566,7 @@ impl App {
             NavItem::Artists => Screen::Library(Shelf::Artists),
             NavItem::Downloads => Screen::Library(Shelf::Downloads),
             NavItem::Account => Screen::Account,
+            NavItem::Explore => return self.open_explore(),
             NavItem::Playlist(index) => {
                 if let Account::SignedIn(data) = &self.account
                     && let Some(playlist) = data.playlists.get(index).cloned()

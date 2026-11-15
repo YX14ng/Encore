@@ -1,6 +1,7 @@
 //! Encore: a YouTube Music desktop player written with iced.
 
 mod account;
+mod artist;
 mod audio;
 mod audio_settings;
 mod audio_view;
@@ -10,6 +11,7 @@ mod collection;
 mod discord;
 mod discord_ipc;
 mod download;
+mod explore;
 mod home;
 mod immersive;
 mod lastfm;
@@ -21,6 +23,7 @@ mod media_keys;
 mod mini_player;
 mod mixer;
 mod mock;
+mod navigation;
 mod notifications;
 mod offline;
 mod online;
@@ -151,6 +154,9 @@ struct App {
     dialog: Option<playlists::Dialog>,
     /// The note at the bottom of the window and its number, to know when it goes.
     toast: Option<(u64, String)>,
+    /// The screens Back goes to, the latest last, with the collection each one showed.
+    history: Vec<(Screen, Option<youtube::Collection>)>,
+    explore: explore::Explore,
 }
 
 /// The screens of the center column.
@@ -163,6 +169,9 @@ enum Screen {
     Account,
     Settings(settings_view::Tab),
     Together,
+    Explore,
+    /// A mood's or genre's page, opened from Explore.
+    Genre,
 }
 
 /// Everything that can happen in the app.
@@ -207,6 +216,7 @@ enum Message {
     RadioLoaded(String, Result<Vec<youtube::SearchTrack>, String>),
     ToggleAutoplay,
     Playlist(playlists::Event),
+    Explore(explore::Event),
     Back,
     OpenAccount,
     SignInWindow,
@@ -347,6 +357,8 @@ impl App {
             skip_segments: None,
             dialog: None,
             toast: None,
+            history: Vec::new(),
+            explore: explore::Explore::default(),
         }
     }
 }

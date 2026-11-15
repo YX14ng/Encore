@@ -9,9 +9,9 @@ use crate::layout::Panel;
 use crate::library::Account;
 use crate::sidebar::SidebarAccount;
 use crate::{
-    App, Message, Screen, audio_view, backdrop, collection, discord, home, immersive, layout,
-    library, lyrics, media_keys, mini_player, player, playlists, profile, queue_view, search,
-    settings_view, sidebar, theme, together, top_bar,
+    App, Message, Screen, audio_view, backdrop, collection, discord, explore, home, immersive,
+    layout, library, lyrics, media_keys, mini_player, player, playlists, profile, queue_view,
+    search, settings_view, sidebar, theme, together, top_bar,
 };
 
 impl App {
@@ -125,6 +125,8 @@ impl App {
                 },
             ),
             Screen::Together => together::view(&self.together),
+            Screen::Explore => explore::view(&self.explore, self.online.shared_view()),
+            Screen::Genre => explore::genre_view(&self.explore, self.online.shared_view()),
             Screen::Account => column![
                 library::account_view(&self.account, &self.cookie_path, self.profile_photo(),),
                 self.lastfm.view()

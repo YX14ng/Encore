@@ -274,6 +274,7 @@ mod tests {
                     entry: None,
                 })
                 .collect(),
+            artist: None,
         }
     }
 

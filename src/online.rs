@@ -271,6 +271,7 @@ impl Online {
                     .iter()
                     .cloned()
                     .chain(collection.tracks.iter().filter_map(|t| t.cover_url.clone()))
+                    .chain(collection.artist.iter().flat_map(|page| page.image_urls()))
                     .collect();
                 let tracks = collection.tracks.clone();
                 self.collection = Some(collection);
