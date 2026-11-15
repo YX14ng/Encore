@@ -79,12 +79,15 @@ Lyrics come from YouTube Music alone (`src/lyrics_source.rs`): the synced lyrics
 shows, which follow the song line by line, or the plain lyrics of its Lyrics tab when a song has
 no synced ones. There are no translations.
 
-The video button in the player bar opens the full screen view with the song's music video
-(`src/video/`). Songs on YouTube Music are album audio; signed in, YouTube Music names their music
+Clicking the song in the player bar opens the now playing page, like Pear's
+(`src/now_playing.rs`): it slides up over the window with the cover (or the music video) in the
+middle, a Song / Video switch above it, and the queue and the lyrics in tabs beside it; the
+chevron or Escape closes it. The video button opens it straight on the video, and in the full
+screen view the video fills the screen instead (`src/video/`). Songs on YouTube Music are album audio; signed in, YouTube Music names their music
 video and where the two line up, and a music video that plays as itself is its own picture.
 yt-dlp downloads the picture alone (up to 720p, into `~/.cache/encore/video`) and ffmpeg turns it
 into frames that follow the song's position; the sound still comes from mpv, with the equalizer
-and the rest. Leaving full screen turns the video off.
+and the rest. Closing the page (or leaving full screen) turns the video off.
 
 The Visualizer plugin (on by default) shows bars that move with the music in the full screen
 view (`src/visualizer.rs`): when a song starts, ffmpeg decodes its file and an FFT measures 48
