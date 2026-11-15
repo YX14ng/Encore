@@ -8,7 +8,7 @@ use iced::{Element, Font, Task};
 
 use crate::lastfm::{self, ApiError, Credentials, Scrobble, Session};
 use crate::youtube::SearchTrack;
-use crate::{Message, library, lyrics_source, theme};
+use crate::{Message, library, theme};
 
 const SESSION_FILE: &str = "session.json";
 const PENDING_FILE: &str = "pending.json";
@@ -38,12 +38,17 @@ pub struct Listen {
     counted: bool,
 }
 
+/// The first credited artist: Last.fm wants one, YouTube Music joins them with commas.
+fn first_artist(artists: &str) -> &str {
+    artists.split(',').next().unwrap_or(artists).trim()
+}
+
 impl Listen {
     /// A song that started playing at `timestamp` (seconds since 1970).
     pub fn new(track: &SearchTrack, timestamp: i64) -> Self {
         Self {
             scrobble: Scrobble {
-                artist: lyrics_source::first_artist(&track.artist).to_string(),
+                artist: first_artist(&track.artist).to_string(),
                 track: track.title.clone(),
                 album: track.album.clone(),
                 duration: track.duration,
