@@ -1,21 +1,34 @@
-//! The audio tab of the settings: equalizer with presets, volume normalization, playback speed
-//! and crossfade. Opened with the equalizer button in the player bar.
+//! The audio tab of the settings: the sound output, equalizer with presets, compressor, volume
+//! normalization, silence skipping, playback speed and crossfade. Opened with the equalizer
+//! button in the player bar.
 
 use iced::font::Weight;
-use iced::widget::{Row, button, column, container, row, slider, text, toggler, vertical_slider};
-use iced::{Center, Element, Font, border};
+use iced::widget::{
+    Column, Row, button, column, container, row, slider, text, toggler, vertical_slider,
+};
+use iced::{Center, Element, Fill, Font, border};
 
+use crate::audio::Device;
 use crate::audio_settings::{
-    AudioChange, AudioSettings, BANDS, MAX_CROSSFADE, MAX_GAIN, MAX_SPEED, MIN_SPEED, PRESETS,
+    AudioChange, AudioSettings, BANDS, Compressor, MAX_CROSSFADE, MAX_GAIN, MAX_SPEED, MIN_SPEED,
+    PRESETS,
 };
 use crate::{Message, theme};
 
-/// The tab's content. `error` is what mpv said when it refused the filters, if it did.
-pub fn view<'a>(settings: &'a AudioSettings, error: Option<&'a str>) -> Element<'a, Message> {
+/// The tab's content: `devices` are the outputs to pick from, and `error` is what mpv said when
+/// it refused the settings, if it did.
+pub fn view<'a>(
+    settings: &'a AudioSettings,
+    devices: &'a [Device],
+    error: Option<&'a str>,
+) -> Element<'a, Message> {
     column![]
         .push(error.map(|error| text(error).color(theme::accent())))
+        .push(output(settings, devices))
         .push(equalizer(settings))
+        .push(compressor(settings))
         .push(normalization(settings))
+        .push(silence(settings))
         .push(speed(settings))
         .push(crossfade(settings))
         .spacing(26)
@@ -74,6 +87,87 @@ fn equalizer(settings: &AudioSettings) -> Element<'_, Message> {
         .push(dimmed.map(note))
         .spacing(14)
         .into()
+}
+
+/// The system's default output and every device, the chosen one marked. A saved device that is
+/// not connected stays listed, so it is clear why sound goes elsewhere.
+fn output<'a>(settings: &'a AudioSettings, devices: &'a [Device]) -> Element<'a, Message> {
+    let chosen = settings.output.as_deref();
+    let missing = chosen.filter(|name| !devices.iter().any(|device| device.name == *name));
+    let mut list = Column::new().push(choice(
+        "System default".to_string(),
+        chosen.is_none() || missing.is_some(),
+        Message::AudioOutput(None),
+    ));
+    for device in devices {
+        list = list.push(choice(
+            device.description.clone(),
+            chosen == Some(device.name.as_str()),
+            Message::AudioOutput(Some(device.name.clone())),
+        ));
+    }
+    if let Some(name) = missing {
+        list = list.push(choice(
+            format!("{name} (not connected)"),
+            false,
+            Message::AudioOutput(Some(name.to_string())),
+        ));
+    }
+    column![heading("Sound output", 16.0), list.spacing(2).width(460)]
+        .spacing(10)
+        .into()
+}
+
+/// A row of the output list, with a check mark when it is the one in use.
+fn choice<'a>(label: String, selected: bool, message: Message) -> Element<'a, Message> {
+    let mark = text(if selected { "\u{2713}" } else { "" })
+        .size(14)
+        .width(20)
+        .color(theme::accent());
+    button(row![mark, text(label).size(14)].align_y(Center).width(Fill))
+        .on_press(message)
+        .padding([7, 10])
+        .width(Fill)
+        .style(move |_, status| {
+            let mut style = theme::flat_button(status, false);
+            style.border = border::rounded(8);
+            style
+        })
+        .into()
+}
+
+fn compressor(settings: &AudioSettings) -> Element<'_, Message> {
+    let strengths = Row::with_children(Compressor::ALL.into_iter().map(|strength| {
+        chip(
+            strength.label(),
+            settings.compressor == strength,
+            change(AudioChange::Compressor(strength)),
+        )
+    }))
+    .spacing(8)
+    .wrap();
+    column![
+        heading("Compressor", 16.0),
+        strengths,
+        note("Evens out the loud and quiet parts inside a song."),
+    ]
+    .spacing(10)
+    .into()
+}
+
+fn silence(settings: &AudioSettings) -> Element<'_, Message> {
+    column![
+        toggler(settings.skip_silence)
+            .label("Skip silence")
+            .on_toggle(|on| change(AudioChange::SkipSilence(on)))
+            .style(theme::switch),
+        note(
+            "Starts songs where the music starts and ends them where it ends. Silences inside \
+             a song stay. Takes effect from the next song.",
+        ),
+    ]
+    .spacing(8)
+    .into()
 }
 
 fn normalization(settings: &AudioSettings) -> Element<'_, Message> {

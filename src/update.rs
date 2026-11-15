@@ -338,7 +338,13 @@ impl App {
                 self.audio_settings.save();
                 return self.online.set_repeat(self.audio_settings.repeat);
             }
-            Message::OpenSettings(tab) => self.screen = Screen::Settings(tab),
+            Message::OpenSettings(tab) => {
+                if tab == crate::settings_view::Tab::Audio {
+                    // Headphones may have been plugged in since the screen was last open.
+                    self.audio_devices = self.online.audio_devices();
+                }
+                self.screen = Screen::Settings(tab);
+            }
             Message::PickTheme(name) => {
                 self.appearance.theme = name;
                 self.appearance.save();
@@ -372,6 +378,11 @@ impl App {
                 }
             }
             Message::AudioChangeDone => self.apply_audio(),
+            Message::AudioOutput(device) => {
+                self.audio_settings.output = device;
+                self.audio_devices = self.online.audio_devices();
+                self.apply_audio();
+            }
             Message::OpenOffline(id) => {
                 if let Some(collection) = self.offline.get(&id).cloned() {
                     self.go_to(Screen::Collection);
@@ -386,9 +397,9 @@ impl App {
     pub(crate) fn start_online(
         &mut self,
         index: usize,
-        path: Result<std::path::PathBuf, String>,
+        song: Result<crate::silence::SongFile, String>,
     ) -> Task<Message> {
-        let (started, prefetch) = self.online.audio_ready(index, path);
+        let (started, prefetch) = self.online.audio_ready(index, song);
         let Some(track) = started else {
             return prefetch;
         };

@@ -1,11 +1,11 @@
 //! The audio engine on top of mpv: two decks so one song can fade into the next, the volume,
 //! seeking, and the audio screen's filters and speed applied to both decks.
 
-use std::path::Path;
 use std::time::{Duration, Instant};
 
-use crate::audio::Audio;
+use crate::audio::{Audio, Device};
 use crate::audio_settings::AudioSettings;
+use crate::silence::SongFile;
 
 /// A crossfade in progress: the other deck fades out while the active one fades in.
 #[derive(Debug, Clone, Copy)]
@@ -53,22 +53,22 @@ impl Mixer {
         &self.decks[1 - self.active]
     }
 
-    /// Replaces whatever is playing with `path`, cutting any crossfade short.
-    pub fn play(&mut self, path: &Path) -> Result<(), String> {
+    /// Replaces whatever is playing with `song`, cutting any crossfade short.
+    pub fn play(&mut self, song: &SongFile) -> Result<(), String> {
         self.fade = None;
         self.other().stop();
         self.deck().set_volume(f64::from(self.volume));
-        self.deck().play(path)
+        self.deck().play(&song.path, &song.trim)
     }
 
-    /// Starts `path` on the other deck and fades over to it in `length`. The outgoing deck
+    /// Starts `song` on the other deck and fades over to it in `length`. The outgoing deck
     /// forgets the song it had queued, which the incoming deck now plays.
-    pub fn crossfade_to(&mut self, path: &Path, length: Duration) -> Result<(), String> {
+    pub fn crossfade_to(&mut self, song: &SongFile, length: Duration) -> Result<(), String> {
         self.finish_fade();
         self.deck().clear_queued();
         let incoming = &self.decks[1 - self.active];
         incoming.set_volume(0.0);
-        incoming.play(path)?;
+        incoming.play(&song.path, &song.trim)?;
         self.active = 1 - self.active;
         self.fade = Some(Fade {
             started: Instant::now(),
@@ -100,9 +100,9 @@ impl Mixer {
         }
     }
 
-    /// Queues `path` to play with no gap after the current song.
-    pub fn queue_next(&self, path: &Path) -> Result<(), String> {
-        self.deck().queue_next(path)
+    /// Queues `song` to play with no gap after the current one.
+    pub fn queue_next(&self, song: &SongFile) -> Result<(), String> {
+        self.deck().queue_next(&song.path, &song.trim)
     }
 
     /// Forgets the queued song.
@@ -142,14 +142,31 @@ impl Mixer {
         self.deck().seek(seconds);
     }
 
-    /// Applies the equalizer, normalization and speed to both decks.
+    /// Applies the sound output, the filters and the speed to both decks. A saved output that
+    /// is not connected now gives way to the system's default.
     pub fn apply(&mut self, settings: &AudioSettings) -> Result<(), String> {
         let chain = settings.filter_chain();
+        let devices = self.devices();
+        let device = settings
+            .output
+            .as_deref()
+            .filter(|name| devices.iter().any(|device| device.name == *name));
         for deck in &self.decks {
+            deck.set_device(device)?;
             deck.set_filters(&chain)?;
             deck.set_speed(f64::from(settings.speed), settings.keep_pitch);
         }
         Ok(())
+    }
+
+    /// The sound outputs that can be picked.
+    pub fn devices(&self) -> Vec<Device> {
+        self.deck().devices()
+    }
+
+    /// Where the song stops, in seconds: before a silent end it skips, else its length.
+    pub fn end(&self) -> Option<f64> {
+        self.deck().end().or_else(|| self.deck().duration())
     }
 
     /// Seconds into the song, once it is open.
@@ -187,13 +204,17 @@ mod tests {
         }
     }
 
-    fn cached_songs() -> Vec<std::path::PathBuf> {
+    fn cached_songs() -> Vec<SongFile> {
         std::fs::read_dir(crate::download::cache_dir().join("audio"))
             .expect("cache dir")
             .filter_map(Result::ok)
             .map(|entry| entry.path())
             .filter(|path| path.extension().is_some_and(|ext| ext == "webm"))
             .take(2)
+            .map(|path| SongFile {
+                path,
+                trim: crate::silence::Trim::default(),
+            })
             .collect()
     }
 
@@ -204,8 +225,9 @@ mod tests {
         }
     }
 
-    /// Plays a cached song through the equalizer, normalization and double speed, then fades
-    /// into a second one, all without sound: `cargo test -- --ignored mixes_real_songs`.
+    /// Plays a cached song through the equalizer, the compressor, normalization and double
+    /// speed, then fades into a second one, all without sound:
+    /// `cargo test -- --ignored mixes_real_songs`.
     #[test]
     #[ignore = "needs libmpv and two songs in the cache"]
     fn mixes_real_songs() {
@@ -214,6 +236,9 @@ mod tests {
         let mut settings = AudioSettings::default();
         settings.change(AudioChange::Preset(1));
         settings.change(AudioChange::Normalize(true));
+        settings.change(AudioChange::Compressor(
+            crate::audio_settings::Compressor::Strong,
+        ));
         settings.change(AudioChange::Speed(2.0));
         let mut mixer = muted_mixer();
         mixer.apply(&settings).expect("mpv takes the filters");

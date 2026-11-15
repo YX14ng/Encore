@@ -1,5 +1,6 @@
 //! The player's settings that last between sessions: volume, shuffle and repeat, and the audio
-//! screen's equalizer, volume normalization, speed and crossfade. Kept in
+//! screen's sound output, equalizer, compressor, volume normalization, silence skipping, speed
+//! and crossfade. Kept in
 //! `$XDG_CONFIG_HOME/encore/audio.json` (or `~/.config/encore/audio.json`).
 
 use std::path::PathBuf;
@@ -20,6 +21,48 @@ pub const MAX_CROSSFADE: u32 = 12;
 /// The loudness every song is brought to with normalization on: -14 LUFS, like YouTube and
 /// Spotify. The output is resampled back from the 192 kHz loudnorm works at.
 const NORMALIZE_FILTER: &str = "loudnorm=I=-14:LRA=11:TP=-1.5,aresample=48000";
+
+/// How much the compressor evens out the loud and quiet parts of a song.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Compressor {
+    #[default]
+    Off,
+    Light,
+    Medium,
+    Strong,
+}
+
+impl Compressor {
+    /// Every strength, in the order the audio screen shows them.
+    pub const ALL: [Self; 4] = [Self::Off, Self::Light, Self::Medium, Self::Strong];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Off => "Off",
+            Self::Light => "Light",
+            Self::Medium => "Medium",
+            Self::Strong => "Strong",
+        }
+    }
+
+    /// ffmpeg's `acompressor` for this strength: a lower threshold and a higher ratio squeeze
+    /// more, and the make-up gain gives back the loudness the squeezing took.
+    fn filter(self) -> Option<&'static str> {
+        match self {
+            Self::Off => None,
+            Self::Light => {
+                Some("acompressor=threshold=-18dB:ratio=2:attack=20:release=250:makeup=1.5dB")
+            }
+            Self::Medium => {
+                Some("acompressor=threshold=-22dB:ratio=3:attack=15:release=200:makeup=3dB")
+            }
+            Self::Strong => {
+                Some("acompressor=threshold=-26dB:ratio=5:attack=10:release=150:makeup=5dB")
+            }
+        }
+    }
+}
 
 /// A named equalizer curve.
 pub struct Preset {
@@ -67,6 +110,8 @@ pub enum AudioChange {
     Gain(usize, f32),
     Preset(usize),
     Normalize(bool),
+    Compressor(Compressor),
+    SkipSilence(bool),
     Speed(f32),
     KeepPitch(bool),
     /// Seconds.
@@ -87,6 +132,11 @@ pub struct AudioSettings {
     pub gains: [f32; 10],
     /// Plays every song at about the same loudness.
     pub normalize: bool,
+    pub compressor: Compressor,
+    /// Starts songs where the music starts and ends them where it ends.
+    pub skip_silence: bool,
+    /// mpv's name for the sound output; `None` is the system's default.
+    pub output: Option<String>,
     /// 1.0 is normal speed.
     pub speed: f32,
     /// Keeps voices at their pitch when the speed changes.
@@ -107,6 +157,9 @@ impl Default for AudioSettings {
             equalizer: false,
             gains: [0.0; 10],
             normalize: false,
+            compressor: Compressor::Off,
+            skip_silence: false,
+            output: None,
             speed: 1.0,
             keep_pitch: true,
             crossfade: 0,
@@ -159,6 +212,8 @@ impl AudioSettings {
                 }
             }
             AudioChange::Normalize(on) => self.normalize = on,
+            AudioChange::Compressor(strength) => self.compressor = strength,
+            AudioChange::SkipSilence(on) => self.skip_silence = on,
             AudioChange::Speed(speed) => {
                 self.speed = speed.clamp(MIN_SPEED, MAX_SPEED);
                 return false;
@@ -178,7 +233,8 @@ impl AudioSettings {
     }
 
     /// mpv's `af` value for these settings: a lavfi graph with the equalizer bands (after a
-    /// preamp that keeps boosts from clipping) and the normalizer, or empty for none.
+    /// preamp that keeps boosts from clipping), the compressor and the normalizer, or empty for
+    /// none.
     pub fn filter_chain(&self) -> String {
         let mut filters = Vec::new();
         if self.equalizer && self.gains.iter().any(|gain| *gain != 0.0) {
@@ -192,6 +248,7 @@ impl AudioSettings {
                 }
             }
         }
+        filters.extend(self.compressor.filter().map(str::to_string));
         if self.normalize {
             filters.push(NORMALIZE_FILTER.to_string());
         }
@@ -277,6 +334,25 @@ mod tests {
             settings.filter_chain(),
             format!("lavfi=[{NORMALIZE_FILTER}]")
         );
+    }
+
+    #[test]
+    fn the_compressor_goes_between_the_equalizer_and_normalization() {
+        let mut settings = AudioSettings {
+            normalize: true,
+            ..AudioSettings::default()
+        };
+        settings.change(AudioChange::Preset(1));
+        assert!(settings.change(AudioChange::Compressor(Compressor::Medium)));
+        let chain = settings.filter_chain();
+        let at = |filter: &str| {
+            chain
+                .find(filter)
+                .unwrap_or_else(|| panic!("{filter}: {chain}"))
+        };
+        assert!(at("equalizer=") < at("acompressor=") && at("acompressor=") < at("loudnorm="));
+        let saved = serde_json::to_string(&settings).expect("json");
+        assert!(saved.contains(r#""compressor":"medium""#), "{saved}");
     }
 
     #[test]

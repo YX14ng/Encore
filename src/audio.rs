@@ -3,6 +3,18 @@
 use std::path::Path;
 
 use libmpv2::Mpv;
+use serde::Deserialize;
+
+use crate::silence::Trim;
+
+/// A sound output mpv can play through.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Device {
+    /// mpv's name for it, like "pipewire/alsa_output.usb-…".
+    pub name: String,
+    /// What the system calls it, like "USB Audio Speakers".
+    pub description: String,
+}
 
 /// One mpv instance that plays one file at a time, with no video.
 pub struct Audio {
@@ -37,23 +49,67 @@ impl Audio {
         Ok(Self { mpv })
     }
 
-    /// Replaces whatever is playing with `path` and starts it.
-    pub fn play(&self, path: &Path) -> Result<(), String> {
-        let path = path.to_str().ok_or("the audio path is not valid UTF-8")?;
-        self.mpv
-            .command("loadfile", &[path])
-            .map_err(|error| error.to_string())?;
+    /// Replaces whatever is playing with `path` and starts it, from and to where `trim` says.
+    pub fn play(&self, path: &Path, trim: &Trim) -> Result<(), String> {
+        self.load(path, "replace", trim)?;
         self.set_paused(false);
         Ok(())
     }
 
     /// Queues `path` to start right when the current file ends, replacing anything queued.
-    pub fn queue_next(&self, path: &Path) -> Result<(), String> {
-        let path = path.to_str().ok_or("the audio path is not valid UTF-8")?;
+    pub fn queue_next(&self, path: &Path, trim: &Trim) -> Result<(), String> {
         self.clear_queued();
+        self.load(path, "append", trim)
+    }
+
+    /// mpv's `loadfile`, with `trim` as the file's own start and end.
+    fn load(&self, path: &Path, flag: &str, trim: &Trim) -> Result<(), String> {
+        let path = path.to_str().ok_or("the audio path is not valid UTF-8")?;
+        let options = trim.mpv_options();
+        let mut args = vec![path, flag];
+        if let Some(options) = &options {
+            // The third argument is where to insert; -1 is the usual place.
+            args.extend(["-1", options]);
+        }
         self.mpv
-            .command("loadfile", &[path, "append"])
+            .command("loadfile", &args)
             .map_err(|error| error.to_string())
+    }
+
+    /// Where the current file stops, in seconds: its trimmed end, or `None` to play it out.
+    pub fn end(&self) -> Option<f64> {
+        // mpv answers "none" when the file has no end of its own.
+        let end: String = self.mpv.get_property("end").ok()?;
+        end.parse().ok()
+    }
+
+    /// The sound outputs mpv can use. With PipeWire (or else PulseAudio) only its devices are
+    /// listed, since the same devices show up once for each sound system.
+    pub fn devices(&self) -> Vec<Device> {
+        let list: String = self
+            .mpv
+            .get_property("audio-device-list")
+            .unwrap_or_default();
+        let devices: Vec<Device> = serde_json::from_str(&list).unwrap_or_default();
+        pick_devices(devices)
+    }
+
+    /// Plays through `device` (mpv's name), or the system's default output with `None`.
+    pub fn set_device(&self, device: Option<&str>) -> Result<(), String> {
+        let device = device.unwrap_or("auto");
+        // Setting it reopens the output, a gap in the sound; only a different one is worth it.
+        if self
+            .mpv
+            .get_property::<String>("audio-device")
+            .ok()
+            .as_deref()
+            == Some(device)
+        {
+            return Ok(());
+        }
+        self.mpv
+            .set_property("audio-device", device)
+            .map_err(|error| format!("mpv refused the sound output {device:?}: {error}"))
     }
 
     /// Takes the queued file (and any finished one) out of mpv's playlist, keeping the
@@ -138,6 +194,23 @@ impl Audio {
     }
 }
 
+/// The devices of the first sound system that has any (PipeWire, then PulseAudio), else every
+/// device; never mpv's "auto", which is the system default offered on its own.
+fn pick_devices(devices: Vec<Device>) -> Vec<Device> {
+    let real = |device: &Device| device.name.contains('/');
+    for system in ["pipewire/", "pulse/"] {
+        let found: Vec<Device> = devices
+            .iter()
+            .filter(|device| device.name.starts_with(system))
+            .cloned()
+            .collect();
+        if !found.is_empty() {
+            return found;
+        }
+    }
+    devices.into_iter().filter(real).collect()
+}
+
 /// Codecs whose bitrate says nothing about quality, so the label is only their name.
 const LOSSLESS: [&str; 4] = ["flac", "alac", "wavpack", "ape"];
 
@@ -169,6 +242,41 @@ pub fn format_label(codec: &str, bytes: Option<i64>, seconds: Option<f64>) -> Op
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn device(name: &str) -> Device {
+        Device {
+            name: name.to_string(),
+            description: name.to_string(),
+        }
+    }
+
+    #[test]
+    fn devices_come_from_one_sound_system() {
+        let all = [
+            "auto",
+            "pipewire",
+            "pipewire/hdmi",
+            "pipewire/usb",
+            "pulse/hdmi",
+            "alsa",
+        ];
+        let names = |devices: Vec<Device>| {
+            devices
+                .into_iter()
+                .map(|device| device.name)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            names(pick_devices(all.map(device).to_vec())),
+            ["pipewire/hdmi", "pipewire/usb"]
+        );
+        assert_eq!(
+            names(pick_devices(
+                ["auto", "alsa/default", "alsa/hw"].map(device).to_vec()
+            )),
+            ["alsa/default", "alsa/hw"]
+        );
+    }
 
     #[test]
     fn labels_say_the_codec_and_the_average_bitrate() {
@@ -207,7 +315,7 @@ mod tests {
     #[ignore = "needs libmpv and a song in the cache"]
     fn seeks_in_a_song() {
         let audio = Audio::muted().expect("mpv");
-        audio.play(&cached_song()).expect("play");
+        audio.play(&cached_song(), &Trim::default()).expect("play");
         let opened = (0..50).any(|_| {
             std::thread::sleep(std::time::Duration::from_millis(100));
             audio.duration().is_some()
@@ -235,14 +343,16 @@ mod tests {
             .collect();
         assert_eq!(songs.len(), 2, "needs two cached songs");
         let audio = Audio::muted().expect("mpv");
-        audio.play(&songs[0]).expect("play");
+        audio.play(&songs[0], &Trim::default()).expect("play");
         let duration = (0..50)
             .find_map(|_| {
                 std::thread::sleep(std::time::Duration::from_millis(100));
                 audio.duration()
             })
             .expect("the song did not open");
-        audio.queue_next(&songs[1]).expect("queue");
+        audio
+            .queue_next(&songs[1], &Trim::default())
+            .expect("queue");
         audio.seek(duration - 1.5);
         let mut went_idle = false;
         let started = std::time::Instant::now();
@@ -264,8 +374,10 @@ mod tests {
             Some(0),
             "the finished song is cleared"
         );
-        audio.queue_next(&songs[0]).expect("queue");
-        audio.play(&songs[0]).expect("play");
+        audio
+            .queue_next(&songs[0], &Trim::default())
+            .expect("queue");
+        audio.play(&songs[0], &Trim::default()).expect("play");
         std::thread::sleep(std::time::Duration::from_millis(300));
         assert_eq!(
             audio.playlist_pos(),
@@ -276,6 +388,61 @@ mod tests {
         assert_eq!(count, 1, "nothing stays queued after playing a song");
     }
 
+    /// Plays two seconds of a cached song with its own start and end, then a queued one that
+    /// starts late too: `cargo test -- --ignored plays_only_the_trimmed_part`.
+    #[test]
+    #[ignore = "needs libmpv and a song in the cache"]
+    fn plays_only_the_trimmed_part() {
+        let song = cached_song();
+        let audio = Audio::muted().expect("mpv");
+        let trim = Trim {
+            start: Some(10.0),
+            end: Some(12.0),
+        };
+        audio.play(&song, &trim).expect("play");
+        let position = (0..50)
+            .find_map(|_| {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                audio.position()
+            })
+            .expect("the song did not open");
+        assert!((10.0..11.0).contains(&position), "starts at {position}");
+        assert_eq!(audio.end(), Some(12.0), "the file's own end");
+        let later = Trim {
+            start: Some(30.0),
+            end: None,
+        };
+        audio.queue_next(&song, &later).expect("queue");
+        let started = std::time::Instant::now();
+        while audio.playlist_pos() != Some(1) {
+            assert!(started.elapsed().as_secs() < 6, "did not stop at the end");
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(400));
+        let position = audio.position().unwrap_or(0.0);
+        assert!(
+            (30.0..31.5).contains(&position),
+            "the queued one is at {position}"
+        );
+        assert_eq!(audio.end(), None, "the queued one plays to its end");
+    }
+
+    /// Lists the sound outputs without playing anything:
+    /// `cargo test -- --ignored lists_the_sound_outputs`.
+    #[test]
+    #[ignore = "needs libmpv and a sound server"]
+    fn lists_the_sound_outputs() {
+        let audio = Audio::new().expect("mpv");
+        let devices = audio.devices();
+        assert!(!devices.is_empty(), "no sound outputs");
+        assert!(
+            devices.iter().all(|device| !device.description.is_empty()),
+            "{devices:?}"
+        );
+        audio.set_device(Some(&devices[0].name)).expect("pick one");
+        audio.set_device(None).expect("back to the default");
+    }
+
     /// Opens the real sound output at volume 0 and plays a cached song for a moment:
     /// `cargo test -- --ignored opens_the_sound_output`.
     #[test]
@@ -284,7 +451,7 @@ mod tests {
         let song = cached_song();
         let audio = Audio::new().expect("mpv");
         audio.set_volume(0.0);
-        audio.play(&song).expect("play");
+        audio.play(&song, &Trim::default()).expect("play");
         std::thread::sleep(std::time::Duration::from_millis(2000));
         assert!(audio.output().is_some(), "mpv opened no sound output");
         assert!(

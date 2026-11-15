@@ -39,6 +39,7 @@ mod search;
 mod settings_view;
 mod sidebar;
 mod sign_in_window;
+mod silence;
 mod song;
 mod sponsorblock;
 mod theme;
@@ -139,6 +140,8 @@ struct App {
     seeking: Option<f32>,
     /// What mpv said when it refused the audio filters, shown on the audio screen.
     audio_error: Option<String>,
+    /// The sound outputs offered on the audio screen, asked of mpv when it opens.
+    audio_devices: Vec<audio::Device>,
     /// The chosen theme and accent.
     appearance: themes::Appearance,
     /// The built-in and custom themes.
@@ -211,8 +214,8 @@ enum Message {
     /// The window to shrink into the mini player, and its size to go back to.
     MiniEntered(iced::window::Id, iced::Size),
     PlayTop,
-    AudioReady(usize, Result<std::path::PathBuf, String>),
-    Prefetched(String, Result<std::path::PathBuf, String>),
+    AudioReady(usize, Result<silence::SongFile, String>),
+    Prefetched(String, Result<silence::SongFile, String>),
     /// Similar songs for autoplay, for the song with this id.
     RadioLoaded(String, Result<Vec<youtube::SearchTrack>, String>),
     ToggleAutoplay,
@@ -260,6 +263,8 @@ enum Message {
     NotificationShown,
     AudioChanged(audio_settings::AudioChange),
     AudioChangeDone,
+    /// A sound output picked on the audio screen (mpv's name), or `None` for the default.
+    AudioOutput(Option<String>),
 }
 
 impl App {
@@ -350,6 +355,7 @@ impl App {
             audio_settings,
             seeking: None,
             audio_error: None,
+            audio_devices: Vec::new(),
             appearance: themes::Appearance::load(),
             themes,
             theme_errors,

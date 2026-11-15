@@ -2,7 +2,6 @@
 //! playlists, downloading images and songs, and the audio player with its queue.
 
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
 
 use iced::Task;
 use iced::widget::image;
@@ -14,6 +13,7 @@ use crate::download;
 use crate::mixer::Mixer;
 use crate::queue::{Queue, Repeat};
 use crate::search::{Filter, Results, Shared, Status};
+use crate::silence::{self, SongFile};
 use crate::youtube::{self, Collection, SearchPage, SearchTrack, Tile, TopResult};
 
 /// What the audio player reports on each tick.
@@ -50,7 +50,7 @@ pub struct Online {
     rng: fastrand::Rng,
     loading: Option<String>,
     /// The next song's audio once it is downloaded, ready to crossfade into.
-    next_file: Option<(String, PathBuf)>,
+    next_file: Option<(String, SongFile)>,
     /// Whether mpv reported a position for the current song; until then idle means "opening".
     heard: bool,
     error: Option<String>,
@@ -60,6 +60,8 @@ pub struct Online {
     queued: Option<usize>,
     /// Whether similar songs are added when the queue runs out.
     autoplay: bool,
+    /// Whether songs start and end where their music does.
+    skip_silence: bool,
     /// The song whose radio autoplay last asked for, so it is asked only once.
     radio_for: Option<String>,
     /// The covers the user picked for playlists, by playlist id.
@@ -95,6 +97,7 @@ impl Online {
             repeat: settings.repeat,
             queued: None,
             autoplay: settings.autoplay,
+            skip_silence: settings.skip_silence,
             radio_for: None,
             covers: crate::playlists::covers::load(),
         }
@@ -445,9 +448,10 @@ impl Online {
             .and_then(|next| self.queue.get(next))
             .map_or_else(Task::none, |next| {
                 let id = next.id.clone();
-                Task::perform(download::audio(id.clone()), move |path| {
-                    Message::Prefetched(id.clone(), path)
-                })
+                Task::perform(
+                    silence::song_file(id.clone(), self.skip_silence),
+                    move |song| Message::Prefetched(id.clone(), song),
+                )
             })
     }
 
@@ -461,19 +465,19 @@ impl Online {
 
     /// Keeps a downloaded next song for crossfading, and queues it in mpv to follow the
     /// current one with no gap.
-    pub fn prefetched(&mut self, id: String, path: Result<PathBuf, String>) {
-        let Ok(path) = path else {
+    pub fn prefetched(&mut self, id: String, song: Result<SongFile, String>) {
+        let Ok(song) = song else {
             return;
         };
         let next = self
             .following()
             .filter(|&next| self.queue.get(next).is_some_and(|track| track.id == id));
         if let (Some(next), Some(mixer), None) = (next, &self.mixer, &self.loading)
-            && mixer.queue_next(&path).is_ok()
+            && mixer.queue_next(&song).is_ok()
         {
             self.queued = Some(next);
         }
-        self.next_file = Some((id, path));
+        self.next_file = Some((id, song));
     }
 
     /// The song mpv went on into by itself, once it does, with the download of the one after
@@ -504,18 +508,18 @@ impl Online {
         if seconds == 0 || mixer.is_fading() || self.loading.is_some() {
             return None;
         }
-        let left = (mixer.duration()? - mixer.position()?) / f64::from(speed.max(0.1));
+        let left = (mixer.end()? - mixer.position()?) / f64::from(speed.max(0.1));
         if left > f64::from(seconds) {
             return None;
         }
         let next = self.queue.next(wrap)?;
         let track = self.queue.get(next)?.clone();
-        let (id, path) = self.next_file.as_ref()?;
+        let (id, song) = self.next_file.as_ref()?;
         if *id != track.id {
             return None;
         }
         let length = std::time::Duration::from_secs_f64(left.max(1.0));
-        if let Err(error) = mixer.crossfade_to(path, length) {
+        if let Err(error) = mixer.crossfade_to(song, length) {
             self.error = Some(error);
             return None;
         }
@@ -533,8 +537,15 @@ impl Online {
         }
     }
 
-    /// Applies the audio screen's settings to mpv.
+    /// The sound outputs that can be picked, asked of mpv now.
+    pub fn audio_devices(&self) -> Vec<crate::audio::Device> {
+        self.mixer.as_ref().map(Mixer::devices).unwrap_or_default()
+    }
+
+    /// Applies the audio screen's settings to mpv. Skipping silence starts with the next song
+    /// that downloads.
     pub fn apply_audio(&mut self, settings: &AudioSettings) -> Result<(), String> {
+        self.skip_silence = settings.skip_silence;
         match &mut self.mixer {
             Some(mixer) => mixer.apply(settings),
             None => Ok(()),
@@ -550,8 +561,8 @@ impl Online {
         self.loading = Some(id.clone());
         // The song playing now must not go on into the queued one while this one downloads.
         self.forget_queued();
-        Task::perform(download::audio(id), move |path| {
-            Message::AudioReady(index, path)
+        Task::perform(silence::song_file(id, self.skip_silence), move |song| {
+            Message::AudioReady(index, song)
         })
     }
 
@@ -559,7 +570,7 @@ impl Online {
     pub fn audio_ready(
         &mut self,
         index: usize,
-        path: Result<PathBuf, String>,
+        song: Result<SongFile, String>,
     ) -> (Option<SearchTrack>, Task<Message>) {
         let Some(track) = self.queue.get(index) else {
             return (None, Task::none());
@@ -570,12 +581,12 @@ impl Online {
         }
         self.loading = None;
 
-        let started = path.and_then(|path| {
+        let started = song.and_then(|song| {
             let mixer = self
                 .mixer
                 .as_mut()
                 .ok_or("mpv could not start; is libmpv installed?")?;
-            mixer.play(&path)
+            mixer.play(&song)
         });
         if let Err(error) = started {
             self.error = Some(error);

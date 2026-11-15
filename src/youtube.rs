@@ -455,7 +455,9 @@ mod tests {
             .await
             .expect("download");
         let audio = crate::audio::Audio::muted().expect("mpv");
-        audio.play(&path).expect("play");
+        audio
+            .play(&path, &crate::silence::Trim::default())
+            .expect("play");
         std::thread::sleep(std::time::Duration::from_secs(3));
         assert!(
             audio.position().unwrap_or(0.0) > 0.5,
