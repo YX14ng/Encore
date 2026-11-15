@@ -5,13 +5,16 @@ use iced::{Center, Color, Element, Fill, border};
 
 use crate::clock::{self, Playback};
 use crate::queue::Repeat;
+use crate::rating::Rating;
 use crate::song::Song;
 use crate::{Message, theme};
 
 /// The state of the player's buttons and sliders.
 #[derive(Debug, Clone, Copy)]
 pub struct Controls {
-    pub liked: bool,
+    /// How the playing song is rated; the buttons only work with `can_rate`.
+    pub rating: crate::rating::Rating,
+    pub can_rate: bool,
     /// Where the progress bar is being dragged to, in seconds.
     pub seeking: Option<f32>,
     /// From 0 to 100.
@@ -75,17 +78,24 @@ fn time_label(label: String) -> Element<'static, Message> {
     text(label).size(11).color(theme::text_secondary()).into()
 }
 
-/// Shuffle, previous, play or pause, next, repeat and like.
+/// Shuffle, previous, play or pause, next, repeat, like and dislike.
 pub(crate) fn transport(playback: &Playback, controls: Controls) -> Element<'static, Message> {
     let play_icon: &'static [u8] = if playback.is_playing {
         include_bytes!("../assets/icons/pause.svg")
     } else {
         include_bytes!("../assets/icons/play.svg")
     };
-    let like_color = if controls.liked {
-        theme::accent()
-    } else {
-        theme::text_secondary()
+    let rating_color = |rating| {
+        if controls.rating == rating {
+            theme::accent()
+        } else {
+            theme::text_secondary()
+        }
+    };
+    let rate = |rating| {
+        controls
+            .can_rate
+            .then_some(Message::Rating(crate::rating::Event::Pressed(rating)))
     };
 
     let repeat_icon: &'static [u8] = if controls.repeat == Repeat::One {
@@ -125,10 +135,16 @@ pub(crate) fn transport(playback: &Playback, controls: Controls) -> Element<'sta
             Some(Message::CycleRepeat)
         ),
         icon_button(
-            include_bytes!("../assets/icons/like.svg"),
-            like_color,
+            include_bytes!("../assets/icons/dislike.svg"),
+            rating_color(Rating::Dislike),
             18.0,
-            Some(Message::ToggleLike)
+            rate(Rating::Dislike)
+        ),
+        icon_button(
+            include_bytes!("../assets/icons/like.svg"),
+            rating_color(Rating::Like),
+            18.0,
+            rate(Rating::Like)
         ),
     ]
     .spacing(2)

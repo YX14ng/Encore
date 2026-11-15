@@ -16,14 +16,16 @@ pub enum Plugin {
     LastFm,
     Notifications,
     SponsorBlock,
+    SkipDisliked,
 }
 
 impl Plugin {
-    pub const ALL: [Plugin; 4] = [
+    pub const ALL: [Plugin; 5] = [
         Plugin::Discord,
         Plugin::LastFm,
         Plugin::Notifications,
         Plugin::SponsorBlock,
+        Plugin::SkipDisliked,
     ];
 
     fn name(self) -> &'static str {
@@ -32,6 +34,7 @@ impl Plugin {
             Plugin::LastFm => "Last.fm scrobbling",
             Plugin::Notifications => "Desktop notifications",
             Plugin::SponsorBlock => "SponsorBlock",
+            Plugin::SkipDisliked => "Skip disliked songs",
         }
     }
 
@@ -47,6 +50,10 @@ impl Plugin {
                 "Skips the parts of music videos that are not music (intros, skits, outros), as \
                  marked by the SponsorBlock community."
             }
+            Plugin::SkipDisliked => {
+                "Skips a song when you dislike it, and songs you disliked before when they come \
+                 up (signed in)."
+            }
         }
     }
 }
@@ -59,6 +66,7 @@ pub struct Plugins {
     pub lastfm: bool,
     pub notifications: bool,
     pub sponsorblock: bool,
+    pub skip_disliked: bool,
 }
 
 impl Default for Plugins {
@@ -68,6 +76,7 @@ impl Default for Plugins {
             lastfm: true,
             notifications: false,
             sponsorblock: true,
+            skip_disliked: true,
         }
     }
 }
@@ -97,6 +106,7 @@ impl Plugins {
             Plugin::LastFm => self.lastfm,
             Plugin::Notifications => self.notifications,
             Plugin::SponsorBlock => self.sponsorblock,
+            Plugin::SkipDisliked => self.skip_disliked,
         }
     }
 
@@ -106,6 +116,7 @@ impl Plugins {
             Plugin::LastFm => &mut self.lastfm,
             Plugin::Notifications => &mut self.notifications,
             Plugin::SponsorBlock => &mut self.sponsorblock,
+            Plugin::SkipDisliked => &mut self.skip_disliked,
         };
         *slot = on;
     }
@@ -160,5 +171,6 @@ mod tests {
         let plugins = serde_json::from_str::<Plugins>(r#"{"discord": false}"#).expect("json");
         assert!(!plugins.discord);
         assert!(plugins.sponsorblock);
+        assert!(plugins.skip_disliked);
     }
 }

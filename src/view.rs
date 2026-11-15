@@ -33,7 +33,8 @@ impl App {
     fn player_controls(&self) -> player::Controls {
         let settings = &self.audio_settings;
         player::Controls {
-            liked: self.liked,
+            rating: self.rating,
+            can_rate: self.can_rate(),
             seeking: self.seeking,
             volume: settings.volume,
             muted: settings.muted,

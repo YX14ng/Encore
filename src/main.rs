@@ -34,6 +34,7 @@ mod plugins;
 mod profile;
 mod queue;
 mod queue_view;
+mod rating;
 mod scrobbler;
 mod search;
 mod settings_view;
@@ -104,7 +105,10 @@ struct App {
     recents: Vec<Card>,
     mixes: Vec<Card>,
     backdrop: Option<image::Handle>,
-    liked: bool,
+    /// How the user rated the playing song on YouTube Music.
+    rating: rating::Rating,
+    /// The songs disliked in Encore, skipped when they come up again.
+    disliked: rating::Disliked,
     current: usize,
     lyrics: Lyrics,
     window_width: f32,
@@ -189,7 +193,7 @@ enum Message {
     TogglePanel(layout::Panel),
     ToggleSection(Section),
     Select(NavItem),
-    ToggleLike,
+    Rating(rating::Event),
     Next,
     WindowResized(f32),
     SearchChanged(String),
@@ -333,7 +337,8 @@ impl App {
             audio_format: None,
             mini: None,
             panel: Some(layout::Panel::Lyrics),
-            liked: true,
+            rating: rating::Rating::None,
+            disliked: rating::Disliked::load(),
             current: 0,
             lyrics,
             window_width: 1280.0,

@@ -61,7 +61,7 @@ impl App {
         );
     }
 
-    fn handle(&mut self, message: Message) -> Task<Message> {
+    pub(crate) fn handle(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::TogglePlay => {
                 self.playback.toggle();
@@ -127,7 +127,7 @@ impl App {
             }
             Message::ToggleSection(section) => self.sidebar.toggle(section),
             Message::Select(item) => return self.select(item),
-            Message::ToggleLike => self.liked = !self.liked,
+            Message::Rating(event) => return self.rating_event(event),
             Message::Next => {
                 if self.online.is_active() {
                     return self.play_next_online();
@@ -423,6 +423,9 @@ impl App {
     /// Shows a song that just started (by itself or by crossfading into it): the player bar,
     /// the background and the lyrics, and tells Last.fm.
     fn song_started(&mut self, track: SearchTrack) -> Task<Message> {
+        if let Some(skip) = self.show_rating(&track) {
+            return skip;
+        }
         let cover = track
             .cover_url
             .as_deref()

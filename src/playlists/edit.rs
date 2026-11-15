@@ -148,7 +148,7 @@ fn request_error(error: &rustypipe::error::Error) -> String {
     }
 }
 
-const SESSION_EXPIRED: &str =
+pub(crate) const SESSION_EXPIRED: &str =
     "Your YouTube Music session expired. Sign out and sign in again in Account.";
 
 /// A playlist's id without the "VL" its browse page adds.
