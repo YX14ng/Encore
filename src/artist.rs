@@ -303,8 +303,8 @@ mod tests {
         assert_eq!(page.songs_playlist.as_deref(), Some("OLAK5uy_songs"));
     }
 
-    /// Opens an artist, signed out, then the artist's radio and all of their songs, and prints
-    /// what came back: `cargo test -- --ignored opens_an_artist --nocapture`.
+    /// Opens an artist, signed out, then the artist's radio and all of their songs; a failure
+    /// says what came back: `cargo test -- --ignored opens_an_artist`.
     #[tokio::test]
     #[ignore = "asks YouTube Music"]
     async fn opens_an_artist() {
@@ -327,7 +327,7 @@ mod tests {
         .await
         .expect("artist");
         let page = artist.artist.as_deref().expect("an artist page");
-        println!(
+        let found = format!(
             "{}: {} songs, banner {:?}, albums {}, singles {}, playlists {}, similar {}, \
              songs {:?}, radio {:?}, about {} chars",
             artist.title,
@@ -341,18 +341,27 @@ mod tests {
             page.radio,
             page.description.as_ref().map_or(0, String::len),
         );
-        assert!(!artist.tracks.is_empty() && !page.albums.is_empty());
-        let radio = page.radio.clone().expect("a radio");
+        assert!(
+            !artist.tracks.is_empty() && !page.albums.is_empty(),
+            "{found}"
+        );
+        let radio = page
+            .radio
+            .clone()
+            .unwrap_or_else(|| panic!("no radio: {found}"));
         let radio = youtube::open(rp.clone(), tile(TileKind::Radio, &radio))
             .await
             .expect("radio");
-        println!("radio: {} songs", radio.tracks.len());
-        assert!(!radio.tracks.is_empty());
-        let songs = page.songs_playlist.clone().expect("all songs");
+        assert!(!radio.tracks.is_empty(), "the radio is empty: {found}");
+        let songs =
+            (page.songs_playlist.clone()).unwrap_or_else(|| panic!("no songs playlist: {found}"));
         let songs = youtube::open(rp, tile(TileKind::Playlist, &songs))
             .await
             .expect("songs");
-        println!("all songs: {}", songs.tracks.len());
-        assert!(songs.tracks.len() > artist.tracks.len());
+        assert!(
+            songs.tracks.len() > artist.tracks.len(),
+            "all songs: {}; {found}",
+            songs.tracks.len()
+        );
     }
 }

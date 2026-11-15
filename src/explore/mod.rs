@@ -258,14 +258,14 @@ mod tests {
         assert_eq!(genres[0].id, "b");
     }
 
-    /// Asks YouTube Music, signed out, for the Explore screen and a genre, and prints what came
-    /// back: `cargo test -- --ignored loads_explore --nocapture`.
+    /// Asks YouTube Music, signed out, for the Explore screen and a genre; a failure says what
+    /// came back: `cargo test -- --ignored loads_explore`.
     #[tokio::test]
     #[ignore = "asks YouTube Music"]
     async fn loads_explore() {
         let rp = RustyPipe::builder().no_storage().build().expect("client");
         let data = load(rp.clone()).await.expect("explore");
-        println!(
+        let found = format!(
             "albums {} top {} (playlist {:?}) trending {} artists {} charts {} videos {} \
              moods {} genres {}",
             data.new_albums.len(),
@@ -279,18 +279,13 @@ mod tests {
             data.genres.len(),
         );
         // YouTube Music now gives the charts as playlists, without the songs on the page.
-        assert!(!data.new_albums.is_empty());
-        assert!(!data.charts.is_empty() || !data.top_songs.is_empty());
+        assert!(!data.new_albums.is_empty(), "{found}");
+        assert!(
+            !data.charts.is_empty() || !data.top_songs.is_empty(),
+            "{found}"
+        );
         let genre = data.genres.first().or(data.moods.first()).expect("a genre");
         let page = load_genre(rp, genre.id.clone()).await.expect("genre");
-        println!(
-            "{}: {:?}",
-            page.name,
-            page.sections
-                .iter()
-                .map(|(name, tiles)| (name.as_str(), tiles.len()))
-                .collect::<Vec<_>>()
-        );
-        assert!(!page.sections.is_empty());
+        assert!(!page.sections.is_empty(), "{} has no playlists", page.name);
     }
 }
