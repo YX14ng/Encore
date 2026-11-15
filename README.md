@@ -55,6 +55,13 @@ YouTube Music's answer (`src/browse.rs`).
 Songs follow each other with no gap: once the next song is downloaded, it is queued in mpv, which
 goes on into it without reopening the sound output. With crossfade on, the fade takes over.
 
+The audio screen (the equalizer button in the player bar) also picks the sound output (the
+system's default or any PipeWire device; a saved device that is unplugged gives way to the
+default), has a compressor that evens out loud and quiet parts (Light, Medium or Strong, between
+the equalizer and normalization), and can skip silence: ffmpeg's `silencedetect` listens to the
+first 20 and last 30 seconds of each downloaded song, and mpv starts and ends the song where its
+music does (`src/silence.rs`). Silences inside a song stay.
+
 The mini player button in the player bar shrinks the window to the cover, the song and the
 controls and keeps it above other windows; the same button brings the full window back. The badge
 next to the song shows the playing file's codec and average bitrate (YouTube's Opus is usually
@@ -70,7 +77,8 @@ host's song, position and pauses. Friends on the internet need your router to fo
 They connect straight to your computer, so they see its address and you see theirs. Details:
 [`docs/superpowers/specs/2026-11-14-encore-together-design.md`](docs/superpowers/specs/2026-11-14-encore-together-design.md).
 
-Runtime requirements: `mpv` (libmpv) and `yt-dlp` installed on the system.
+Runtime requirements: `mpv` (libmpv) and `yt-dlp` installed on the system; `ffmpeg` for skipping
+silence (without it songs play whole).
 
 ### Last.fm
 
