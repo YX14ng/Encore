@@ -62,6 +62,13 @@ the equalizer and normalization), and can skip silence: ffmpeg's `silencedetect`
 first 20 and last 30 seconds of each downloaded song, and mpv starts and ends the song where its
 music does (`src/silence.rs`). Silences inside a song stay.
 
+The audio quality is Low (Opus around 60 kbit/s), Normal (around 130 kbit/s, the best YouTube
+gives anyone) or High: with YouTube Music Premium, Opus around 256 kbit/s. For High, yt-dlp gets
+the signed-in session in a cookies file that only the user can read
+(`~/.local/share/encore/yt-dlp/`), written for that one download and deleted when yt-dlp ends.
+yt-dlp warns that accounts used this way can get blocked for a while, so High is off by default.
+Each quality has its own cache folder (`~/.cache/encore/audio-low`, `audio`, `audio-high`).
+
 The thumbs in the player bar like and dislike the playing song on YouTube Music (signed in;
 `src/rating.rs`). YouTube does not say how a song was rated, so a song shows as liked when it is
 in Liked Music and as disliked when it was disliked in Encore, which keeps those in
