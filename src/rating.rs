@@ -118,7 +118,7 @@ pub async fn set(rp: RustyPipe, id: String, rating: Rating) -> Result<(), String
         .await
         .map_err(|error| match error {
             rustypipe::error::Error::HttpStatus(401, _) => {
-                crate::playlists::edit::SESSION_EXPIRED.to_string()
+                crate::playlists::edit::session_expired()
             }
             error => error.to_string(),
         })?;

@@ -169,7 +169,7 @@ settings.accent_cover:
   zh-CN: 取自封面
   zh-TW: 取自封面
   hi: कवर से
-  es: De la tapa
+  es: De la portada
   ar: من الغلاف
   fr: De la pochette
   bn: কভার থেকে
@@ -184,7 +184,7 @@ settings.accent_cover_note:
   zh-CN: 强调色会随每首歌的封面变化。
   zh-TW: 強調色會隨每首歌的封面變化。
   hi: एक्सेंट हर गाने के कवर के साथ बदलता है।
-  es: El acento cambia con la tapa de cada tema.
+  es: El acento cambia con la portada de cada canción.
   ar: يتغير لون التمييز مع غلاف كل أغنية.
   fr: L'accent change avec la pochette de chaque titre.
   bn: প্রতিটি গানের কভারের সাথে অ্যাকসেন্ট বদলায়।
@@ -214,7 +214,7 @@ settings.custom_themes_note:
   zh-CN: '将自定义主题以 JSON 文件放在 %{folder}。颜色格式为 #rrggbb；未填写的颜色取自 Encore 的深色主题，若设置 "light": true 则取自 Daylight。'
   zh-TW: '將自訂主題以 JSON 檔案放在 %{folder}。顏色格式為 #rrggbb；未填寫的顏色取自 Encore 的深色主題，若設定 "light": true 則取自 Daylight。'
   hi: 'अपनी थीम JSON फ़ाइलों के रूप में %{folder} में जोड़ें। रंग #rrggbb होते हैं; छोड़े गए रंग Encore की डार्क थीम से, या "light": true होने पर Daylight से आते हैं।'
-  es: 'Agregá tus temas como archivos JSON en %{folder}. Los colores van como #rrggbb; los que falten salen del tema oscuro de Encore, o de Daylight con "light": true.'
+  es: 'Agrega tus temas como archivos JSON en %{folder}. Los colores van como #rrggbb; los que falten se toman del tema oscuro de Encore, o de Daylight con "light": true.'
   ar: 'أضف سماتك كملفات JSON في %{folder}. الألوان بصيغة #rrggbb؛ وما لم يُحدَّد منها يُؤخذ من سمة Encore الداكنة، أو من Daylight مع "light": true.'
   fr: 'Ajoutez vos thèmes en fichiers JSON dans %{folder}. Les couleurs sont au format #rrggbb ; celles qui manquent viennent du thème sombre d''Encore, ou de Daylight avec "light": true.'
   bn: 'নিজের থিম JSON ফাইল হিসেবে %{folder}-এ যোগ করুন। রং #rrggbb আকারে; বাদ পড়া রংগুলো Encore-এর ডার্ক থিম থেকে, বা "light": true থাকলে Daylight থেকে আসে।'

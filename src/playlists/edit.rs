@@ -149,8 +149,9 @@ fn request_error(error: &rustypipe::error::Error) -> String {
     }
 }
 
-/// The English of `session_expired`, for callers that cannot translate yet.
-pub(crate) const SESSION_EXPIRED: &str =
+/// The English of `session_expired`, which the tests (run in English) compare against.
+#[cfg(test)]
+const SESSION_EXPIRED: &str =
     "Your YouTube Music session expired. Sign out and sign in again in Account.";
 
 /// What to say when YouTube no longer accepts the saved session, in the interface's language.
