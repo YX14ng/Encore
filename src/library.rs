@@ -12,7 +12,7 @@ use crate::playlists::edit;
 use crate::profile::{self, Profile};
 use crate::search::{self, Shared};
 use crate::youtube::{self, Collection, SearchTrack, Tile, TileKind};
-use crate::{Message, theme};
+use crate::{Message, browse, theme};
 
 /// Everything the library screens show. Saved to disk so the next start shows it at once.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -25,8 +25,18 @@ pub struct LibraryData {
     pub songs: Vec<SearchTrack>,
     pub liked: Vec<SearchTrack>,
     pub albums: Vec<Tile>,
+    /// The artists the user subscribed to.
     pub artists: Vec<Tile>,
     pub playlists: Vec<Tile>,
+    /// The artists of the songs in the library.
+    #[serde(default)]
+    pub library_artists: Vec<Tile>,
+    /// The mixes YouTube Music makes for the user ("Mixed for you").
+    #[serde(default)]
+    pub made_for_you: Vec<Tile>,
+    /// Saved podcasts and "Episodes for later".
+    #[serde(default)]
+    pub podcasts: Vec<Tile>,
     /// The ids of the playlists the user made, which songs can be added to.
     #[serde(default)]
     pub own_playlists: Vec<String>,
@@ -46,7 +56,10 @@ impl LibraryData {
             .albums
             .iter()
             .chain(&self.artists)
-            .chain(&self.playlists);
+            .chain(&self.playlists)
+            .chain(&self.library_artists)
+            .chain(&self.made_for_you)
+            .chain(&self.podcasts);
         tracks
             .filter_map(|track| track.cover_url.clone())
             .chain(tiles.filter_map(|tile| tile.image_url.clone()))
@@ -80,6 +93,9 @@ pub enum Shelf {
     Liked,
     Albums,
     Artists,
+    Subscriptions,
+    Podcasts,
+    Mixes,
     Downloads,
 }
 
@@ -94,8 +110,14 @@ const MIX_COUNT: usize = 6;
 /// fail come back empty; a part that fails on a later page keeps what it already had.
 pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
     let q = rp.query();
-    let (profile, (mut history, mut songs, mut liked, mut albums, mut artists, mut playlists)) =
-        tokio::join!(profile::fetch(&rp), async {
+    let (
+        profile,
+        extras,
+        (mut history, mut songs, mut liked, mut albums, mut artists, mut playlists),
+    ) = tokio::join!(
+        profile::fetch(&rp),
+        browse::extras(&rp, CARD_LIMIT),
+        async {
             tokio::join!(
                 q.music_history(),
                 q.music_saved_tracks(),
@@ -104,7 +126,8 @@ pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
                 q.music_saved_artists(),
                 q.music_saved_playlists(),
             )
-        });
+        }
+    );
     if let (Err(error), Err(_), Err(_), Err(_), Err(_), Err(_)) =
         (&history, &songs, &liked, &albums, &artists, &playlists)
     {
@@ -209,6 +232,9 @@ pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
             .unwrap_or_default(),
         playlists,
         own_playlists,
+        library_artists: extras.artists,
+        made_for_you: extras.mixes,
+        podcasts: extras.podcasts,
     })
 }
 
@@ -325,6 +351,9 @@ pub fn shelf_view<'a>(
         Shelf::Liked => "Liked music",
         Shelf::Albums => "Albums",
         Shelf::Artists => "Artists",
+        Shelf::Subscriptions => "Subscriptions",
+        Shelf::Podcasts => "Podcasts",
+        Shelf::Mixes => "Radio & mixes",
         Shelf::Downloads => "Downloads",
     };
 
@@ -336,7 +365,14 @@ pub fn shelf_view<'a>(
             Shelf::Songs => search::track_list(&data.songs, None, shared),
             Shelf::Liked => search::track_list(&data.liked, None, shared),
             Shelf::Albums => search::card_grid(&data.albums, shared),
-            Shelf::Artists => search::card_grid(&data.artists, shared),
+            // A library saved before Encore read its artists has only the subscriptions.
+            Shelf::Artists if data.library_artists.is_empty() => {
+                search::card_grid(&data.artists, shared)
+            }
+            Shelf::Artists => search::card_grid(&data.library_artists, shared),
+            Shelf::Subscriptions => search::card_grid(&data.artists, shared),
+            Shelf::Podcasts => search::card_grid(&data.podcasts, shared),
+            Shelf::Mixes => mixes(data, shared),
             Shelf::Downloads => search::offline_grid(downloads, shared),
         },
         Account::Checking | Account::SigningIn | Account::Waiting => {
@@ -473,6 +509,27 @@ pub(crate) fn accent_button(label: &str, message: Message) -> Element<'_, Messag
             style
         })
         .into()
+}
+
+/// "Radio & mixes": the mixes YouTube Music makes for the user, then radios from the history.
+fn mixes<'a>(data: &'a LibraryData, shared: Shared<'a>) -> Element<'a, Message> {
+    let mut sections = column![].spacing(28);
+    for (title, tiles) in [
+        ("Mixed for you", &data.made_for_you),
+        ("From your history", &data.mixes),
+    ] {
+        if !tiles.is_empty() {
+            let title = text(title).size(18).font(Font {
+                weight: Weight::Bold,
+                ..theme::INTER
+            });
+            sections = sections.push(column![title, search::card_grid(tiles, shared)].spacing(12));
+        }
+    }
+    if data.made_for_you.is_empty() && data.mixes.is_empty() {
+        return note("No mixes yet: play some songs and YouTube Music makes them.");
+    }
+    sections.into()
 }
 
 fn heading(label: &str) -> Element<'_, Message> {

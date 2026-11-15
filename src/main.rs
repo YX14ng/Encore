@@ -6,6 +6,7 @@ mod audio;
 mod audio_settings;
 mod audio_view;
 mod backdrop;
+mod browse;
 mod clock;
 mod collection;
 mod discord;
