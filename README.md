@@ -46,6 +46,12 @@ about them. Explore, in the sidebar, shows moods, new releases, the charts (YouT
 them as playlists for your country), top artists, new music videos and genres; a mood or genre
 opens a page of playlists. Back goes to the screen you came from.
 
+Signed in, "Radio & mixes" shows the mixes YouTube Music makes for you (My Supermix, Discover
+Mix, the mood mixes…) and radios from your history; "Artists" lists the artists of the songs in
+your library, "Subscriptions" the ones you subscribed to, and "Podcasts" your saved podcasts and
+"Episodes for later". rustypipe has no call for these pages, so Encore reads their cards from
+YouTube Music's answer (`src/browse.rs`).
+
 Songs follow each other with no gap: once the next song is downloaded, it is queued in mpv, which
 goes on into it without reopening the sound output. With crossfade on, the fade takes over.
 
