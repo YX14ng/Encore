@@ -79,6 +79,17 @@ Lyrics come from YouTube Music alone (`src/lyrics_source.rs`): the synced lyrics
 shows, which follow the song line by line, or the plain lyrics of its Lyrics tab when a song has
 no synced ones. There are no translations.
 
+The video button in the player bar opens the full screen view with the song's music video
+(`src/video/`). Songs on YouTube Music are album audio; signed in, YouTube Music names their music
+video and where the two line up, and a music video that plays as itself is its own picture.
+yt-dlp downloads the picture alone (up to 720p, into `~/.cache/encore/video`) and ffmpeg turns it
+into frames that follow the song's position; the sound still comes from mpv, with the equalizer
+and the rest. Leaving full screen turns the video off.
+
+The Visualizer plugin (on by default) shows bars that move with the music in the full screen
+view (`src/visualizer.rs`): when a song starts, ffmpeg decodes its file and an FFT measures 48
+bands, 30 times a second, which the bars read at mpv's position.
+
 The mini player button in the player bar shrinks the window to the cover, the song and the
 controls and keeps it above other windows; the same button brings the full window back. The badge
 next to the song shows the playing file's codec and average bitrate (YouTube's Opus is usually
@@ -95,7 +106,7 @@ They connect straight to your computer, so they see its address and you see thei
 [`docs/superpowers/specs/2026-11-14-encore-together-design.md`](docs/superpowers/specs/2026-11-14-encore-together-design.md).
 
 Runtime requirements: `mpv` (libmpv) and `yt-dlp` installed on the system; `ffmpeg` for skipping
-silence (without it songs play whole).
+silence, the visualizer and music videos (without it songs play whole, with no bars or video).
 
 ### Last.fm
 
