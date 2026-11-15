@@ -62,6 +62,12 @@ the equalizer and normalization), and can skip silence: ffmpeg's `silencedetect`
 first 20 and last 30 seconds of each downloaded song, and mpv starts and ends the song where its
 music does (`src/silence.rs`). Silences inside a song stay.
 
+The thumbs in the player bar like and dislike the playing song on YouTube Music (signed in;
+`src/rating.rs`). YouTube does not say how a song was rated, so a song shows as liked when it is
+in Liked Music and as disliked when it was disliked in Encore, which keeps those in
+`~/.local/share/encore/disliked.json`. With the "Skip disliked songs" plugin (on by default),
+disliking the playing song skips it, and so does a disliked song that comes up again.
+
 The mini player button in the player bar shrinks the window to the cover, the song and the
 controls and keeps it above other windows; the same button brings the full window back. The badge
 next to the song shows the playing file's codec and average bitrate (YouTube's Opus is usually

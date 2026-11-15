@@ -25,8 +25,9 @@ Reference list built from Cider (cider.sh) and the Pear plugins (`pear-devs/pear
 `src/plugins`):
 
 - **Interface (from Cider):** home page with recommendations and recent plays, album and artist
-  pages, synced lyrics in a side panel (with translation and romanization), immersive and karaoke
-  modes, mini player, themes and customization.
+  pages, synced lyrics in a side panel that follow the song line by line (with translation and
+  romanization), immersive mode, mini player, themes and customization. No karaoke mode: the
+  lyrics only move along with the song.
 - **Audio:** 10-band equalizer, playback speed, crossfade, compressor, silence skipping, precise
   and exponential volume, output device selection.
 - **Integrations:** system media controls (MPRIS on Linux), notifications, Discord Rich Presence,
