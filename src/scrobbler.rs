@@ -3,8 +3,8 @@
 //! The API itself lives in `lastfm.rs`.
 
 use iced::font::Weight;
-use iced::widget::{button, column, text};
-use iced::{Element, Font, Task, border};
+use iced::widget::{column, text};
+use iced::{Element, Font, Task};
 use rust_i18n::t;
 
 use crate::lastfm::{self, ApiError, Credentials, Scrobble, Session};
@@ -277,7 +277,7 @@ impl LastFm {
                 .push(text(t!("scrobbler.missing_keys", error = error)).color(theme::accent())),
             Status::SignedOut => content
                 .push(library::note(t!("scrobbler.connect_note")))
-                .push(accent_button(
+                .push(library::accent_button(
                     t!("scrobbler.connect"),
                     Message::LastFmConnect,
                 )),
@@ -287,13 +287,13 @@ impl LastFm {
                     "scrobbler.scrobbling_as",
                     name = session.name
                 )))
-                .push(accent_button(
+                .push(library::accent_button(
                     t!("scrobbler.disconnect"),
                     Message::LastFmDisconnect,
                 )),
             Status::Failed(error) => content
                 .push(text(t!("scrobbler.connect_failed", error = error)).color(theme::accent()))
-                .push(accent_button(
+                .push(library::accent_button(
                     t!("scrobbler.connect"),
                     Message::LastFmConnect,
                 )),
@@ -310,20 +310,6 @@ impl LastFm {
         }
         content.into()
     }
-}
-
-/// A button in the accent color, drawn like the account screen's own.
-fn accent_button<'a>(label: impl text::IntoFragment<'a>, message: Message) -> Element<'a, Message> {
-    button(text(label).size(14).color(theme::text_primary()))
-        .on_press(message)
-        .padding([8, 22])
-        .style(|_, status| {
-            let mut style = theme::flat_button(status, false);
-            style.background = Some(theme::accent().into());
-            style.border = border::rounded(18);
-            style
-        })
-        .into()
 }
 
 #[cfg(test)]
