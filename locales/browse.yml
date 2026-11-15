@@ -207,8 +207,8 @@ library.signed_in_note:
   ru: "Вы вошли в аккаунт. Библиотека и плейлисты — на боковой панели."
   id: "Anda sudah login. Koleksi dan playlist Anda ada di sidebar."
   de: "Du bist angemeldet. Deine Mediathek und Playlists findest du in der Seitenleiste."
-  ja: "ログインしています。ライブラリと再生リストはサイドバーにあります。"
-  ko: "로그인되었습니다. 보관함과 재생목록은 사이드바에 있습니다."
+  ja: "ログイン済みです。ライブラリとプレイリストはサイドバーにあります。"
+  ko: "로그인되어 있습니다. 보관함과 재생목록은 사이드바에 있습니다."
 library.sign_out:
   en: "Sign out"
   zh-CN: "退出登录"
@@ -282,8 +282,8 @@ library.sign_in_window_note:
   ru: "Encore открывает собственное небольшое окно, где вы входите в аккаунт Google, — как браузер, которым пользуется только Encore. Сохраняются только файлы cookie YouTube, и только на этом компьютере."
   id: "Encore membuka jendela kecilnya sendiri tempat Anda login dengan Akun Google, seperti browser yang hanya dipakai Encore. Hanya cookie YouTube yang disimpan, di komputer ini."
   de: "Encore öffnet ein eigenes kleines Fenster, in dem du dich mit deinem Google-Konto anmeldest – wie ein Browser, den nur Encore nutzt. Gespeichert werden nur die YouTube-Cookies, auf diesem Computer."
-  ja: "Encore は専用の小さなウィンドウを開き、そこで Google アカウントにログインします。Encore だけが使うブラウザのようなものです。保存されるのは YouTube の Cookie だけで、このコンピュータ内に保存されます。"
-  ko: "Encore는 전용 작은 창을 열어 Google 계정으로 로그인하게 합니다. Encore만 쓰는 브라우저와 같습니다. YouTube 쿠키만 이 컴퓨터에 저장됩니다."
+  ja: "Encore は専用の小さなウィンドウを開き、そこで Google アカウントにログインします。Encore 専用のブラウザのようなものです。保存されるのは YouTube の Cookie だけで、保存先はこのパソコン内です。"
+  ko: "Encore는 Encore만 쓰는 브라우저 같은 작은 창을 따로 열고, 그 창에서 Google 계정으로 로그인합니다. YouTube 쿠키만 이 컴퓨터에 저장됩니다."
 library.browser_note:
   en: "Or read the session from a browser you are signed in to. It stops working when that browser renews it, often within minutes:"
   zh-CN: "也可以从已登录的浏览器读取会话。浏览器一旦续期该会话，它就会失效，通常只需几分钟："
@@ -297,8 +297,8 @@ library.browser_note:
   ru: "Или прочитайте сеанс из браузера, в котором вы вошли в аккаунт. Он перестанет работать, когда браузер его обновит, — часто уже через несколько минут:"
   id: "Atau baca sesi dari browser tempat Anda sudah login. Sesi itu berhenti berfungsi saat browser memperbaruinya, sering kali dalam hitungan menit:"
   de: "Oder lies die Sitzung aus einem Browser, in dem du angemeldet bist. Sie funktioniert nicht mehr, sobald der Browser sie erneuert, oft schon nach wenigen Minuten:"
-  ja: "または、ログイン済みのブラウザからセッションを読み込みます。そのブラウザがセッションを更新すると使えなくなり、数分で更新されることもよくあります："
-  ko: "또는 로그인된 브라우저에서 세션을 읽어 옵니다. 그 브라우저가 세션을 갱신하면 작동하지 않으며, 몇 분 안에 갱신되는 경우가 많습니다:"
+  ja: "または、ログイン済みのブラウザからセッションを読み込みます。そのブラウザがセッションを更新すると使えなくなります（数分で更新されることも珍しくありません）："
+  ko: "또는 로그인된 브라우저에서 세션을 읽어 옵니다. 그 브라우저가 세션을 갱신하면 더 이상 작동하지 않으며, 몇 분 안에 갱신되는 경우가 많습니다:"
 library.cookies_note:
   en: "Or import a cookies.txt. Export it from a private window and close the window, so the browser never renews it:"
   zh-CN: "或者导入 cookies.txt。请在无痕窗口中导出，然后关闭该窗口，这样浏览器就不会续期它："
@@ -312,7 +312,7 @@ library.cookies_note:
   ru: "Или импортируйте cookies.txt. Экспортируйте его из приватного окна и закройте это окно, чтобы браузер его не обновил:"
   id: "Atau impor cookies.txt. Ekspor dari jendela pribadi lalu tutup jendelanya, agar browser tidak pernah memperbaruinya:"
   de: "Oder importiere eine cookies.txt. Exportiere sie aus einem privaten Fenster und schließe das Fenster, damit der Browser sie nie erneuert:"
-  ja: "または cookies.txt をインポートします。プライベート ウィンドウからエクスポートしてそのウィンドウを閉じれば、ブラウザが更新することはありません："
+  ja: "または cookies.txt をインポートします。プライベート ウィンドウからエクスポートしてそのウィンドウを閉じれば、ブラウザにセッションを更新されることはありません："
   ko: "또는 cookies.txt를 가져옵니다. 시크릿 창에서 내보낸 뒤 창을 닫으면 브라우저가 갱신하지 않습니다:"
 library.import:
   en: "Import"
@@ -342,7 +342,7 @@ library.mixed_for_you:
   ru: "Миксы для вас"
   id: "Mix untuk Anda"
   de: "Mixe für dich"
-  ja: "あなたへのミックス"
+  ja: "あなた向けのミックス"
   ko: "나를 위한 믹스"
 library.from_history:
   en: "From your history"
@@ -373,7 +373,7 @@ library.no_mixes:
   id: "Belum ada mix: putar beberapa lagu dan YouTube Music akan membuatnya."
   de: "Noch keine Mixe: Hör ein paar Songs, dann erstellt YouTube Music welche."
   ja: "ミックスはまだありません。何曲か再生すると YouTube Music が作成します。"
-  ko: "아직 믹스가 없습니다. 노래를 몇 곡 재생하면 YouTube Music이 만들어 줍니다."
+  ko: "아직 믹스가 없습니다. 몇 곡 재생하면 YouTube Music이 만들어 줍니다."
 library.artist_mix:
   en: "%{artist} Mix"
   zh-CN: "%{artist} 合辑"
@@ -447,7 +447,7 @@ sidebar.new_playlist:
   ru: "Новый плейлист"
   id: "Playlist baru"
   de: "Neue Playlist"
-  ja: "新しい再生リスト"
+  ja: "新しいプレイリスト"
   ko: "새 재생목록"
 sidebar.account:
   en: "Account"
@@ -493,7 +493,7 @@ home.good_morning:
   id: "Selamat pagi"
   de: "Guten Morgen"
   ja: "おはようございます"
-  ko: "좋은 아침이에요"
+  ko: "좋은 아침입니다"
 home.good_afternoon:
   en: "Good afternoon"
   zh-CN: "下午好"
@@ -508,7 +508,7 @@ home.good_afternoon:
   id: "Selamat siang"
   de: "Guten Tag"
   ja: "こんにちは"
-  ko: "좋은 오후예요"
+  ko: "좋은 오후입니다"
 home.good_evening:
   en: "Good evening"
   zh-CN: "晚上好"
@@ -523,7 +523,7 @@ home.good_evening:
   id: "Selamat malam"
   de: "Guten Abend"
   ja: "こんばんは"
-  ko: "좋은 저녁이에요"
+  ko: "좋은 저녁입니다"
 home.recently_played:
   en: "Recently played"
   zh-CN: "最近播放"
@@ -552,7 +552,7 @@ home.your_playlists:
   ru: "Ваши плейлисты"
   id: "Playlist Anda"
   de: "Deine Playlists"
-  ja: "あなたの再生リスト"
+  ja: "あなたのプレイリスト"
   ko: "내 재생목록"
 home.saved_albums:
   en: "Saved albums"

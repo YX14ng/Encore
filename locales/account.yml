@@ -117,8 +117,8 @@ sign_in_window.no_program:
   ru: "не удалось найти исполняемый файл Encore: %{error}"
   id: "tidak dapat menemukan program Encore sendiri: %{error}"
   de: "Encores eigenes Programm wurde nicht gefunden: %{error}"
-  ja: "Encore 本体のプログラムが見つかりません: %{error}"
-  ko: "Encore 자체 프로그램을 찾을 수 없습니다: %{error}"
+  ja: "Encore の実行ファイルが見つかりません: %{error}"
+  ko: "Encore 실행 파일을 찾을 수 없습니다: %{error}"
 sign_in_window.open_failed:
   en: "could not open the sign-in window: %{error}"
   zh-CN: "无法打开登录窗口：%{error}"
@@ -163,7 +163,7 @@ sign_in_window.no_webkit:
   id: "jendela login tidak dapat dimulai (apakah WebKitGTK sudah terpasang?)"
   de: "das Anmeldefenster konnte nicht starten (ist WebKitGTK installiert?)"
   ja: "ログイン ウィンドウを起動できませんでした（WebKitGTK はインストールされていますか？）"
-  ko: "로그인 창을 시작할 수 없습니다 (WebKitGTK가 설치되어 있나요?)"
+  ko: "로그인 창을 시작할 수 없습니다(WebKitGTK가 설치되어 있나요?)"
 lastfm.variables_missing:
   en: "%{key} and %{secret} are not set"
   zh-CN: "未设置 %{key} 和 %{secret}"
@@ -342,8 +342,8 @@ scrobbler.session_revoked:
   ru: "Last.fm больше не принимает сеанс Encore; подключитесь заново"
   id: "Last.fm tidak lagi menerima sesi Encore; hubungkan lagi"
   de: "Last.fm akzeptiert die Sitzung von Encore nicht mehr; verbinde dich erneut"
-  ja: "Last.fm が Encore のセッションを受け付けなくなりました。もう一度接続してください"
-  ko: "Last.fm이 더 이상 Encore의 세션을 받지 않습니다. 다시 연결하세요"
+  ja: "Last.fm が Encore のセッションを受け付けなくなりました。もう一度連携してください"
+  ko: "Last.fm에서 더 이상 Encore의 세션을 허용하지 않습니다. 다시 연결하세요"
 scrobbler.save_queue_failed:
   en: "could not save the scrobble queue: %{error}"
   zh-CN: "无法保存待发送的播放记录：%{error}"
@@ -387,8 +387,8 @@ scrobbler.connect_note:
   ru: "Подключите Last.fm, чтобы скробблить песни, которые вы слушаете в Encore."
   id: "Hubungkan Last.fm untuk melakukan scrobble lagu yang Anda putar di Encore."
   de: "Verbinde Last.fm, um die Songs zu scrobbeln, die du in Encore hörst."
-  ja: "Last.fm に接続すると、Encore で再生した曲を Scrobble できます。"
-  ko: "Last.fm을 연결하면 Encore에서 재생한 노래를 스크로블할 수 있습니다."
+  ja: "Last.fm と連携すると、Encore で再生した曲を Scrobble できます。"
+  ko: "Last.fm을 연결하면 Encore에서 재생한 곡을 스크로블할 수 있습니다."
 scrobbler.connect:
   en: "Connect Last.fm"
   zh-CN: "连接 Last.fm"
@@ -402,7 +402,7 @@ scrobbler.connect:
   ru: "Подключить Last.fm"
   id: "Hubungkan Last.fm"
   de: "Last.fm verbinden"
-  ja: "Last.fm に接続"
+  ja: "Last.fm と連携"
   ko: "Last.fm 연결"
 scrobbler.approve:
   en: "Approve Encore on the Last.fm page that opened in your browser; Encore notices on its own within a few seconds."
@@ -418,7 +418,7 @@ scrobbler.approve:
   id: "Setujui Encore di halaman Last.fm yang terbuka di browser Anda; Encore akan mendeteksinya sendiri dalam beberapa detik."
   de: "Erlaube Encore auf der Last.fm-Seite, die sich in deinem Browser geöffnet hat; Encore bemerkt das innerhalb weniger Sekunden von selbst."
   ja: "ブラウザで開いた Last.fm のページで Encore を承認してください。数秒以内に Encore が自動で検知します。"
-  ko: "브라우저에 열린 Last.fm 페이지에서 Encore를 승인하세요. 몇 초 안에 Encore가 자동으로 알아챕니다."
+  ko: "브라우저에 열린 Last.fm 페이지에서 Encore를 승인하세요. 몇 초 안에 Encore가 자동으로 확인합니다."
 scrobbler.scrobbling_as:
   en: "Scrobbling as %{name}."
   zh-CN: "正在以 %{name} 的身份同步播放记录。"
@@ -433,7 +433,7 @@ scrobbler.scrobbling_as:
   id: "Melakukan scrobble sebagai %{name}."
   de: "Scrobbelt als %{name}."
   ja: "%{name} として Scrobble 中です。"
-  ko: "%{name}(으)로 스크로블 중입니다."
+  ko: "%{name} 계정으로 스크로블 중입니다."
 scrobbler.disconnect:
   en: "Disconnect"
   zh-CN: "断开连接"
@@ -447,7 +447,7 @@ scrobbler.disconnect:
   ru: "Отключить"
   id: "Putuskan"
   de: "Trennen"
-  ja: "接続を解除"
+  ja: "連携を解除"
   ko: "연결 해제"
 scrobbler.connect_failed:
   en: "Could not connect: %{error}"
@@ -462,7 +462,7 @@ scrobbler.connect_failed:
   ru: "Не удалось подключиться: %{error}"
   id: "Tidak dapat terhubung: %{error}"
   de: "Verbindung fehlgeschlagen: %{error}"
-  ja: "接続できませんでした: %{error}"
+  ja: "連携できませんでした: %{error}"
   ko: "연결할 수 없습니다: %{error}"
 scrobbler.pending_one:
   en: "1 scrobble is waiting to be sent."
@@ -478,7 +478,7 @@ scrobbler.pending_one:
   id: "1 scrobble menunggu untuk dikirim."
   de: "1 Scrobble wartet auf den Versand."
   ja: "1 件の Scrobble が送信待ちです。"
-  ko: "스크로블 1개가 전송을 기다리고 있습니다."
+  ko: "스크로블 1건이 전송 대기 중입니다."
 scrobbler.pending_many:
   en: "%{count} scrobbles are waiting to be sent."
   zh-CN: "有 %{count} 条播放记录等待发送。"
@@ -493,7 +493,7 @@ scrobbler.pending_many:
   id: "%{count} scrobble menunggu untuk dikirim."
   de: "%{count} Scrobbles warten auf den Versand."
   ja: "%{count} 件の Scrobble が送信待ちです。"
-  ko: "스크로블 %{count}개가 전송을 기다리고 있습니다."
+  ko: "스크로블 %{count}건이 전송 대기 중입니다."
 discord_ipc.someone:
   en: "Someone"
   zh-CN: "某位用户"
@@ -507,7 +507,7 @@ discord_ipc.someone:
   ru: "Кто-то"
   id: "Seseorang"
   de: "Jemand"
-  ja: "だれか"
+  ja: "誰か"
   ko: "누군가"
 together.title:
   en: "Listen together"
@@ -538,7 +538,7 @@ together.intro:
   id: "Teman mendengar apa yang Anda putar secara bersamaan. Setiap Encore mengunduh lagunya sendiri; yang dikirim hanya lagu dan posisinya."
   de: "Freunde hören synchron, was du spielst. Jedes Encore lädt die Songs selbst herunter; übertragen werden nur der Song und die Position."
   ja: "あなたが再生している曲を、友だちも同時に聴けます。曲はそれぞれの Encore がダウンロードし、送られるのは曲と再生位置だけです。"
-  ko: "친구들이 내가 재생하는 음악을 동시에 듣습니다. 노래는 각 Encore가 직접 다운로드하고, 전송되는 것은 노래와 재생 위치뿐입니다."
+  ko: "내가 재생하는 곡을 친구들도 동시에 들을 수 있습니다. 곡은 각 Encore가 직접 다운로드하며, 전송되는 것은 곡 정보와 재생 위치뿐입니다."
 together.finding_address:
   en: "Finding your public address…"
   zh-CN: "正在查找你的公网地址…"
@@ -552,8 +552,8 @@ together.finding_address:
   ru: "Определяем ваш внешний адрес…"
   id: "Mencari alamat publik Anda…"
   de: "Deine öffentliche Adresse wird ermittelt…"
-  ja: "グローバル アドレスを確認しています…"
-  ko: "공인 주소를 찾는 중…"
+  ja: "グローバル IP アドレスを確認しています…"
+  ko: "공인 IP 주소를 찾는 중…"
 together.session_open:
   en: "Your session is open on port %{port}."
   zh-CN: "你的会话已在端口 %{port} 上开启。"
@@ -568,7 +568,7 @@ together.session_open:
   id: "Sesi Anda terbuka di port %{port}."
   de: "Deine Sitzung ist auf Port %{port} geöffnet."
   ja: "セッションをポート %{port} で開いています。"
-  ko: "세션이 포트 %{port}에서 열려 있습니다."
+  ko: "세션이 %{port}번 포트에서 열려 있습니다."
 together.opening_port:
   en: "Opening the port…"
   zh-CN: "正在打开端口…"
@@ -597,7 +597,7 @@ together.nobody_yet:
   ru: "Пока никто не присоединился."
   id: "Belum ada yang bergabung."
   de: "Noch ist niemand beigetreten."
-  ja: "まだだれも参加していません。"
+  ja: "まだ誰も参加していません。"
   ko: "아직 아무도 참여하지 않았습니다."
 together.invite:
   en: "Invite"
@@ -627,8 +627,8 @@ together.copy_invite:
   ru: "Копировать приглашение"
   id: "Salin undangan"
   de: "Einladung kopieren"
-  ja: "招待をコピー"
-  ko: "초대 복사"
+  ja: "招待コードをコピー"
+  ko: "초대 코드 복사"
 together.end_session:
   en: "End session"
   zh-CN: "结束会话"
@@ -657,8 +657,8 @@ together.invite_note:
   ru: "Отправьте приглашение друзьям или позвольте им присоединиться через ваш профиль Discord. Они подключаются напрямую к этому компьютеру, поэтому видят его адрес, а вы — их."
   id: "Kirim undangan ke teman Anda, atau biarkan mereka bergabung dari profil Discord Anda. Mereka terhubung langsung ke komputer ini, jadi mereka melihat alamatnya, dan Anda melihat alamat mereka."
   de: "Schick die Einladung an deine Freunde oder lass sie über dein Discord-Profil beitreten. Sie verbinden sich direkt mit diesem Computer, sehen also seine Adresse, und du siehst ihre."
-  ja: "招待を友だちに送るか、Discord のプロフィールから参加してもらいましょう。友だちはこのパソコンに直接接続するため、相手にはこのパソコンのアドレスが、あなたには相手のアドレスが見えます。"
-  ko: "친구에게 초대를 보내거나 내 Discord 프로필에서 참여하게 하세요. 친구는 이 컴퓨터에 직접 연결되므로 서로의 주소를 볼 수 있습니다."
+  ja: "招待コードを友だちに送るか、Discord のプロフィールから参加してもらいましょう。友だちはこのパソコンに直接接続するため、相手にはこのパソコンのアドレスが、あなたには相手のアドレスが見えます。"
+  ko: "친구에게 초대 코드를 보내거나 내 Discord 프로필에서 참여하게 하세요. 친구는 이 컴퓨터에 직접 연결되므로 서로의 주소를 볼 수 있습니다."
 together.listener_one:
   en: "1 listener"
   zh-CN: "1 位听众"
@@ -792,8 +792,8 @@ together.listening_note:
   ru: "Encore воспроизводит то же, что и ведущий. Ваши кнопки работают, но следующее действие ведущего важнее."
   id: "Encore memutar apa yang diputar host. Kontrol Anda tetap berfungsi, tetapi perubahan berikutnya dari host yang berlaku."
   de: "Encore spielt, was der Host spielt. Deine eigenen Steuerelemente funktionieren, aber die nächste Änderung des Hosts hat Vorrang."
-  ja: "Encore はホストが再生している曲を再生します。自分でも操作できますが、ホストが次に操作するとそちらが優先されます。"
-  ko: "Encore는 호스트가 재생하는 음악을 재생합니다. 직접 조작할 수도 있지만 호스트가 다음에 바꾸면 그 내용이 우선합니다."
+  ja: "ホストが再生している曲が Encore でも再生されます。自分でも操作できますが、ホストが次に操作するとそちらが優先されます。"
+  ko: "호스트가 재생하는 곡이 Encore에서 그대로 재생됩니다. 직접 조작할 수도 있지만, 호스트가 다음에 조작하면 호스트의 조작이 우선합니다."
 together.leave:
   en: "Leave"
   zh-CN: "退出"
@@ -823,7 +823,7 @@ together.host_section:
   id: "Jadi host sesi"
   de: "Sitzung hosten"
   ja: "セッションを主催"
-  ko: "세션 호스트하기"
+  ko: "세션 호스팅"
 together.address_placeholder:
   en: "Address friends use (found by itself if empty)"
   zh-CN: "朋友使用的地址（留空则自动查找）"
@@ -852,7 +852,7 @@ together.port_note:
   ru: "Чтобы друзья подключались через интернет, роутер должен перенаправлять этот порт на этот компьютер, как для игрового сервера."
   id: "Agar teman di internet bisa terhubung, router Anda perlu meneruskan port ini ke komputer ini, seperti untuk server game."
   de: "Für Freunde im Internet muss dein Router diesen Port an diesen Computer weiterleiten, wie bei einem Spieleserver."
-  ja: "インターネット経由の友だちのために、ゲーム サーバーと同じように、ルーターでこのポートをこのパソコンに転送してください。"
+  ja: "インターネット経由で友だちが参加するには、ゲーム サーバーと同じように、ルーターでこのポートをこのパソコンに転送する必要があります。"
   ko: "인터넷으로 접속하는 친구를 위해서는 게임 서버처럼 공유기에서 이 포트를 이 컴퓨터로 포워딩해야 합니다."
 together.host:
   en: "Host"
@@ -867,8 +867,8 @@ together.host:
   ru: "Начать"
   id: "Mulai jadi host"
   de: "Hosten"
-  ja: "主催する"
-  ko: "호스트 시작"
+  ja: "開始"
+  ko: "호스팅 시작"
 together.join_section:
   en: "Join a session"
   zh-CN: "加入会话"
@@ -883,7 +883,7 @@ together.join_section:
   id: "Gabung ke sesi"
   de: "Einer Sitzung beitreten"
   ja: "セッションに参加"
-  ko: "세션 참여하기"
+  ko: "세션 참여"
 together.join:
   en: "Join"
   zh-CN: "加入"
@@ -912,8 +912,8 @@ together.address_not_found:
   ru: "Не удалось определить ваш внешний адрес (%{error}). Введите его вручную."
   id: "Tidak dapat menemukan alamat publik Anda (%{error}). Ketik secara manual."
   de: "Deine öffentliche Adresse wurde nicht gefunden (%{error}). Gib sie stattdessen selbst ein."
-  ja: "グローバル アドレスを確認できませんでした（%{error}）。手動で入力してください。"
-  ko: "공인 주소를 찾을 수 없습니다(%{error}). 직접 입력하세요."
+  ja: "グローバル IP アドレスを確認できませんでした（%{error}）。手動で入力してください。"
+  ko: "공인 IP 주소를 찾을 수 없습니다(%{error}). 직접 입력하세요."
 together.end_before_joining:
   en: "End your own session before joining a friend's from Discord."
   zh-CN: "从 Discord 加入朋友的会话前，请先结束你自己的会话。"
@@ -1048,7 +1048,7 @@ together.port_failed:
   id: "Tidak dapat membuka port %{port}: %{error}"
   de: "Port %{port} konnte nicht geöffnet werden: %{error}"
   ja: "ポート %{port} を開けませんでした: %{error}"
-  ko: "포트 %{port}을(를) 열 수 없습니다: %{error}"
+  ko: "%{port}번 포트를 열 수 없습니다: %{error}"
 together.invite_too_long:
   en: "That invite is too long."
   zh-CN: "这个邀请太长了。"
@@ -1062,8 +1062,8 @@ together.invite_too_long:
   ru: "Это приглашение слишком длинное."
   id: "Undangan itu terlalu panjang."
   de: "Diese Einladung ist zu lang."
-  ja: "この招待は長すぎます。"
-  ko: "초대가 너무 깁니다."
+  ja: "この招待コードは長すぎます。"
+  ko: "초대 코드가 너무 깁니다."
 together.not_an_invite:
   en: "That is not an Encore invite (it starts with \"encore:\")."
   zh-CN: "这不是 Encore 邀请（Encore 邀请以 \"encore:\" 开头）。"
@@ -1077,8 +1077,8 @@ together.not_an_invite:
   ru: "Это не приглашение Encore (оно начинается с \"encore:\")."
   id: "Itu bukan undangan Encore (undangan diawali dengan \"encore:\")."
   de: "Das ist keine Encore-Einladung (sie beginnt mit \"encore:\")."
-  ja: "これは Encore の招待ではありません（招待は \"encore:\" で始まります）。"
-  ko: "Encore 초대가 아닙니다 (초대는 \"encore:\"로 시작합니다)."
+  ja: "これは Encore の招待コードではありません（招待コードは \"encore:\" で始まります）。"
+  ko: "Encore 초대 코드가 아닙니다(초대 코드는 \"encore:\"로 시작합니다)."
 together.invite_incomplete:
   en: "That invite is incomplete."
   zh-CN: "这个邀请不完整。"
@@ -1092,8 +1092,8 @@ together.invite_incomplete:
   ru: "Это приглашение неполное."
   id: "Undangan itu tidak lengkap."
   de: "Diese Einladung ist unvollständig."
-  ja: "この招待は不完全です。"
-  ko: "초대가 불완전합니다."
+  ja: "この招待コードは不完全です。"
+  ko: "초대 코드가 불완전합니다."
 together.invite_bad_token:
   en: "The invite's token is broken."
   zh-CN: "邀请中的令牌已损坏。"
@@ -1107,8 +1107,8 @@ together.invite_bad_token:
   ru: "Токен в приглашении повреждён."
   id: "Token undangan rusak."
   de: "Das Token der Einladung ist beschädigt."
-  ja: "招待のトークンが壊れています。"
-  ko: "초대의 토큰이 손상되었습니다."
+  ja: "招待コードのトークンが壊れています。"
+  ko: "초대 코드의 토큰이 손상되었습니다."
 together.invite_bad_port:
   en: "The invite's port is broken."
   zh-CN: "邀请中的端口无效。"
@@ -1122,8 +1122,8 @@ together.invite_bad_port:
   ru: "Порт в приглашении неверный."
   id: "Port undangan tidak valid."
   de: "Der Port der Einladung ist ungültig."
-  ja: "招待のポートが正しくありません。"
-  ko: "초대의 포트가 올바르지 않습니다."
+  ja: "招待コードのポートが正しくありません。"
+  ko: "초대 코드의 포트가 올바르지 않습니다."
 together.invite_bad_address:
   en: "The invite's address is broken."
   zh-CN: "邀请中的地址无效。"
@@ -1137,8 +1137,8 @@ together.invite_bad_address:
   ru: "Адрес в приглашении неверный."
   id: "Alamat undangan tidak valid."
   de: "Die Adresse der Einladung ist ungültig."
-  ja: "招待のアドレスが正しくありません。"
-  ko: "초대의 주소가 올바르지 않습니다."
+  ja: "招待コードのアドレスが正しくありません。"
+  ko: "초대 코드의 주소가 올바르지 않습니다."
 together.no_random:
   en: "could not read random bytes: %{error}"
   zh-CN: "无法读取随机字节：%{error}"
@@ -1152,8 +1152,8 @@ together.no_random:
   ru: "не удалось прочитать случайные байты: %{error}"
   id: "tidak dapat membaca byte acak: %{error}"
   de: "Zufallsbytes konnten nicht gelesen werden: %{error}"
-  ja: "ランダムなバイト列を読み取れませんでした: %{error}"
-  ko: "무작위 바이트를 읽을 수 없습니다: %{error}"
+  ja: "乱数を取得できませんでした: %{error}"
+  ko: "난수를 가져올 수 없습니다: %{error}"
 playlists.private:
   en: "Private"
   zh-CN: "私享"
@@ -1228,7 +1228,7 @@ playlists.with_song:
   id: "Berisi “%{title}”."
   de: "Mit „%{title}“ darin."
   ja: "「%{title}」を追加します。"
-  ko: "“%{title}” 포함"
+  ko: "“%{title}”이(가) 추가됩니다."
 playlists.name:
   en: "Name"
   zh-CN: "名称"
@@ -1498,7 +1498,7 @@ playlists.created:
   id: "%{title} dibuat"
   de: "%{title} erstellt"
   ja: "「%{title}」を作成しました"
-  ko: "%{title} 만듦"
+  ko: "%{title} 생성됨"
 playlists.removed:
   en: "Removed from the playlist"
   zh-CN: "已从播放列表中移除"
@@ -1528,7 +1528,7 @@ playlists.cover_changed:
   id: "Sampul diubah"
   de: "Cover geändert"
   ja: "カバーを変更しました"
-  ko: "커버가 변경됨"
+  ko: "커버 변경됨"
 playlists.sign_in_to_change:
   en: "Sign in to change your playlists."
   zh-CN: "登录后才能更改你的播放列表。"
@@ -1573,7 +1573,7 @@ playlists.sign_in_to_add:
   id: "Login untuk menambahkan lagu ke playlist Anda."
   de: "Melde dich an, um Songs zu deinen Playlists hinzuzufügen."
   ja: "プレイリストに曲を追加するにはログインしてください。"
-  ko: "재생목록에 노래를 추가하려면 로그인하세요."
+  ko: "재생목록에 곡을 추가하려면 로그인하세요."
 playlists.name_needed:
   en: "Give the playlist a name."
   zh-CN: "请为播放列表命名。"
@@ -1648,7 +1648,7 @@ playlists.session_expired:
   id: "Sesi YouTube Music Anda telah berakhir. Logout lalu login lagi di Akun."
   de: "Deine YouTube Music-Sitzung ist abgelaufen. Melde dich unter Konto ab und wieder an."
   ja: "YouTube Music のセッションの有効期限が切れました。[アカウント] でログアウトしてから、もう一度ログインしてください。"
-  ko: "YouTube Music 세션이 만료되었습니다. 계정에서 로그아웃한 뒤 다시 로그인하세요."
+  ko: "YouTube Music 세션이 만료되었습니다. 계정 화면에서 로그아웃한 뒤 다시 로그인하세요."
 playlists.not_json:
   en: "YouTube's answer is not JSON: %{error}"
   zh-CN: "YouTube 的响应不是 JSON：%{error}"
@@ -1738,7 +1738,7 @@ playlists.image_too_big:
   id: "Gambar lebih besar dari 40 MB."
   de: "Das Bild ist größer als 40 MB."
   ja: "画像が 40 MB を超えています。"
-  ko: "이미지가 40MB보다 큽니다."
+  ko: "이미지가 40MB를 넘습니다."
 playlists.not_an_image:
   en: "%{path} is not an image Encore can read: %{error}"
   zh-CN: "%{path} 不是 Encore 能读取的图片：%{error}"

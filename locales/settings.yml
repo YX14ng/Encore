@@ -163,7 +163,7 @@ settings.accent_theme:
   id: Dari tema
   de: Vom Design
   ja: テーマに合わせる
-  ko: 테마 따라가기
+  ko: 테마에 맞춤
 settings.accent_cover:
   en: From cover
   zh-CN: 取自封面
@@ -177,8 +177,8 @@ settings.accent_cover:
   ru: Из обложки
   id: Dari sampul
   de: Vom Cover
-  ja: ジャケットから
-  ko: 커버에서
+  ja: ジャケットに合わせる
+  ko: 커버에 맞춤
 settings.accent_cover_note:
   en: The accent changes with each song's cover.
   zh-CN: 强调色会随每首歌的封面变化。
@@ -192,7 +192,7 @@ settings.accent_cover_note:
   ru: Акцент меняется вместе с обложкой каждой песни.
   id: Aksen berubah mengikuti sampul setiap lagu.
   de: Die Akzentfarbe wechselt mit dem Cover jedes Songs.
-  ja: アクセントは曲ごとのジャケットに合わせて変わります。
+  ja: アクセントカラーが曲のジャケットに合わせて変わります。
   ko: 강조 색상이 곡마다 커버에 맞춰 바뀝니다.
 settings.custom_themes:
   en: Custom themes
@@ -222,8 +222,8 @@ settings.custom_themes_note:
   ru: 'Добавляйте свои темы как JSON-файлы в %{folder}. Цвета — #rrggbb; недостающие берутся из тёмной темы Encore или из Daylight при "light": true.'
   id: 'Tambahkan tema sendiri sebagai file JSON di %{folder}. Warna ditulis #rrggbb; yang tidak diisi diambil dari tema gelap Encore, atau dari Daylight dengan "light": true.'
   de: 'Lege eigene Designs als JSON-Dateien in %{folder} ab. Farben sind #rrggbb; fehlende kommen aus Encores dunklem Design oder mit "light": true aus Daylight.'
-  ja: '自作テーマは JSON ファイルとして %{folder} に置きます。色は #rrggbb 形式で、省いた色は Encore のダークテーマ（"light": true なら Daylight）から取られます。'
-  ko: '사용자 테마는 %{folder}에 JSON 파일로 넣으세요. 색상은 #rrggbb 형식이며, 빠진 색은 Encore의 어두운 테마(또는 "light": true면 Daylight)에서 가져옵니다.'
+  ja: '独自のテーマは JSON ファイルとして %{folder} に置くと追加できます。色は #rrggbb 形式で、省いた色には Encore のダークテーマ（"light": true なら Daylight）の色が使われます。'
+  ko: '%{folder}에 JSON 파일을 넣으면 사용자 테마를 추가할 수 있습니다. 색상은 #rrggbb 형식이며, 생략한 색은 Encore의 어두운 테마("light": true이면 Daylight)에서 가져옵니다.'
 settings.reload_themes:
   en: Reload themes
   zh-CN: 重新加载主题

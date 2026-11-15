@@ -13,7 +13,7 @@ search.results_for:
   id: "Hasil untuk “%{query}”"
   de: "Ergebnisse für „%{query}“"
   ja: "「%{query}」の検索結果"
-  ko: "“%{query}” 검색결과"
+  ko: "“%{query}” 검색 결과"
 search.play_failed:
   en: "Could not play that song: %{error}"
   zh-CN: "无法播放这首歌曲：%{error}"
@@ -28,7 +28,7 @@ search.play_failed:
   id: "Tidak dapat memutar lagu itu: %{error}"
   de: "Der Song konnte nicht abgespielt werden: %{error}"
   ja: "この曲を再生できませんでした: %{error}"
-  ko: "이 노래를 재생할 수 없습니다: %{error}"
+  ko: "이 곡을 재생할 수 없습니다: %{error}"
 search.searching:
   en: "Searching YouTube Music…"
   zh-CN: "正在搜索 YouTube Music…"
@@ -88,7 +88,7 @@ search.top_result:
   id: "Hasil teratas"
   de: "Top-Ergebnis"
   ja: "上位の検索結果"
-  ko: "상위 검색결과"
+  ko: "상위 검색 결과"
 search.all:
   en: "All"
   zh-CN: "全部"
@@ -132,7 +132,7 @@ search.playlists:
   ru: "Плейлисты"
   id: "Playlist"
   de: "Playlists"
-  ja: "再生リスト"
+  ja: "プレイリスト"
   ko: "재생목록"
 search.show_all:
   en: "Show all"
@@ -148,7 +148,7 @@ search.show_all:
   id: "Tampilkan semua"
   de: "Alle anzeigen"
   ja: "すべて表示"
-  ko: "모두 표시"
+  ko: "모두 보기"
 search.song_by:
   en: "Song · %{artist}"
   zh-CN: "歌曲 · %{artist}"
@@ -193,7 +193,7 @@ search.loading:
   id: "Memuat…"
   de: "Wird geladen…"
   ja: "読み込み中…"
-  ko: "로드 중…"
+  ko: "불러오는 중…"
 search.nothing_downloaded:
   en: "Nothing downloaded yet. Open an album or playlist and press Download."
   zh-CN: "还没有下载任何内容。打开一张专辑或一个播放列表，然后点击“下载”。"
@@ -207,7 +207,7 @@ search.nothing_downloaded:
   ru: "Пока ничего не скачано. Откройте альбом или плейлист и нажмите «Скачать»."
   id: "Belum ada yang didownload. Buka album atau playlist, lalu tekan Download."
   de: "Noch nichts heruntergeladen. Öffne ein Album oder eine Playlist und klicke auf „Herunterladen“."
-  ja: "まだ何もダウンロードしていません。アルバムか再生リストを開いて［ダウンロード］を押してください。"
+  ja: "まだ何もダウンロードしていません。アルバムかプレイリストを開いて [ダウンロード] を押してください。"
   ko: "아직 다운로드한 항목이 없습니다. 앨범이나 재생목록을 열고 다운로드를 누르세요."
 search.song_count:
   en: "%{count} songs"
@@ -282,7 +282,7 @@ collection.kind_playlist:
   ru: "ПЛЕЙЛИСТ"
   id: "PLAYLIST"
   de: "PLAYLIST"
-  ja: "再生リスト"
+  ja: "プレイリスト"
   ko: "재생목록"
 collection.kind_mix:
   en: "MIX"
@@ -313,7 +313,7 @@ collection.no_songs:
   id: "Tidak ada lagu di sini."
   de: "Hier gibt es keine Songs."
   ja: "曲がありません。"
-  ko: "노래가 없습니다."
+  ko: "곡이 없습니다."
 collection.cover:
   en: "Cover"
   zh-CN: "封面"
@@ -387,7 +387,7 @@ youtube.playlist_by:
   ru: "Плейлист · %{owner}"
   id: "Playlist · %{owner}"
   de: "Playlist · %{owner}"
-  ja: "再生リスト · %{owner}"
+  ja: "プレイリスト · %{owner}"
   ko: "재생목록 · %{owner}"
 youtube.single:
   en: "Single"

@@ -57,8 +57,8 @@ audio.compressor_note:
   ru: "Выравнивает громкие и тихие места внутри песни."
   id: "Menyeimbangkan bagian keras dan pelan dalam sebuah lagu."
   de: "Gleicht laute und leise Stellen innerhalb eines Songs aus."
-  ja: "曲の中の大きい部分と小さい部分の音量差をならします。"
-  ko: "곡 안의 큰 소리와 작은 소리 부분을 고르게 맞춥니다."
+  ja: "1 曲の中の大きな音と小さな音の差をならします。"
+  ko: "한 곡 안에서 큰 소리와 작은 소리의 차이를 줄입니다."
 audio.compressor_off:
   en: "Off"
   zh-CN: "关闭"
@@ -117,7 +117,7 @@ audio.crossfade_note:
   ru: "Плавно сводит конец каждой песни с началом следующей."
   id: "Memudarkan akhir setiap lagu ke awal lagu berikutnya."
   de: "Blendet das Ende jedes Songs in den Anfang des nächsten über."
-  ja: "各曲の終わりを次の曲の始まりへなめらかにつなぎます。"
+  ja: "曲の終わりと次の曲の始まりを重ねて、なめらかにつなぎます。"
   ko: "각 곡의 끝을 다음 곡의 시작과 자연스럽게 이어 줍니다."
 audio.crossfade_off:
   en: "Off"
@@ -162,7 +162,7 @@ audio.equalizer:
   ru: "Эквалайзер"
   id: "Equalizer"
   de: "Equalizer"
-  ja: "イコライザ"
+  ja: "イコライザー"
   ko: "이퀄라이저"
 audio.equalizer_off_note:
   en: "Switch the equalizer on to hear these bands."
@@ -177,8 +177,8 @@ audio.equalizer_off_note:
   ru: "Включите эквалайзер, чтобы услышать эти полосы."
   id: "Aktifkan equalizer untuk mendengar pita-pita ini."
   de: "Schalte den Equalizer ein, um diese Bänder zu hören."
-  ja: "これらの帯域を反映するには、イコライザをオンにしてください。"
-  ko: "이 대역을 들으려면 이퀄라이저를 켜세요."
+  ja: "これらの帯域を反映するには、イコライザーをオンにしてください。"
+  ko: "이 대역 설정을 적용하려면 이퀄라이저를 켜세요."
 audio.filters_refused:
   en: "mpv refused the audio filters %{chain}: %{error}"
   zh-CN: "mpv 拒绝了音频滤镜 %{chain}：%{error}"
@@ -238,7 +238,7 @@ audio.normalize_note:
   id: "Memutar setiap lagu dengan kenyaringan yang kurang lebih sama, sehingga lagu pelan dan keras terdengar seimbang."
   de: "Spielt jeden Song in etwa gleich laut ab, damit leise und laute Titel zusammenpassen."
   ja: "すべての曲をほぼ同じ音量で再生し、小さい曲と大きい曲の差をなくします。"
-  ko: "모든 곡을 비슷한 음량으로 재생해 작은 곡과 큰 곡의 차이를 맞춥니다."
+  ko: "모든 곡을 비슷한 음량으로 재생해 소리가 작은 곡과 큰 곡의 차이를 없앱니다."
 audio.not_connected:
   en: "%{name} (not connected)"
   zh-CN: "%{name}（未连接）"
@@ -433,7 +433,7 @@ audio.quality_high_note:
   id: "Opus sekitar 256 kbit/s dengan YouTube Music Premium (sudah login); tanpa Premium sama dengan Normal. yt-dlp mengunduh dengan sesi Anda, yang mungkin disadari YouTube: yt-dlp memperingatkan bahwa akun yang dipakai seperti ini bisa diblokir untuk sementara."
   de: "Opus mit etwa 256 kbit/s mit YouTube Music Premium (angemeldet); ohne Premium wie Normal. yt-dlp lädt mit deiner Sitzung herunter, was YouTube bemerken kann: yt-dlp warnt, dass so genutzte Konten eine Zeit lang gesperrt werden können."
   ja: "YouTube Music Premium（ログイン時）では約 256 kbit/s の Opus、Premium なしでは「標準」と同じです。yt-dlp はあなたのセッションでダウンロードするため、YouTube に気付かれる可能性があります。yt-dlp によると、この方法で使ったアカウントは一時的にブロックされることがあります。"
-  ko: "YouTube Music Premium(로그인)에서는 약 256kbit/s의 Opus이며, Premium이 없으면 보통과 같습니다. yt-dlp는 내 세션으로 다운로드하므로 YouTube가 이를 알아챌 수 있습니다. yt-dlp는 이렇게 사용한 계정이 한동안 차단될 수 있다고 경고합니다."
+  ko: "YouTube Music Premium(로그인 시)에서는 약 256kbit/s Opus이며, Premium이 없으면 '보통'과 같습니다. yt-dlp는 내 세션으로 다운로드하므로 YouTube가 이를 알아챌 수 있습니다. yt-dlp는 이렇게 사용한 계정이 한동안 차단될 수 있다고 경고합니다."
 audio.quality_low:
   en: "Low"
   zh-CN: "低"
@@ -463,7 +463,7 @@ audio.quality_low_note:
   id: "Opus sekitar 60 kbit/s, untuk koneksi lambat atau berkuota."
   de: "Opus mit etwa 60 kbit/s, für langsame oder getaktete Verbindungen."
   ja: "約 60 kbit/s の Opus。低速回線や従量制の回線向けです。"
-  ko: "약 60kbit/s의 Opus로, 느리거나 데이터 요금제가 제한된 연결에 알맞습니다."
+  ko: "약 60kbit/s Opus로, 느린 연결이나 데이터 사용량이 제한된 연결에 적합합니다."
 audio.quality_next_song:
   en: "Takes effect from the next song that downloads."
   zh-CN: "从下一首下载的歌曲开始生效。"
@@ -508,7 +508,7 @@ audio.quality_normal_note:
   id: "Opus sekitar 130 kbit/s, kualitas terbaik YouTube tanpa Premium."
   de: "Opus mit etwa 130 kbit/s, das Beste, was YouTube ohne Premium bietet."
   ja: "約 130 kbit/s の Opus。Premium なしで YouTube が提供する最高音質です。"
-  ko: "약 130kbit/s의 Opus로, Premium 없이 YouTube에서 받을 수 있는 최고 품질입니다."
+  ko: "약 130kbit/s Opus로, Premium 없이 YouTube에서 받을 수 있는 최고 음질입니다."
 audio.skip_silence:
   en: "Skip silence"
   zh-CN: "跳过静音"
@@ -612,8 +612,8 @@ download.file_not_reported:
   ru: "yt-dlp не сообщил о скачанном файле"
   id: "yt-dlp tidak melaporkan file yang diunduh"
   de: "yt-dlp hat die heruntergeladene Datei nicht gemeldet"
-  ja: "yt-dlp がダウンロードしたファイルを報告しませんでした"
-  ko: "yt-dlp가 다운로드한 파일을 알려 주지 않았습니다"
+  ja: "yt-dlp の出力にダウンロードしたファイルがありません"
+  ko: "yt-dlp가 다운로드한 파일 정보를 반환하지 않았습니다"
 download.session_not_written:
   en: "could not write the session for yt-dlp: %{error}"
   zh-CN: "无法为 yt-dlp 写入登录会话：%{error}"
@@ -642,8 +642,8 @@ download.video_not_reported:
   ru: "yt-dlp не сообщил о скачанном видео"
   id: "yt-dlp tidak melaporkan video yang diunduh"
   de: "yt-dlp hat das heruntergeladene Video nicht gemeldet"
-  ja: "yt-dlp がダウンロードした動画を報告しませんでした"
-  ko: "yt-dlp가 다운로드한 동영상을 알려 주지 않았습니다"
+  ja: "yt-dlp の出力にダウンロードした動画がありません"
+  ko: "yt-dlp가 다운로드한 동영상 정보를 반환하지 않았습니다"
 download.ytdlp_not_run:
   en: "could not run yt-dlp: %{error}"
   zh-CN: "无法运行 yt-dlp：%{error}"
@@ -703,7 +703,7 @@ lyrics.looking:
   id: "Mencari lirik…"
   de: "Songtext wird gesucht…"
   ja: "歌詞を検索しています…"
-  ko: "가사 찾는 중…"
+  ko: "가사를 찾는 중…"
 lyrics.missing:
   en: "No lyrics for this track"
   zh-CN: "这首歌暂无歌词"
@@ -852,7 +852,7 @@ plugins.lastfm_description:
   ru: "Отправляет прослушанные песни в Last.fm (подключите аккаунт на экране аккаунта)."
   id: "Mencatat lagu yang Anda putar ke Last.fm (hubungkan akun Anda di layar akun)."
   de: "Scrobbelt die Songs, die du hörst, zu Last.fm (verbinde dein Konto auf der Kontoseite)."
-  ja: "再生した曲を Last.fm に Scrobble します（アカウント画面でアカウントを連携してください）。"
+  ja: "再生した曲を Last.fm に Scrobble します（アカウント画面で Last.fm と連携してください）。"
   ko: "재생한 곡을 Last.fm에 스크로블합니다(계정 화면에서 계정을 연결하세요)."
 plugins.lastfm_name:
   en: "Last.fm scrobbling"
@@ -912,8 +912,8 @@ plugins.skip_disliked_description:
   ru: "Пропускает песню, когда вы ставите дизлайк, а также песни с дизлайком, когда они снова попадаются (нужен вход)."
   id: "Melewati lagu saat Anda tidak menyukainya, juga lagu yang sebelumnya tidak Anda sukai saat muncul lagi (sudah login)."
   de: "Überspringt einen Song, sobald du ihn mit „Mag ich nicht“ markierst, und früher so markierte Songs, wenn sie wieder auftauchen (angemeldet)."
-  ja: "低評価した曲をすぐにスキップし、以前に低評価した曲が再び流れるときもスキップします（ログイン時）。"
-  ko: "싫어요를 누른 곡을 바로 건너뛰고, 전에 싫어요를 누른 곡이 다시 나올 때도 건너뜁니다(로그인 시)."
+  ja: "低評価した曲をすぐにスキップし、以前に低評価した曲が流れたときもスキップします（ログイン時）。"
+  ko: "싫어요를 표시하면 곡을 바로 건너뛰고, 전에 싫어요 표시한 곡이 다시 나올 때도 건너뜁니다(로그인 시)."
 plugins.skip_disliked_name:
   en: "Skip disliked songs"
   zh-CN: "跳过不喜欢的歌曲"
@@ -942,8 +942,8 @@ plugins.sponsorblock_description:
   ru: "Пропускает части клипов без музыки (вступления, сценки, концовки), отмеченные сообществом SponsorBlock."
   id: "Melewati bagian video musik yang bukan musik (intro, sketsa, outro), sesuai tanda dari komunitas SponsorBlock."
   de: "Überspringt die Teile von Musikvideos, die keine Musik sind (Intros, Sketche, Outros), wie von der SponsorBlock-Community markiert."
-  ja: "ミュージック ビデオのうち音楽ではない部分（イントロ、寸劇、アウトロ）を、SponsorBlock コミュニティのマークに従ってスキップします。"
-  ko: "SponsorBlock 커뮤니티가 표시한 뮤직비디오의 음악이 아닌 부분(인트로, 촌극, 아웃트로)을 건너뜁니다."
+  ja: "SponsorBlock コミュニティが指定した、ミュージック ビデオ内の音楽以外の部分（イントロ、スキット、アウトロ）をスキップします。"
+  ko: "SponsorBlock 커뮤니티가 표시한 뮤직비디오의 음악이 아닌 부분(인트로, 스킷, 아웃트로)을 건너뜁니다."
 plugins.sponsorblock_name:
   en: "SponsorBlock"
   zh-CN: "SponsorBlock"
@@ -1078,7 +1078,7 @@ queue.loading:
   id: "Memuat…"
   de: "Wird geladen…"
   ja: "読み込み中…"
-  ko: "로드 중…"
+  ko: "불러오는 중…"
 queue.nothing_up_next:
   en: "Nothing up next"
   zh-CN: "暂无接下来播放的歌曲"
@@ -1093,7 +1093,7 @@ queue.nothing_up_next:
   id: "Tidak ada lagu berikutnya"
   de: "Als Nächstes kommt nichts"
   ja: "次の曲はありません"
-  ko: "다음 곡 없음"
+  ko: "다음 트랙 없음"
 queue.now_playing:
   en: "Now playing"
   zh-CN: "正在播放"
@@ -1168,7 +1168,7 @@ rating.failed:
   id: "Tidak dapat menilai %{title}: %{error}"
   de: "%{title} konnte nicht bewertet werden: %{error}"
   ja: "「%{title}」を評価できませんでした: %{error}"
-  ko: "'%{title}'을(를) 평가할 수 없습니다: %{error}"
+  ko: "“%{title}”을(를) 평가할 수 없습니다: %{error}"
 rating.not_json:
   en: "YouTube's answer is not JSON: %{error}"
   zh-CN: "YouTube 的响应不是 JSON：%{error}"
@@ -1198,7 +1198,7 @@ rating.skipped:
   id: "%{title} dilewati karena Anda tidak menyukainya"
   de: "%{title} übersprungen, da mit „Mag ich nicht“ markiert"
   ja: "低評価した「%{title}」をスキップしました"
-  ko: "싫어요 표시한 '%{title}'을(를) 건너뛰었습니다"
+  ko: "싫어요 표시한 “%{title}”을(를) 건너뛰었습니다"
 themes.file_error:
   en: "%{file}: %{error}"
   zh-CN: "%{file}：%{error}"
@@ -1228,7 +1228,7 @@ themes.not_a_color:
   id: "%{field} bukan warna #rrggbb: %{value}"
   de: "%{field} ist keine #rrggbb-Farbe: %{value}"
   ja: "%{field} は #rrggbb 形式の色ではありません: %{value}"
-  ko: "%{field}은(는) #rrggbb 색상이 아닙니다: %{value}"
+  ko: "%{field}은(는) #rrggbb 형식의 색상이 아닙니다: %{value}"
 video.downloading:
   en: "Downloading the video…"
   zh-CN: "正在下载视频…"

@@ -58,7 +58,7 @@ artist.featured_on:
   id: "Ditampilkan di"
   de: "Enthalten in"
   ja: "収録プレイリスト"
-  ko: "참여한 재생목록"
+  ko: "포함된 재생목록"
 artist.fans_also_like:
   en: "Fans also like"
   zh-CN: "粉丝也喜欢"
@@ -207,7 +207,7 @@ explore.new_releases:
   ru: "Новые релизы"
   id: "Rilis baru"
   de: "Neuerscheinungen"
-  ja: "新作"
+  ja: "ニューリリース"
   ko: "최신 음악"
 explore.charts:
   en: "Charts"
@@ -297,7 +297,7 @@ explore.no_playlists:
   ru: "Здесь нет плейлистов."
   id: "Tidak ada playlist di sini."
   de: "Hier gibt es keine Playlists."
-  ja: "再生リストがありません。"
+  ja: "プレイリストがありません。"
   ko: "재생목록이 없습니다."
 explore.client_failed:
   en: "the YouTube client could not start"
