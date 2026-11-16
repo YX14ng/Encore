@@ -47,7 +47,7 @@ impl App {
         let mut missing = Vec::new();
         for url in offline::image_urls(&collection) {
             match self.online.image_bytes(url) {
-                Some(bytes) => self.offline.save_image(url, bytes),
+                Some(bytes) => self.offline.save_image(url, &bytes),
                 None => missing.push(url.to_string()),
             }
         }
@@ -57,7 +57,7 @@ impl App {
     /// Puts a freshly downloaded cover on the player and behind the home greeting.
     pub(crate) fn show_cover(&mut self, url: &str) {
         self.now_playing.cover = self.online.image(url);
-        let looks = cover_looks(self.online.image_bytes(url));
+        let looks = cover_looks(self.online.image_bytes(url).as_deref());
         self.set_cover_looks(looks);
     }
 

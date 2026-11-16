@@ -47,8 +47,9 @@ pub struct Online {
     recent: recent::Recent,
     /// Play the opened collection as soon as it loads (the top result's Play button).
     play_when_loaded: bool,
+    /// The images downloaded, ready to draw. Their files stay in the disk cache, where
+    /// `image_bytes` reads them for the few uses that need the bytes.
     images: HashMap<String, image::Handle>,
-    image_bytes: HashMap<String, Vec<u8>>,
     requested_images: HashSet<String>,
     queue: Queue,
     /// Whether new queues start shuffled; mirrors the shuffle button.
@@ -98,7 +99,6 @@ impl Online {
             recent: recent::Recent::default(),
             play_when_loaded: false,
             images: HashMap::new(),
-            image_bytes: HashMap::new(),
             requested_images: HashSet::new(),
             queue: Queue::default(),
             shuffle: settings.shuffle,
@@ -220,8 +220,7 @@ impl Online {
     pub fn seed_images(&mut self, images: Vec<(String, Vec<u8>)>) {
         for (url, bytes) in images {
             self.images
-                .insert(url.clone(), image::Handle::from_bytes(bytes.clone()));
-            self.image_bytes.insert(url.clone(), bytes);
+                .insert(url.clone(), image::Handle::from_bytes(bytes));
             self.requested_images.insert(url);
         }
     }
@@ -254,11 +253,20 @@ impl Online {
             self.requested_images.remove(&url);
             return false;
         };
+        let playing = self
+            .playing_track()
+            .is_some_and(|track| track.cover_url.as_deref() == Some(url.as_str()));
+        self.images.insert(url, image::Handle::from_bytes(bytes));
+        playing
+    }
+
+    /// The bytes of a downloaded image (the cover behind the greeting, a download's covers),
+    /// read from the disk cache.
+    pub fn image_bytes(&self, url: &str) -> Option<Vec<u8>> {
         self.images
-            .insert(url.clone(), image::Handle::from_bytes(bytes.clone()));
-        self.image_bytes.insert(url.clone(), bytes);
-        self.playing_track()
-            .is_some_and(|track| track.cover_url.as_deref() == Some(url.as_str()))
+            .contains_key(url)
+            .then(|| download::cached_image(url))
+            .flatten()
     }
 
     /// Opens an album, artist or playlist.
@@ -404,11 +412,6 @@ impl Online {
             None => Vec::new(),
         };
         self.fetch_images(urls)
-    }
-
-    /// An image as raw bytes, for the blurred background.
-    pub fn image_bytes(&self, url: &str) -> Option<&[u8]> {
-        self.image_bytes.get(url).map(Vec::as_slice)
     }
 
     /// An image, ready to draw.

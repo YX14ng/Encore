@@ -108,6 +108,18 @@ pub fn find_cached(dir: &Path, id: &str) -> Option<PathBuf> {
         .find(|path| path.exists())
 }
 
+/// Where image `url` is kept once downloaded.
+fn image_cache_path(url: &str) -> PathBuf {
+    cache_dir()
+        .join("images")
+        .join(crate::offline::image_file_name(url))
+}
+
+/// An image downloaded before, read from the disk cache.
+pub fn cached_image(url: &str) -> Option<Vec<u8>> {
+    std::fs::read(image_cache_path(url)).ok()
+}
+
 /// The yt-dlp arguments that download the audio of `id` in `quality` into `dir` and print the
 /// file path, with the session in `cookies` (a cookies.txt) if given.
 pub fn ytdlp_args(id: &str, dir: &Path, quality: Quality, cookies: Option<&Path>) -> Vec<String> {
@@ -304,9 +316,7 @@ async fn audio_into(
 ///
 /// Images are kept here once downloaded, so they show at once on the next start.
 pub async fn bytes(url: String) -> Result<Vec<u8>, String> {
-    let cached = cache_dir()
-        .join("images")
-        .join(crate::offline::image_file_name(&url));
+    let cached = image_cache_path(&url);
     if let Ok(bytes) = tokio::fs::read(&cached).await {
         return Ok(bytes);
     }

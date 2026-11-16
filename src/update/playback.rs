@@ -52,7 +52,8 @@ impl App {
             track
                 .cover_url
                 .as_deref()
-                .and_then(|url| self.online.image_bytes(url)),
+                .and_then(|url| self.online.image_bytes(url))
+                .as_deref(),
         );
         self.set_cover_looks(looks);
         let duration = track.duration;

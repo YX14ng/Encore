@@ -179,7 +179,7 @@ impl App {
                 if self.offline.wants_image(&url)
                     && let Some(bytes) = self.online.image_bytes(&url)
                 {
-                    self.offline.save_image(&url, bytes);
+                    self.offline.save_image(&url, &bytes);
                 }
             }
             Message::OpenTile(tile) => {
