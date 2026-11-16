@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Encore
+GenericName=Music Player
+GenericName[es]=Reproductor de música
+Comment=Listen to YouTube Music on the desktop, with synced lyrics
+Comment[es]=Escuchá YouTube Music en el escritorio, con letras sincronizadas
+Exec=encore
+Icon=io.github.yx14ng.Encore
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+Keywords=music;youtube;player;lyrics;playlist;
+StartupWMClass=io.github.yx14ng.Encore

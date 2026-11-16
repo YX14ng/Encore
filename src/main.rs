@@ -95,8 +95,28 @@ fn main() -> iced::Result {
         .font(include_bytes!("../assets/fonts/Inter-SemiBold.ttf").as_slice())
         .font(include_bytes!("../assets/fonts/Inter-Bold.ttf").as_slice())
         .default_font(theme::INTER)
-        .window_size((1280.0, 800.0))
+        .window(main_window())
         .run()
+}
+
+/// The id desktops know Encore by: its `.desktop` file, its icon and, on Wayland, its windows.
+pub const APP_ID: &str = "io.github.yx14ng.Encore";
+
+/// The main window: its size, its icon and the id that ties it to Encore's desktop entry.
+fn main_window() -> iced::window::Settings {
+    iced::window::Settings {
+        size: iced::Size::new(1280.0, 800.0),
+        icon: iced::window::icon::from_file_data(
+            include_bytes!("../assets/app/hicolor/256x256/io.github.yx14ng.Encore.png"),
+            None,
+        )
+        .ok(),
+        platform_specific: iced::window::settings::PlatformSpecific {
+            application_id: APP_ID.to_string(),
+            ..Default::default()
+        },
+        ..Default::default()
+    }
 }
 
 /// Everything the app remembers between frames.
