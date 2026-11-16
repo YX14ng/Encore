@@ -23,6 +23,9 @@ pub fn view<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element
 }
 
 /// The queue as a scrollable list: the song playing, then what comes next.
+/// How many of the songs up next the panel lists.
+const SHOWN: usize = 100;
+
 pub fn list<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element<'a, Message> {
     let upcoming = queue.upcoming();
     let clear = (!upcoming.is_empty()).then(|| {
@@ -57,7 +60,9 @@ pub fn list<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element
                 .push(row![count, space::horizontal(), autoplay_switch(autoplay)].align_y(Center));
             let first_suggested = upcoming.iter().position(|&index| queue.is_suggested(index));
             let mut rows = Column::new().spacing(2);
-            for (place, &index) in upcoming.iter().enumerate() {
+            // A shuffled playlist can queue a thousand songs; the panel lists the next ones
+            // (it is rebuilt with every frame) and counts the rest.
+            for (place, &index) in upcoming.iter().enumerate().take(SHOWN) {
                 if Some(place) == first_suggested {
                     rows = rows.push(label(t!("queue.autoplay_similar")));
                 }
@@ -69,6 +74,12 @@ pub fn list<'a>(queue: &'a Queue, autoplay: bool, shared: Shared<'a>) -> Element
                 rows = rows.push(song(queue, index, place, shared));
             }
             content = content.push(rows);
+            if upcoming.len() > SHOWN {
+                content = content.push(label(t!(
+                    "queue.more_songs",
+                    count = upcoming.len() - SHOWN
+                )));
+            }
             if upcoming.is_empty() && autoplay {
                 content = content.push(
                     text(t!("queue.autoplay_note"))
