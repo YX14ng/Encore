@@ -154,36 +154,59 @@ pub fn current_line(lines: &[LyricLine], elapsed_ms: u32) -> Option<usize> {
     lines.iter().rposition(|line| line.start_ms <= elapsed_ms)
 }
 
+/// How much taller a line is with its romanization under it.
+const ROMANIZED_ROW: f32 = 1.35;
+
 /// The lyrics in `style`: synced ones scrolled so the line at `scroll` (a line index, animated
 /// between whole numbers) sits near the top, plain ones as a scrollable text, or a note. The
 /// wheel scrolls synced lyrics by hand, and clicking a line jumps to where it starts.
-pub fn view(
-    lyrics: &Lyrics,
+/// `romanized` has a line in the Latin alphabet for each line, shown under it.
+pub fn view<'a>(
+    lyrics: &'a Lyrics,
+    romanized: Option<&'a [String]>,
     current: Option<usize>,
     scroll: f32,
     style: Style,
-) -> Element<'_, Message> {
+) -> Element<'a, Message> {
+    let line_count = match lyrics {
+        Lyrics::Synced(lines) => lines.len(),
+        Lyrics::Plain(lines) => lines.len(),
+        _ => 0,
+    };
+    let romanized = romanized.filter(|romanized| romanized.len() == line_count);
+    let under = |index: usize| {
+        romanized
+            .and_then(|romanized| romanized.get(index))
+            .filter(|line| !line.is_empty())
+    };
     let content: Element<'_, Message> = match lyrics {
         Lyrics::Synced(lines) if !lines.is_empty() => {
-            let rows = lines.iter().enumerate().map(|(index, line)| {
+            let style = if romanized.is_some() {
+                Style {
+                    row_height: style.row_height * ROMANIZED_ROW,
+                    ..style
+                }
+            } else {
+                style
+            };
+            let rows = lines.iter().enumerate().map(move |(index, line)| {
                 let is_current = Some(index) == current;
-                button(
-                    container(lyric(&line.text, is_current, style))
-                        .padding([0, 10])
-                        .clip(true),
-                )
-                .on_press(Message::LyricLine(index))
-                .height(style.row_height)
-                .width(Fill)
-                .padding(0)
-                .style(|_, status| button::Style {
-                    // A line under the pointer shows it can be clicked.
-                    background: matches!(status, button::Status::Hovered)
-                        .then(|| theme::tint(0.05).into()),
-                    border: iced::border::rounded(10),
-                    ..button::Style::default()
-                })
-                .into()
+                let words = column![lyric(&line.text, is_current, style)]
+                    .push(under(index).map(|line| romanization(line, is_current, style)))
+                    .spacing(4);
+                button(container(words).padding([0, 10]).clip(true))
+                    .on_press(Message::LyricLine(index))
+                    .height(style.row_height)
+                    .width(Fill)
+                    .padding(0)
+                    .style(|_, status| button::Style {
+                        // A line under the pointer shows it can be clicked.
+                        background: matches!(status, button::Status::Hovered)
+                            .then(|| theme::tint(0.05).into()),
+                        border: iced::border::rounded(10),
+                        ..button::Style::default()
+                    })
+                    .into()
             });
             let list = Column::with_children(rows)
                 .width(style.width)
@@ -195,11 +218,19 @@ pub fn view(
                 .into()
         }
         Lyrics::Plain(lines) => {
-            let rows = lines.iter().map(|line| {
-                text(line)
-                    .size(style.other_size * 0.8)
-                    .color(theme::text_primary().scale_alpha(0.85))
-                    .into()
+            let rows = lines.iter().enumerate().map(|(index, line)| {
+                column![
+                    text(line)
+                        .size(style.other_size * 0.8)
+                        .color(theme::text_primary().scale_alpha(0.85))
+                ]
+                .push(under(index).map(|line| {
+                    text(line)
+                        .size(style.other_size * 0.55)
+                        .color(theme::text_secondary())
+                }))
+                .spacing(2)
+                .into()
             });
             scrollable(
                 Column::with_children(rows)
@@ -281,6 +312,16 @@ fn lyric(line: &str, is_current: bool, style: Style) -> Element<'_, Message> {
         .color(color)
         .font(font)
         .into()
+}
+
+/// A line's romanization, small under it.
+fn romanization(line: &str, is_current: bool, style: Style) -> Element<'_, Message> {
+    let color = if is_current {
+        theme::text_primary().scale_alpha(0.75)
+    } else {
+        theme::text_primary().scale_alpha(0.22)
+    };
+    text(line).size(style.other_size * 0.6).color(color).into()
 }
 
 #[cfg(test)]

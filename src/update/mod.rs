@@ -328,6 +328,7 @@ impl App {
                     .is_some_and(|track| track.id == id)
                 {
                     self.lyrics = lyrics;
+                    self.romanize_lyrics();
                     self.follow_lyrics();
                 }
             }
@@ -407,6 +408,7 @@ impl App {
                 i18n::apply(language.as_deref());
                 self.appearance.language = language;
                 self.appearance.save();
+                self.romanize_lyrics();
             }
             Message::PickAccent(accent) => {
                 self.appearance.accent = accent;
@@ -416,6 +418,7 @@ impl App {
             Message::SetPlugin(plugin, on) => {
                 self.plugins.set(plugin, on);
                 self.plugins.save();
+                self.romanize_lyrics();
             }
             Message::SegmentsLoaded(id, Ok(segments)) => {
                 self.skip_segments = Some((id, segments));

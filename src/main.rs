@@ -41,6 +41,7 @@ mod queue;
 mod queue_view;
 mod rating;
 mod renewal;
+mod romanize;
 mod scrobbler;
 mod search;
 mod session;
@@ -142,6 +143,9 @@ struct App {
     session_log: session::SessionLog,
     /// YouTube stopped accepting the saved session; a banner asks to sign in again.
     session_expired: bool,
+    /// The lyrics in the Latin alphabet, a line per line of `lyrics`, when they are in Japanese,
+    /// Korean or Chinese and the plugin is on.
+    romanized: Option<Vec<String>>,
     /// The part of a touchpad scroll over the volume bar not yet a whole step.
     volume_scroll: f32,
     /// Renewing the session while Encore is open.
@@ -398,6 +402,7 @@ impl App {
             loading_shown: None,
             session_log: session::SessionLog::load(),
             session_expired: false,
+            romanized: None,
             volume_scroll: 0.0,
             renewal: renewal::Renewal::default(),
             screen: Screen::Home,

@@ -301,7 +301,13 @@ impl App {
             Some((at, _)) => at,
             None => self.lyrics_scroll.interpolate_with(|line| line, self.now),
         };
-        lyrics::view(&self.lyrics, current, scroll, style)
+        lyrics::view(
+            &self.lyrics,
+            self.romanized.as_deref(),
+            current,
+            scroll,
+            style,
+        )
     }
 
     /// The clock while playing, animation frames while something moves, window resizes and,

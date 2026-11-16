@@ -21,16 +21,18 @@ pub enum Plugin {
     SponsorBlock,
     SkipDisliked,
     Visualizer,
+    Romanize,
 }
 
 impl Plugin {
-    pub const ALL: [Plugin; 6] = [
+    pub const ALL: [Plugin; 7] = [
         Plugin::Discord,
         Plugin::LastFm,
         Plugin::Notifications,
         Plugin::SponsorBlock,
         Plugin::SkipDisliked,
         Plugin::Visualizer,
+        Plugin::Romanize,
     ];
 
     fn name(self) -> Cow<'static, str> {
@@ -41,6 +43,7 @@ impl Plugin {
             Plugin::SponsorBlock => t!("plugins.sponsorblock_name"),
             Plugin::SkipDisliked => t!("plugins.skip_disliked_name"),
             Plugin::Visualizer => t!("plugins.visualizer_name"),
+            Plugin::Romanize => t!("plugins.romanize_name"),
         }
     }
 
@@ -52,6 +55,7 @@ impl Plugin {
             Plugin::SponsorBlock => t!("plugins.sponsorblock_description"),
             Plugin::SkipDisliked => t!("plugins.skip_disliked_description"),
             Plugin::Visualizer => t!("plugins.visualizer_description"),
+            Plugin::Romanize => t!("plugins.romanize_description"),
         }
     }
 }
@@ -66,6 +70,8 @@ pub struct Plugins {
     pub sponsorblock: bool,
     pub skip_disliked: bool,
     pub visualizer: bool,
+    /// Japanese, Korean and Chinese lyrics written out in the Latin alphabet too.
+    pub romanize: bool,
 }
 
 impl Default for Plugins {
@@ -77,6 +83,7 @@ impl Default for Plugins {
             sponsorblock: true,
             skip_disliked: true,
             visualizer: true,
+            romanize: true,
         }
     }
 }
@@ -108,6 +115,7 @@ impl Plugins {
             Plugin::SponsorBlock => self.sponsorblock,
             Plugin::SkipDisliked => self.skip_disliked,
             Plugin::Visualizer => self.visualizer,
+            Plugin::Romanize => self.romanize,
         }
     }
 
@@ -119,6 +127,7 @@ impl Plugins {
             Plugin::SponsorBlock => &mut self.sponsorblock,
             Plugin::SkipDisliked => &mut self.skip_disliked,
             Plugin::Visualizer => &mut self.visualizer,
+            Plugin::Romanize => &mut self.romanize,
         };
         *slot = on;
     }

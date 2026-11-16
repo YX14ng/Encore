@@ -62,6 +62,7 @@ impl App {
             is_playing: true,
         };
         self.lyrics = Lyrics::Loading;
+        self.romanized = None;
         self.follow_lyrics();
         let now_playing = if self.plugins.lastfm {
             self.lastfm.track_started(&track)
@@ -223,6 +224,7 @@ impl App {
         self.lyrics = load_lyrics(track);
         self.now_playing = Song::from_mock(track);
         self.set_cover_looks(looks);
+        self.romanize_lyrics();
         self.follow_lyrics();
     }
 
@@ -258,5 +260,6 @@ impl App {
         };
         self.audio_format = None;
         self.lyrics = Lyrics::Loading;
+        self.romanized = None;
     }
 }

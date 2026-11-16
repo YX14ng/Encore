@@ -11,10 +11,14 @@ gtk = "0.18"
 iced = { version = "0.14", features = ["tokio", "image", "svg"] }
 image = "0.25.10"
 libmpv2 = "7"
+# Japanese word splitting with readings, for romanized lyrics. The IPADIC dictionary is
+# downloaded once when building and embedded in the binary.
+lindera = { version = "6", features = ["embed-ipadic"] }
 rustfft = "6"
 rust-i18n = "3"
 md5 = "0.8"
 notify-rust = { version = "4", default-features = false, features = ["z-with-tokio"] }
+pinyin = { version = "0.11", default-features = false, features = ["with_tone"] }
 reqwest = "0.12"
 rfd = { version = "0.18", default-features = false, features = ["xdg-portal"] }
 # Encore's fork: upstream's main plus fixes it needs (its "encore" branch).
