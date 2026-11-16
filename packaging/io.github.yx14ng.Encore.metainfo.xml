@@ -52,6 +52,13 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.3.1" date="2026-11-16">
+      <description>
+        <p>The cover of the song playing is sharp on the now playing page.</p>
+        <p>The forward arrow works, Back remembers every screen, and the sidebar highlights the screen shown.</p>
+        <p>Controls that did nothing are gone or disabled while nothing plays.</p>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-11-16">
       <description>
         <p>Downloads go on after Encore restarts, download whole playlists, wait in line and show in Downloads while they run.</p>
