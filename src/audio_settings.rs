@@ -129,6 +129,8 @@ pub enum AudioChange {
     KeepPitch(bool),
     /// Seconds.
     Crossfade(f32),
+    /// Percent.
+    VolumeStep(u32),
 }
 
 /// The player's settings.
@@ -160,6 +162,8 @@ pub struct AudioSettings {
     pub crossfade: u32,
     /// Plays similar songs when the queue runs out.
     pub autoplay: bool,
+    /// How much a notch of the mouse wheel over the volume bar changes the volume, in percent.
+    pub volume_step: u32,
 }
 
 impl Default for AudioSettings {
@@ -180,6 +184,7 @@ impl Default for AudioSettings {
             keep_pitch: true,
             crossfade: 0,
             autoplay: true,
+            volume_step: crate::volume::DEFAULT_STEP,
         }
     }
 }
@@ -231,6 +236,7 @@ impl AudioSettings {
             AudioChange::Compressor(strength) => self.compressor = strength,
             AudioChange::SkipSilence(on) => self.skip_silence = on,
             AudioChange::Quality(quality) => self.quality = quality,
+            AudioChange::VolumeStep(step) => self.volume_step = step,
             AudioChange::Speed(speed) => {
                 self.speed = speed.clamp(MIN_SPEED, MAX_SPEED);
                 return false;
@@ -284,6 +290,9 @@ impl AudioSettings {
         }
         self.speed = self.speed.clamp(MIN_SPEED, MAX_SPEED);
         self.crossfade = self.crossfade.min(MAX_CROSSFADE);
+        if !crate::volume::STEPS.contains(&self.volume_step) {
+            self.volume_step = crate::volume::DEFAULT_STEP;
+        }
         self
     }
 }

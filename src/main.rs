@@ -58,6 +58,7 @@ mod update;
 mod video;
 mod view;
 mod visualizer;
+mod volume;
 mod youtube;
 
 use std::fs;
@@ -141,6 +142,8 @@ struct App {
     session_log: session::SessionLog,
     /// YouTube stopped accepting the saved session; a banner asks to sign in again.
     session_expired: bool,
+    /// The part of a touchpad scroll over the volume bar not yet a whole step.
+    volume_scroll: f32,
     /// Renewing the session while Encore is open.
     renewal: renewal::Renewal,
     /// What the center column shows.
@@ -291,6 +294,8 @@ enum Message {
     SeekDone,
     VolumeChanged(f32),
     VolumeDone,
+    /// The mouse wheel turned over the volume bar.
+    VolumeScrolled(iced::mouse::ScrollDelta),
     ToggleMute,
     ToggleShuffle,
     CycleRepeat,
@@ -393,6 +398,7 @@ impl App {
             loading_shown: None,
             session_log: session::SessionLog::load(),
             session_expired: false,
+            volume_scroll: 0.0,
             renewal: renewal::Renewal::default(),
             screen: Screen::Home,
             online: Online::new(&audio_settings),

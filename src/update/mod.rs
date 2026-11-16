@@ -14,6 +14,7 @@ use crate::media_keys::MediaKey;
 use crate::online::Poll;
 use crate::queue::Repeat;
 use crate::sidebar::NavItem;
+use crate::volume;
 
 use crate::{
     App, Message, Screen, account, audio_settings, discord, i18n, library, mini_player, session,
@@ -363,6 +364,17 @@ impl App {
                 self.online.set_volume(volume);
             }
             Message::VolumeDone => self.audio_settings.save(),
+            Message::VolumeScrolled(delta) => {
+                let notches = volume::notches(&mut self.volume_scroll, delta);
+                if notches != 0 {
+                    let from = self.audio_settings.effective_volume();
+                    let volume = volume::stepped(from, notches, self.audio_settings.volume_step);
+                    self.audio_settings.volume = volume;
+                    self.audio_settings.muted = false;
+                    self.online.set_volume(volume);
+                    self.audio_settings.save();
+                }
+            }
             Message::ToggleMute => {
                 self.audio_settings.muted = !self.audio_settings.muted;
                 self.online

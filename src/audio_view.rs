@@ -1,6 +1,5 @@
-//! The audio tab of the settings: the sound output, download quality, equalizer with presets,
-//! compressor, volume
-//! normalization, silence skipping, playback speed and crossfade. Opened with the equalizer
+//! The audio tab of the settings: the sound output, the volume wheel's step, download quality,
+//! equalizer with presets, compressor, volume normalization, silence skipping, playback speed and crossfade. Opened with the equalizer
 //! button in the player bar.
 
 use iced::font::Weight;
@@ -29,6 +28,7 @@ pub fn view<'a>(
     column![]
         .push(error.map(|error| text(error).color(theme::accent())))
         .push(output(settings, devices))
+        .push(volume_step(settings))
         .push(quality(settings))
         .push(equalizer(settings))
         .push(compressor(settings))
@@ -142,6 +142,25 @@ fn choice<'a>(label: String, selected: bool, message: Message) -> Element<'a, Me
             style
         })
         .into()
+}
+
+fn volume_step(settings: &AudioSettings) -> Element<'_, Message> {
+    let choices = Row::with_children(crate::volume::STEPS.into_iter().map(|step| {
+        chip(
+            format!("{step}%"),
+            settings.volume_step == step,
+            change(AudioChange::VolumeStep(step)),
+        )
+    }))
+    .spacing(8)
+    .wrap();
+    column![
+        heading(t!("audio.volume_step"), 16.0),
+        choices,
+        note(t!("audio.volume_step_note")),
+    ]
+    .spacing(10)
+    .into()
 }
 
 fn quality(settings: &AudioSettings) -> Element<'_, Message> {

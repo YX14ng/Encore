@@ -177,13 +177,15 @@ fn buttons<'a>(
     let transport = transport(playback, controls);
 
     let extras = row![
-        icon_button(
-            volume_icon,
-            theme::text_secondary(),
-            18.0,
-            Some(Message::ToggleMute)
+        crate::volume::bar(
+            icon_button(
+                volume_icon,
+                theme::text_secondary(),
+                18.0,
+                Some(Message::ToggleMute),
+            ),
+            controls,
         ),
-        volume_bar(controls),
         icon_button(
             include_bytes!("../assets/icons/equalizer.svg"),
             theme::text_secondary(),
@@ -294,16 +296,6 @@ fn now_playing<'a>(song: &'a Song, format: Option<&'a str>, loading: bool) -> El
     let card = container(card).max_width(460);
 
     container(card).center_x(Fill).into()
-}
-
-fn volume_bar(controls: Controls) -> Element<'static, Message> {
-    let volume = if controls.muted { 0.0 } else { controls.volume };
-    slider(0.0..=100.0, volume, Message::VolumeChanged)
-        .on_release(Message::VolumeDone)
-        .width(90)
-        .height(14)
-        .style(|_, status| theme::thin_slider(status, theme::text_secondary()))
-        .into()
 }
 
 /// The accent color for a button that is switched on.
