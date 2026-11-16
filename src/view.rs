@@ -137,6 +137,7 @@ impl App {
                     &self.offline,
                     own,
                     self.collection_scroll,
+                    &self.song_order,
                 )
             }
             Screen::Library(shelf) => library::shelf_view(
@@ -145,6 +146,7 @@ impl App {
                 self.offline.collections(),
                 self.online.shared_view(),
                 self.shelf_scroll,
+                &self.song_order,
             ),
             Screen::Settings(tab) => settings_view::view(
                 tab,

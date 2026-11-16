@@ -56,6 +56,7 @@ mod sidebar;
 mod sign_in_window;
 mod silence;
 mod song;
+mod song_order;
 mod sponsorblock;
 mod theme;
 mod themes;
@@ -257,6 +258,8 @@ struct App {
     history: Vec<navigation::Place>,
     /// The screens Back left, for Forward.
     forward: Vec<navigation::Place>,
+    /// The search and order of the long song list on screen.
+    song_order: song_order::SongOrder,
     explore: explore::Explore,
 }
 
@@ -340,6 +343,8 @@ enum Message {
     Back,
     /// Forward, to the screen Back left.
     Forward,
+    /// The search box and order of the long song list on screen.
+    SongOrder(song_order::Event),
     OpenAccount,
     SignInWindow,
     /// The sign-in window closed: the session's cookies, or why there are none.
@@ -546,6 +551,7 @@ impl App {
             toast: None,
             history: Vec::new(),
             forward: Vec::new(),
+            song_order: song_order::SongOrder::default(),
             explore: explore::Explore::default(),
         }
     }

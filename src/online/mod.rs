@@ -415,12 +415,14 @@ impl Online {
     }
 
     /// Downloads the covers of the open collection's songs in `rows`.
-    pub fn fetch_collection_covers(&mut self, rows: std::ops::Range<usize>) -> Task<Message> {
+    pub fn fetch_collection_covers(
+        &mut self,
+        rows: impl IntoIterator<Item = usize>,
+    ) -> Task<Message> {
         let urls = match &self.collection {
-            Some(collection) => collection.tracks
-                [rows.start.min(collection.tracks.len())..rows.end.min(collection.tracks.len())]
-                .iter()
-                .filter_map(|track| track.cover_url.clone())
+            Some(collection) => rows
+                .into_iter()
+                .filter_map(|row| collection.tracks.get(row)?.cover_url.clone())
                 .collect(),
             None => Vec::new(),
         };

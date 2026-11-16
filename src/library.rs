@@ -80,12 +80,23 @@ impl LibraryData {
 
     /// The images of library screen `shelf` when scrolled to `scroll`: the covers of the
     /// songs in sight, or every card's image.
-    pub fn shelf_image_urls(&self, shelf: Shelf, scroll: Scroll) -> Vec<String> {
+    /// `order` is the songs' order on screen (a search or another order), if not as they are.
+    pub fn shelf_image_urls(
+        &self,
+        shelf: Shelf,
+        scroll: Scroll,
+        order: Option<&[usize]>,
+    ) -> Vec<String> {
         if let Some(tracks) = self.shelf_tracks(shelf) {
-            let rows = shelf_rows_in_sight(scroll, tracks.len());
-            return tracks[rows]
-                .iter()
-                .filter_map(|track| track.cover_url.clone())
+            let shown = order.map_or(tracks.len(), <[usize]>::len);
+            let rows = shelf_rows_in_sight(scroll, shown);
+            let songs: Vec<usize> = match order {
+                Some(order) => order[rows].to_vec(),
+                None => rows.collect(),
+            };
+            return songs
+                .into_iter()
+                .filter_map(|song| tracks.get(song)?.cover_url.clone())
                 .collect();
         }
         let tiles: &[Tile] = match shelf {
@@ -112,8 +123,9 @@ impl LibraryData {
 /// The scrollable of the library screens, scrolled back to the top when another opens.
 pub const SHELF_SCROLL_ID: &str = "shelf";
 /// Where a library screen's song list starts in its scrollable: the padding, the heading, the
-/// Play and Shuffle buttons and the spaces between them (see `virtual_list`).
-const SHELF_LIST_TOP: f32 = 28.0 + 40.0 + 18.0 + 36.0 + 18.0;
+/// Play and Shuffle buttons, the search and order bar and the spaces between them (see
+/// `virtual_list`).
+const SHELF_LIST_TOP: f32 = 28.0 + 40.0 + 18.0 + 36.0 + 18.0 + 38.0 + 18.0;
 
 /// The songs of a library list in sight when scrolled to `scroll`.
 pub fn shelf_rows_in_sight(scroll: Scroll, count: usize) -> std::ops::Range<usize> {
@@ -403,6 +415,7 @@ pub fn shelf_view<'a>(
     downloads: &'a [Collection],
     shared: Shared<'a>,
     scroll: Scroll,
+    songs: &'a crate::song_order::SongOrder,
 ) -> Element<'a, Message> {
     let title = match shelf {
         Shelf::History => t!("library.history"),
@@ -422,10 +435,17 @@ pub fn shelf_view<'a>(
         Account::SignedIn(data) => match shelf {
             Shelf::History | Shelf::Songs | Shelf::Liked => {
                 let tracks = data.shelf_tracks(shelf).unwrap_or_default();
-                let rows = shelf_rows_in_sight(scroll, tracks.len());
+                let shown = songs.shown(tracks.len());
+                let list: Element<'a, Message> = if !tracks.is_empty() && shown == 0 {
+                    note(t!("songs.no_match"))
+                } else {
+                    let rows = shelf_rows_in_sight(scroll, shown);
+                    search::long_track_list(tracks, songs.order(), None, rows, shared)
+                };
                 column![
-                    crate::collection::play_buttons(tracks),
-                    search::long_track_list(tracks, None, rows, shared)
+                    crate::collection::play_buttons(tracks, songs.order()),
+                    crate::song_order::toolbar(songs, tracks.len()),
+                    list
                 ]
                 .spacing(18)
                 .into()

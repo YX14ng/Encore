@@ -56,7 +56,8 @@ impl App {
     pub(crate) fn fetch_shelf_images(&mut self) -> Task<Message> {
         match (&self.screen, &self.account) {
             (Screen::Library(shelf), Account::SignedIn(data)) => {
-                let urls = data.shelf_image_urls(*shelf, self.shelf_scroll);
+                let order = self.song_order.order();
+                let urls = data.shelf_image_urls(*shelf, self.shelf_scroll, order.as_deref());
                 self.online.fetch_images(urls)
             }
             _ => Task::none(),

@@ -27,6 +27,7 @@ impl App {
     /// then tells the desktop's media controls what is playing.
     pub(crate) fn update(&mut self, message: Message) -> Task<Message> {
         let task = self.handle(message);
+        self.arrange_songs();
         self.show_loading_song();
         self.publish_media();
         // The covers of the song in the player and the next ones, wherever they came from.
@@ -278,6 +279,15 @@ impl App {
             }
             Message::Back => return self.go_back(),
             Message::Forward => return self.go_forward(),
+            Message::SongOrder(event) => {
+                self.song_order.handle(event);
+                self.arrange_songs();
+                // Other songs come into sight: their covers.
+                return match self.screen {
+                    Screen::Collection => self.fetch_covers_in_sight(),
+                    _ => self.fetch_shelf_images(),
+                };
+            }
             Message::OpenAccount => return self.select(NavItem::Account),
             Message::SignInWith(browser) => {
                 let Some(client) = self.online.client() else {

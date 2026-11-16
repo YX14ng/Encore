@@ -228,8 +228,14 @@ impl App {
     /// list is scrolled to them.
     pub(crate) fn fetch_covers_in_sight(&mut self) -> Task<Message> {
         let count = self.online.collection().0.map_or(0, |c| c.tracks.len());
-        let rows = crate::collection::rows_in_sight(self.collection_scroll, count);
-        self.online.fetch_collection_covers(rows)
+        let order = self.song_order.order();
+        let shown = self.song_order.shown(count);
+        let rows = crate::collection::rows_in_sight(self.collection_scroll, shown);
+        // With a search or another order, the rows in sight are other songs of the list.
+        match order {
+            Some(order) => self.online.fetch_collection_covers(order[rows].to_vec()),
+            None => self.online.fetch_collection_covers(rows),
+        }
     }
 
     /// Whether a song is in the player: one from YouTube, or a sample.

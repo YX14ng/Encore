@@ -264,22 +264,42 @@ const SONG_ROW_SPACING: f32 = 2.0;
 
 /// The songs of a long list (`in_playlist` when it is the user's own playlist), building only
 /// the rows in `rows` (see `virtual_list`).
+/// A long list of song rows, only those in `rows` built. `order` lists the positions in
+/// `tracks` to show, in order (a search or another order), or `None` for all as they are;
+/// clicking a row plays the songs as shown.
 pub fn long_track_list<'a>(
     tracks: &'a [SearchTrack],
+    order: Option<std::sync::Arc<[usize]>>,
     in_playlist: Option<&'a str>,
     rows: std::ops::Range<usize>,
     shared: Shared<'a>,
 ) -> Element<'a, Message> {
+    let count = order.as_ref().map_or(tracks.len(), |order| order.len());
     crate::virtual_list::view(
-        tracks.len(),
+        count,
         rows,
         SONG_ROW_HEIGHT + SONG_ROW_SPACING,
-        move |index| {
-            iced::widget::container(song_row(tracks, index, in_playlist, shared))
+        move |shown| {
+            let row = match &order {
+                Some(order) => song_row(
+                    tracks,
+                    order[shown],
+                    Some((order.clone(), shown)),
+                    in_playlist,
+                    shared,
+                ),
+                None => song_row(tracks, shown, None, in_playlist, shared),
+            };
+            iced::widget::container(row)
                 .padding(iced::Padding::default().bottom(SONG_ROW_SPACING))
                 .into()
         },
     )
+}
+
+/// The songs of `tracks` in `order`.
+pub fn in_order(tracks: &[SearchTrack], order: &[usize]) -> Vec<SearchTrack> {
+    order.iter().map(|&index| tracks[index].clone()).collect()
 }
 
 /// The rows a long song list builds when scrolled to `scroll`, starting `top` pixels into its
@@ -299,7 +319,7 @@ pub fn track_list<'a>(
     shared: Shared<'a>,
 ) -> Element<'a, Message> {
     let shown = limit.unwrap_or(tracks.len()).min(tracks.len());
-    let rows = (0..shown).map(|index| song_row(tracks, index, None, shared));
+    let rows = (0..shown).map(|index| song_row(tracks, index, None, None, shared));
     Column::with_children(rows).spacing(2).into()
 }
 
@@ -310,14 +330,16 @@ pub fn track_row<'a>(
     index: usize,
     shared: Shared<'a>,
 ) -> Element<'a, Message> {
-    song_row(tracks, index, None, shared)
+    song_row(tracks, index, None, None, shared)
 }
 
-/// A song row; inside the user's playlist `in_playlist` it also has a button to take the song
-/// out.
+/// A song row for song `index` of `tracks`; inside the user's playlist `in_playlist` it also
+/// has a button to take the song out. `shown` is the order on screen and the row's place in
+/// it, when the list is searched or ordered: clicking plays the songs in that order.
 fn song_row<'a>(
     tracks: &'a [SearchTrack],
     index: usize,
+    shown: Option<(std::sync::Arc<[usize]>, usize)>,
     in_playlist: Option<&'a str>,
     shared: Shared<'a>,
 ) -> Element<'a, Message> {
@@ -376,7 +398,10 @@ fn song_row<'a>(
     )
     // The list is copied only when the row is clicked: views are rebuilt often, and a copy
     // per row would copy a long playlist once per song on every rebuild.
-    .on_press_with(move || Message::PlayQueue(tracks.to_vec(), index))
+    .on_press_with(move || match &shown {
+        Some((order, place)) => Message::PlayQueue(in_order(tracks, order), *place),
+        None => Message::PlayQueue(tracks.to_vec(), index),
+    })
     .width(Fill)
     .height(SONG_ROW_HEIGHT)
     .padding([6, 8])
