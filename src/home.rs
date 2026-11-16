@@ -26,7 +26,7 @@ pub fn greeting(hour: u32) -> Cow<'static, str> {
 }
 
 /// How many recently played songs the home screen shows (three rows of three).
-const RECENT_SONGS: usize = 9;
+pub const RECENT_SONGS: usize = 9;
 /// The narrowest a recently played song gets before the rows hold fewer songs.
 const RECENT_MIN_WIDTH: f32 = 300.0;
 

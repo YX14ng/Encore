@@ -38,7 +38,29 @@ impl App {
             }
             _ => Screen::Home,
         };
+        if let Screen::Library(_) = self.screen {
+            // A library screen opens at its top, with the images it shows first.
+            self.shelf_scroll = crate::virtual_list::Scroll::default();
+            return Task::batch([
+                iced::widget::operation::snap_to(
+                    library::SHELF_SCROLL_ID,
+                    iced::widget::operation::RelativeOffset::START,
+                ),
+                self.fetch_shelf_images(),
+            ]);
+        }
         Task::none()
+    }
+
+    /// Downloads the images the library screen that is open shows now.
+    pub(crate) fn fetch_shelf_images(&mut self) -> Task<Message> {
+        match (&self.screen, &self.account) {
+            (Screen::Library(shelf), Account::SignedIn(data)) => {
+                let urls = data.shelf_image_urls(*shelf, self.shelf_scroll);
+                self.online.fetch_images(urls)
+            }
+            _ => Task::none(),
+        }
     }
 
     /// Shows the library after signing in or restoring a session, saves it for the next start
@@ -47,9 +69,9 @@ impl App {
         match result {
             Ok(data) => {
                 library::save_cache(&data);
-                let images = self.online.fetch_images(data.image_urls());
+                let images = self.online.fetch_images(data.home_image_urls());
                 self.account = Account::SignedIn(Box::new(data));
-                images
+                Task::batch([images, self.fetch_shelf_images()])
             }
             Err(error) => {
                 self.account = Account::Failed(error);

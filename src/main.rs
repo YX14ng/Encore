@@ -151,6 +151,8 @@ struct App {
     romanized: Option<Vec<String>>,
     /// How far the open collection's song list is scrolled, so only the rows in sight are built.
     collection_scroll: virtual_list::Scroll,
+    /// How far the library screen's list is scrolled.
+    shelf_scroll: virtual_list::Scroll,
     /// The part of a touchpad scroll over the volume bar not yet a whole step.
     volume_scroll: f32,
     /// Renewing the session while Encore is open.
@@ -255,6 +257,8 @@ enum Message {
     ),
     /// The open collection's song list scrolled.
     CollectionScrolled(virtual_list::Scroll),
+    /// The library screen's list scrolled.
+    ShelfScrolled(virtual_list::Scroll),
     PlayQueue(Vec<SearchTrack>, usize),
     AddToQueue(SearchTrack),
     QueueJump(usize),
@@ -350,7 +354,7 @@ impl App {
         // Show the library saved by the last session at once; it reloads in the background.
         let cached_images = match library::load_cache() {
             Some(cached) => {
-                let images = app.online.fetch_images(cached.image_urls());
+                let images = app.online.fetch_images(cached.home_image_urls());
                 app.account = Account::SignedIn(Box::new(cached));
                 images
             }
@@ -433,6 +437,7 @@ impl App {
             romanized: None,
             volume_scroll: 0.0,
             collection_scroll: virtual_list::Scroll::default(),
+            shelf_scroll: virtual_list::Scroll::default(),
             renewal: renewal::Renewal::default(),
             screen: Screen::Home,
             online: Online::new(&audio_settings),

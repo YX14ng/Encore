@@ -214,6 +214,10 @@ impl App {
             }
             // The songs loaded so far stay; the rest of the playlist is missing.
             Message::MoreTracks(_, Err(_)) => {}
+            Message::ShelfScrolled(scroll) => {
+                self.shelf_scroll = scroll;
+                return self.fetch_shelf_images();
+            }
             Message::CollectionScrolled(scroll) => {
                 self.collection_scroll = scroll;
                 return self.fetch_covers_in_sight();

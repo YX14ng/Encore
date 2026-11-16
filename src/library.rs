@@ -12,6 +12,7 @@ use crate::account::{self, BROWSERS, Browser};
 use crate::playlists::edit;
 use crate::profile::{self, Profile};
 use crate::search::{self, Shared};
+use crate::virtual_list::Scroll;
 use crate::youtube::{self, Collection, SearchTrack, Tile, TileKind};
 use crate::{Message, browse, theme};
 
@@ -50,17 +51,12 @@ impl LibraryData {
         self.own_playlists.iter().any(|own| own == id)
     }
 
-    /// Every image the library screens can show.
-    pub fn image_urls(&self) -> Vec<String> {
-        let tracks = self.history.iter().chain(&self.songs).chain(&self.liked);
-        let tiles = self
-            .albums
-            .iter()
-            .chain(&self.artists)
-            .chain(&self.playlists)
-            .chain(&self.library_artists)
-            .chain(&self.made_for_you)
-            .chain(&self.podcasts);
+    /// The images the home screen and the sidebar show: the latest songs, the shelves of
+    /// cards and the profile photo. The library screens ask for theirs when opened
+    /// (`shelf_image_urls`), so a large library does not download thousands at start.
+    pub fn home_image_urls(&self) -> Vec<String> {
+        let tracks = self.history.iter().take(crate::home::RECENT_SONGS);
+        let tiles = self.mixes.iter().chain(&self.playlists).chain(&self.albums);
         tracks
             .filter_map(|track| track.cover_url.clone())
             .chain(tiles.filter_map(|tile| tile.image_url.clone()))
@@ -71,6 +67,57 @@ impl LibraryData {
             )
             .collect()
     }
+
+    /// The songs of a library screen that is a list of songs.
+    pub fn shelf_tracks(&self, shelf: Shelf) -> Option<&[SearchTrack]> {
+        match shelf {
+            Shelf::History => Some(&self.history),
+            Shelf::Songs => Some(&self.songs),
+            Shelf::Liked => Some(&self.liked),
+            _ => None,
+        }
+    }
+
+    /// The images of library screen `shelf` when scrolled to `scroll`: the covers of the
+    /// songs in sight, or every card's image.
+    pub fn shelf_image_urls(&self, shelf: Shelf, scroll: Scroll) -> Vec<String> {
+        if let Some(tracks) = self.shelf_tracks(shelf) {
+            let rows = shelf_rows_in_sight(scroll, tracks.len());
+            return tracks[rows]
+                .iter()
+                .filter_map(|track| track.cover_url.clone())
+                .collect();
+        }
+        let tiles: &[Tile] = match shelf {
+            Shelf::Albums => &self.albums,
+            Shelf::Artists if self.library_artists.is_empty() => &self.artists,
+            Shelf::Artists => &self.library_artists,
+            Shelf::Subscriptions => &self.artists,
+            Shelf::Podcasts => &self.podcasts,
+            Shelf::Mixes => &self.made_for_you,
+            _ => &[],
+        };
+        tiles
+            .iter()
+            .chain(if shelf == Shelf::Mixes {
+                &self.mixes[..]
+            } else {
+                &[]
+            })
+            .filter_map(|tile| tile.image_url.clone())
+            .collect()
+    }
+}
+
+/// The scrollable of the library screens, scrolled back to the top when another opens.
+pub const SHELF_SCROLL_ID: &str = "shelf";
+/// Where a library screen's song list starts in its scrollable: the padding, the heading and
+/// the space below it (see `virtual_list`).
+const SHELF_LIST_TOP: f32 = 28.0 + 40.0 + 18.0;
+
+/// The songs of a library list in sight when scrolled to `scroll`.
+pub fn shelf_rows_in_sight(scroll: Scroll, count: usize) -> std::ops::Range<usize> {
+    search::song_rows_in_sight(scroll, SHELF_LIST_TOP, count)
 }
 
 /// Where the account is.
@@ -351,6 +398,7 @@ pub fn shelf_view<'a>(
     account: &'a Account,
     downloads: &'a [Collection],
     shared: Shared<'a>,
+    scroll: Scroll,
 ) -> Element<'a, Message> {
     let title = match shelf {
         Shelf::History => t!("library.history"),
@@ -368,9 +416,11 @@ pub fn shelf_view<'a>(
         // Downloads work signed in or not, and without a connection.
         _ if shelf == Shelf::Downloads => search::offline_grid(downloads, shared),
         Account::SignedIn(data) => match shelf {
-            Shelf::History => search::track_list(&data.history, None, shared),
-            Shelf::Songs => search::track_list(&data.songs, None, shared),
-            Shelf::Liked => search::track_list(&data.liked, None, shared),
+            Shelf::History | Shelf::Songs | Shelf::Liked => {
+                let tracks = data.shelf_tracks(shelf).unwrap_or_default();
+                let rows = shelf_rows_in_sight(scroll, tracks.len());
+                search::long_track_list(tracks, None, rows, shared)
+            }
             Shelf::Albums => search::card_grid(&data.albums, shared),
             // A library saved before Encore read its artists has only the subscriptions.
             Shelf::Artists if data.library_artists.is_empty() => {
@@ -392,6 +442,13 @@ pub fn shelf_view<'a>(
     };
 
     scrollable(column![heading(title), body].spacing(18).padding([28, 32]))
+        .id(SHELF_SCROLL_ID)
+        .on_scroll(|viewport| {
+            Message::ShelfScrolled(Scroll {
+                offset: viewport.absolute_offset().y,
+                height: viewport.bounds().height,
+            })
+        })
         .height(Fill)
         .into()
 }

@@ -143,6 +143,7 @@ impl App {
                 &self.account,
                 self.offline.collections(),
                 self.online.shared_view(),
+                self.shelf_scroll,
             ),
             Screen::Settings(tab) => settings_view::view(
                 tab,
