@@ -33,7 +33,7 @@ jobs:
       - name: Package the .deb
         run: |
           cargo install cargo-deb --locked
-          cargo deb --no-build --no-strip
+          cargo deb --no-build
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:

@@ -96,3 +96,7 @@ unwrap_used = "deny"
 
 [dev-dependencies]
 serde_yaml = "0.9"
+
+[profile.release]
+# Release binaries without debug symbols: smaller packages.
+strip = true
