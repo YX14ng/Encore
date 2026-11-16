@@ -1,0 +1,47 @@
+# Maintainer: YX14ng <173115510+YX14ng@users.noreply.github.com>
+pkgname=encore-ytm
+_name=Encore
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Desktop player for YouTube Music, with synced lyrics'
+arch=('x86_64')
+url='https://github.com/YX14ng/Encore'
+license=('GPL-3.0-or-later')
+# yt-dlp downloads the songs and needs a JavaScript runtime (deno) for YouTube's challenges;
+# ffmpeg finds silences and decodes music videos; mpv plays.
+depends=('mpv' 'yt-dlp' 'deno' 'ffmpeg' 'webkit2gtk-4.1' 'gtk3' 'libsoup3' 'hicolor-icon-theme')
+makedepends=('cargo' 'git')
+conflicts=('encore')
+source=("$_name-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "$_name-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$_name-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  # The Japanese dictionary for romanized lyrics is downloaded here, once.
+  cargo build --frozen --release
+}
+
+package() {
+  cd "$_name-$pkgver"
+  install -Dm755 target/release/encore "$pkgdir/usr/bin/encore"
+  install -Dm644 packaging/io.github.yx14ng.Encore.desktop \
+    "$pkgdir/usr/share/applications/io.github.yx14ng.Encore.desktop"
+  install -Dm644 packaging/io.github.yx14ng.Encore.metainfo.xml \
+    "$pkgdir/usr/share/metainfo/io.github.yx14ng.Encore.metainfo.xml"
+  install -Dm644 assets/app/io.github.yx14ng.Encore.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/io.github.yx14ng.Encore.svg"
+  for size in 16 24 32 48 64 128 256 512; do
+    install -Dm644 "assets/app/hicolor/${size}x${size}/io.github.yx14ng.Encore.png" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/io.github.yx14ng.Encore.png"
+  done
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 THIRD_PARTY.md licenses/IPADIC.txt -t "$pkgdir/usr/share/licenses/$pkgname/"
+}

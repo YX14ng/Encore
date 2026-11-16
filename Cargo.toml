@@ -3,6 +3,7 @@ name = "encore"
 version = "0.1.0"
 edition = "2024"
 description = "A YouTube Music player for the desktop"
+repository = "https://github.com/YX14ng/Encore"
 license = "GPL-3.0-or-later"
 
 [dependencies]
@@ -32,6 +33,62 @@ soup3 = "0.5"
 souvlaki = { version = "0.9", default-features = false, features = ["use_zbus"] }
 tokio = { version = "1", features = ["process", "fs", "macros", "rt-multi-thread"] }
 webkit2gtk = { version = "2", features = ["v2_40"] }
+
+# Linux packages (see .github/workflows/release.yml). The package is "encore-ytm": "encore" is
+# another player's name in the distributions.
+[package.metadata.deb]
+name = "encore-ytm"
+maintainer = "YX14ng <173115510+YX14ng@users.noreply.github.com>"
+copyright = "YX14ng"
+license-file = ["LICENSE", "0"]
+section = "sound"
+extended-description = """\
+A desktop player for YouTube Music with synced and romanized lyrics, an equalizer, crossfade, \
+a true random shuffle, music videos, Discord status, Last.fm scrobbling and listening together. \
+Songs download with yt-dlp, which needs a recent version and a JavaScript runtime (deno)."""
+depends = "$auto, ffmpeg"
+recommends = "yt-dlp"
+assets = [
+    ["target/release/encore", "usr/bin/", "755"],
+    ["packaging/io.github.yx14ng.Encore.desktop", "usr/share/applications/", "644"],
+    ["packaging/io.github.yx14ng.Encore.metainfo.xml", "usr/share/metainfo/", "644"],
+    ["assets/app/io.github.yx14ng.Encore.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
+    ["assets/app/hicolor/16x16/io.github.yx14ng.Encore.png", "usr/share/icons/hicolor/16x16/apps/", "644"],
+    ["assets/app/hicolor/24x24/io.github.yx14ng.Encore.png", "usr/share/icons/hicolor/24x24/apps/", "644"],
+    ["assets/app/hicolor/32x32/io.github.yx14ng.Encore.png", "usr/share/icons/hicolor/32x32/apps/", "644"],
+    ["assets/app/hicolor/48x48/io.github.yx14ng.Encore.png", "usr/share/icons/hicolor/48x48/apps/", "644"],
+    ["assets/app/hicolor/64x64/io.github.yx14ng.Encore.png", "usr/share/icons/hicolor/64x64/apps/", "644"],
+    ["assets/app/hicolor/128x128/io.github.yx14ng.Encore.png", "usr/share/icons/hicolor/128x128/apps/", "644"],
+    ["assets/app/hicolor/256x256/io.github.yx14ng.Encore.png", "usr/share/icons/hicolor/256x256/apps/", "644"],
+    ["assets/app/hicolor/512x512/io.github.yx14ng.Encore.png", "usr/share/icons/hicolor/512x512/apps/", "644"],
+    ["THIRD_PARTY.md", "usr/share/doc/encore-ytm/", "644"],
+    ["licenses/IPADIC.txt", "usr/share/doc/encore-ytm/", "644"],
+]
+
+[package.metadata.generate-rpm]
+name = "encore-ytm"
+summary = "Desktop player for YouTube Music, with synced lyrics"
+assets = [
+    { source = "target/release/encore", dest = "/usr/bin/encore", mode = "755" },
+    { source = "packaging/io.github.yx14ng.Encore.desktop", dest = "/usr/share/applications/io.github.yx14ng.Encore.desktop", mode = "644" },
+    { source = "packaging/io.github.yx14ng.Encore.metainfo.xml", dest = "/usr/share/metainfo/io.github.yx14ng.Encore.metainfo.xml", mode = "644" },
+    { source = "assets/app/io.github.yx14ng.Encore.svg", dest = "/usr/share/icons/hicolor/scalable/apps/io.github.yx14ng.Encore.svg", mode = "644" },
+    { source = "assets/app/hicolor/16x16/io.github.yx14ng.Encore.png", dest = "/usr/share/icons/hicolor/16x16/apps/io.github.yx14ng.Encore.png", mode = "644" },
+    { source = "assets/app/hicolor/24x24/io.github.yx14ng.Encore.png", dest = "/usr/share/icons/hicolor/24x24/apps/io.github.yx14ng.Encore.png", mode = "644" },
+    { source = "assets/app/hicolor/32x32/io.github.yx14ng.Encore.png", dest = "/usr/share/icons/hicolor/32x32/apps/io.github.yx14ng.Encore.png", mode = "644" },
+    { source = "assets/app/hicolor/48x48/io.github.yx14ng.Encore.png", dest = "/usr/share/icons/hicolor/48x48/apps/io.github.yx14ng.Encore.png", mode = "644" },
+    { source = "assets/app/hicolor/64x64/io.github.yx14ng.Encore.png", dest = "/usr/share/icons/hicolor/64x64/apps/io.github.yx14ng.Encore.png", mode = "644" },
+    { source = "assets/app/hicolor/128x128/io.github.yx14ng.Encore.png", dest = "/usr/share/icons/hicolor/128x128/apps/io.github.yx14ng.Encore.png", mode = "644" },
+    { source = "assets/app/hicolor/256x256/io.github.yx14ng.Encore.png", dest = "/usr/share/icons/hicolor/256x256/apps/io.github.yx14ng.Encore.png", mode = "644" },
+    { source = "assets/app/hicolor/512x512/io.github.yx14ng.Encore.png", dest = "/usr/share/icons/hicolor/512x512/apps/io.github.yx14ng.Encore.png", mode = "644" },
+    { source = "LICENSE", dest = "/usr/share/licenses/encore-ytm/LICENSE", mode = "644", doc = true },
+    { source = "THIRD_PARTY.md", dest = "/usr/share/licenses/encore-ytm/THIRD_PARTY.md", mode = "644", doc = true },
+    { source = "licenses/IPADIC.txt", dest = "/usr/share/licenses/encore-ytm/IPADIC.txt", mode = "644", doc = true },
+]
+
+[package.metadata.generate-rpm.requires]
+yt-dlp = "*"
+"/usr/bin/ffmpeg" = "*"
 
 [lints.clippy]
 unwrap_used = "deny"
