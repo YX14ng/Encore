@@ -64,12 +64,16 @@ impl Quality {
     fn format(self) -> &'static str {
         match self {
             Self::Low => "bestaudio[ext=webm][abr<=80]/worstaudio",
-            Self::Normal | Self::High => "bestaudio[ext=webm]/bestaudio",
+            // With Premium the best is ~256 kbit/s; Normal stays at the ~130 kbit/s of everyone.
+            Self::Normal => "bestaudio[ext=webm][abr<=170]/bestaudio[abr<=170]/bestaudio",
+            Self::High => "bestaudio[ext=webm]/bestaudio",
         }
     }
 }
 
-/// Where a song is downloaded from: the quality, and for High the session's `Cookie` header.
+/// Where a song is downloaded from: the quality, and the session's `Cookie` header when signed
+/// in. YouTube puts an ad before songs asked for without Premium, and its stream only works once
+/// the ad would have played (yt-dlp waits about six seconds); with Premium there is none.
 /// High without a session downloads Normal.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Source {
@@ -329,7 +333,10 @@ mod tests {
     #[test]
     fn asks_yt_dlp_for_audio_only() {
         let args = ytdlp_args("abc", Path::new("/cache"), Quality::Normal, None);
-        assert!(args.contains(&"bestaudio[ext=webm]/bestaudio".to_string()));
+        assert!(
+            args.iter()
+                .any(|arg| arg.starts_with("bestaudio[ext=webm]"))
+        );
         assert!(args.contains(&"/cache/%(id)s.%(ext)s".to_string()));
         assert!(!args.contains(&"--cookies".to_string()));
         assert_eq!(
@@ -338,10 +345,22 @@ mod tests {
         );
         let low = ytdlp_args("abc", Path::new("/cache"), Quality::Low, None);
         assert!(low.contains(&"bestaudio[ext=webm][abr<=80]/worstaudio".to_string()));
+        // With the session Premium's ~256 kbit/s is there too; Normal does not take it.
+        let normal = ytdlp_args(
+            "abc",
+            Path::new("/c"),
+            Quality::Normal,
+            Some(Path::new("/s")),
+        );
+        assert!(
+            normal
+                .iter()
+                .any(|arg| arg.starts_with("bestaudio[ext=webm][abr<=170]"))
+        );
     }
 
     #[test]
-    fn high_quality_carries_the_session() {
+    fn downloads_carry_the_session() {
         let args = ytdlp_args(
             "abc",
             Path::new("/c"),

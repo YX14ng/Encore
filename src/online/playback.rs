@@ -306,11 +306,13 @@ impl Online {
         self.mixer.as_ref().map(Mixer::devices).unwrap_or_default()
     }
 
-    /// Where songs are downloaded from: the chosen quality, with the session for High.
+    /// Where songs are downloaded from: the chosen quality, with the session when signed in.
+    /// With Premium the session has no ads, and so no wait for one before the download.
     fn source(&self) -> download::Source {
-        let cookie = (self.quality == download::Quality::High)
-            .then(|| self.client.as_ref()?.user_auth_cookie_header())
-            .flatten();
+        let cookie = self
+            .client
+            .as_ref()
+            .and_then(|client| client.user_auth_cookie_header());
         download::Source {
             quality: self.quality,
             cookie,

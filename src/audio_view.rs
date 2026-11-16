@@ -182,6 +182,7 @@ fn quality(settings: &AudioSettings) -> Element<'_, Message> {
         heading(t!("audio.quality"), 16.0),
         choices,
         note(explanation),
+        note(t!("audio.quality_session_note")),
         note(t!("audio.quality_next_song")),
     ]
     .spacing(10)
