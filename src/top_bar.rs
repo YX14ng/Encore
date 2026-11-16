@@ -6,18 +6,17 @@ use iced::{Center, Element};
 use crate::layout::Panel;
 use crate::{Message, theme};
 
-/// Back and forward, the panel toggles and the shortcuts on the right. Back is active while a
-/// search or a collection is open.
-/// The sidebar, lyrics and queue buttons are highlighted while their panel is shown, and the
-/// together button while a session runs.
+/// Back and forward, the panel toggles and the shortcuts on the right. Back is active away from
+/// Home, Forward after going back. The sidebar, lyrics and queue buttons are highlighted while
+/// their panel is shown, and the together button while a session runs.
 pub fn view(
     show_sidebar: bool,
     panel: Option<Panel>,
     can_go_back: bool,
+    can_go_forward: bool,
     together: bool,
 ) -> Element<'static, Message> {
     row![
-        tool(include_bytes!("../assets/icons/more.svg"), None, false),
         tool(
             include_bytes!("../assets/icons/chevron-left.svg"),
             can_go_back.then_some(Message::Back),
@@ -25,7 +24,7 @@ pub fn view(
         ),
         tool(
             include_bytes!("../assets/icons/chevron-right.svg"),
-            None,
+            can_go_forward.then_some(Message::Forward),
             false
         ),
         tool(

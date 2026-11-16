@@ -14,7 +14,7 @@ impl App {
             return self.playlist_event(crate::playlists::Event::OpenNew);
         }
         self.sidebar.selected = item;
-        self.history.clear();
+        self.forget_places();
         self.screen = match item {
             NavItem::History => Screen::Library(Shelf::History),
             NavItem::Songs => Screen::Library(Shelf::Songs),

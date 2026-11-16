@@ -184,6 +184,7 @@ impl App {
                 columns.sidebar,
                 self.panel.filter(|_| columns.panel),
                 self.screen != Screen::Home,
+                self.can_go_forward(),
                 self.together.is_active(),
             ),
             self.session_banner(),

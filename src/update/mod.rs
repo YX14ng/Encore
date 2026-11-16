@@ -276,15 +276,8 @@ impl App {
                 self.audio_settings.save();
                 return self.online.set_autoplay(self.audio_settings.autoplay);
             }
-            Message::Back => match self.history.pop() {
-                Some((screen, collection)) => {
-                    self.screen = screen;
-                    if let Some(collection) = collection {
-                        return self.online.show_collection(collection);
-                    }
-                }
-                None => self.screen = Screen::Home,
-            },
+            Message::Back => return self.go_back(),
+            Message::Forward => return self.go_forward(),
             Message::OpenAccount => return self.select(NavItem::Account),
             Message::SignInWith(browser) => {
                 let Some(client) = self.online.client() else {

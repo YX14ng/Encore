@@ -254,7 +254,9 @@ struct App {
     /// The note at the bottom of the window and its number, to know when it goes.
     toast: Option<(u64, String)>,
     /// The screens Back goes to, the latest last, with the collection each one showed.
-    history: Vec<(Screen, Option<youtube::Collection>)>,
+    history: Vec<navigation::Place>,
+    /// The screens Back left, for Forward.
+    forward: Vec<navigation::Place>,
     explore: explore::Explore,
 }
 
@@ -336,6 +338,8 @@ enum Message {
     Playlist(playlists::Event),
     Explore(explore::Event),
     Back,
+    /// Forward, to the screen Back left.
+    Forward,
     OpenAccount,
     SignInWindow,
     /// The sign-in window closed: the session's cookies, or why there are none.
@@ -541,6 +545,7 @@ impl App {
             dialog: None,
             toast: None,
             history: Vec::new(),
+            forward: Vec::new(),
             explore: explore::Explore::default(),
         }
     }
