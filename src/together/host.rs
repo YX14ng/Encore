@@ -125,12 +125,28 @@ pub fn run(config: &Config) -> impl Stream<Item = Event> + use<> {
 
 /// Opens the port on every address, IPv6 and IPv4 when the system allows both.
 async fn bind(port: u16) -> Result<TcpListener, String> {
-    match TcpListener::bind(("::", port)).await {
+    match dual_stack(port) {
         Ok(listener) => Ok(listener),
         Err(_) => TcpListener::bind(("0.0.0.0", port))
             .await
             .map_err(|error| t!("together.port_failed", port = port, error = error).into_owned()),
     }
+}
+
+/// One IPv6 socket that takes IPv4 guests too. Linux allows that by default; Windows only when
+/// asked.
+fn dual_stack(port: u16) -> std::io::Result<TcpListener> {
+    use socket2::{Domain, Socket, Type};
+
+    let socket = Socket::new(Domain::IPV6, Type::STREAM, None)?;
+    socket.set_only_v6(false)?;
+    #[cfg(unix)]
+    socket.set_reuse_address(true)?;
+    let address = std::net::SocketAddr::from((std::net::Ipv6Addr::UNSPECIFIED, port));
+    socket.bind(&address.into())?;
+    socket.listen(128)?;
+    socket.set_nonblocking(true)?;
+    TcpListener::from_std(socket.into())
 }
 
 /// The guests connected now, by connection number.

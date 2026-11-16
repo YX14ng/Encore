@@ -10,7 +10,6 @@ use iced::widget::{Row, container, space};
 use iced::{Bottom, Element, Fill, border};
 use rustfft::FftPlanner;
 use rustfft::num_complex::Complex;
-use tokio::process::Command;
 
 use crate::{Message, theme};
 
@@ -134,7 +133,7 @@ async fn measure(path: PathBuf) -> Result<Spectrum, String> {
 }
 
 async fn decode(path: &Path) -> Result<Vec<f32>, String> {
-    let output = Command::new("ffmpeg")
+    let output = crate::platform::command("ffmpeg")
         .args([
             "-hide_banner",
             "-nostats",

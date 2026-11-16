@@ -298,12 +298,7 @@ impl AudioSettings {
 }
 
 fn path() -> PathBuf {
-    std::env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))
-        .unwrap_or_else(std::env::temp_dir)
-        .join("encore")
-        .join("audio.json")
+    crate::platform::config_dir().join("audio.json")
 }
 
 #[cfg(test)]

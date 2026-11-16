@@ -11,7 +11,6 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use rust_i18n::t;
-use tokio::process::Command;
 
 /// A video that has been on YouTube since 2005; yt-dlp needs some URL to run against.
 const PROBE_URL: &str = "https://www.youtube.com/watch?v=jNQXAC9IVRw";
@@ -67,34 +66,18 @@ impl Browser {
     }
 }
 
-/// Where Encore keeps data that must survive cache cleaning: `$XDG_DATA_HOME/encore`, or
-/// `~/.local/share/encore`.
-pub fn data_dir() -> PathBuf {
-    std::env::var_os("XDG_DATA_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")))
-        .unwrap_or_else(std::env::temp_dir)
-        .join("encore")
-}
-
-/// Creates `dir` readable only by the user.
-pub fn private_dir(dir: &Path) -> Result<(), String> {
-    use std::os::unix::fs::PermissionsExt;
-
-    std::fs::create_dir_all(dir).map_err(|error| error.to_string())?;
-    std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))
-        .map_err(|error| error.to_string())
-}
+pub use crate::platform::{data_dir, private_dir};
 
 /// The folders where Zen keeps its profiles: `~/.config/zen` in recent versions, `~/.zen` in
-/// older ones, and the same two inside the Flatpak sandbox. Profiles sit right inside them or
-/// inside a `Profiles` subfolder.
+/// older ones, the same two inside the Flatpak sandbox, and `%APPDATA%\zen` on Windows.
+/// Profiles sit right inside them or inside a `Profiles` subfolder.
 fn zen_profile_dirs(home: &Path) -> Vec<PathBuf> {
     let roots = [
         home.join(".config/zen"),
         home.join(".zen"),
         home.join(".var/app/app.zen_browser.zen/config/zen"),
         home.join(".var/app/app.zen_browser.zen/.zen"),
+        home.join("AppData").join("Roaming").join("zen"),
     ];
     roots
         .iter()
@@ -148,8 +131,7 @@ pub fn has_session(cookies_txt: &str) -> bool {
 
 /// Reads the YouTube session cookies of `browser` through yt-dlp.
 pub async fn read_from_browser(browser: Browser) -> Result<String, ReadError> {
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
+    let home = crate::platform::home_dir()
         .ok_or_else(|| ReadError::Failed(t!("account.home_not_set").into_owned()))?;
     let spec = browser.ytdlp_spec(&home).map_err(ReadError::Failed)?;
 
@@ -157,7 +139,7 @@ pub async fn read_from_browser(browser: Browser) -> Result<String, ReadError> {
     private_dir(&dir).map_err(ReadError::Failed)?;
     let raw = dir.join("cookies-from-browser.txt");
 
-    let output = Command::new("yt-dlp")
+    let output = crate::platform::command("yt-dlp")
         .args(["--no-config", "--quiet", "--no-warnings", "--skip-download"])
         .args(["--cookies-from-browser", &spec])
         .arg("--cookies")
@@ -186,10 +168,7 @@ pub async fn read_from_browser(browser: Browser) -> Result<String, ReadError> {
 
 /// Opens `url` in the default browser.
 pub fn open_in_browser(url: &str) -> Result<(), String> {
-    std::process::Command::new("xdg-open")
-        .arg(url)
-        .spawn()
-        .map(|_| ())
+    crate::platform::open_url(url)
         .map_err(|error| t!("account.browser_failed", error = error).into_owned())
 }
 
@@ -197,8 +176,8 @@ pub fn open_in_browser(url: &str) -> Result<(), String> {
 pub fn read_from_file(path: &str) -> Result<String, String> {
     let path = path.trim();
     let path = match path.strip_prefix("~/") {
-        Some(rest) => std::env::var_os("HOME")
-            .map(|home| PathBuf::from(home).join(rest))
+        Some(rest) => crate::platform::home_dir()
+            .map(|home| home.join(rest))
             .ok_or_else(|| t!("account.home_not_set").into_owned())?,
         None => PathBuf::from(path),
     };

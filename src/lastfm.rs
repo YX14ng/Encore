@@ -307,19 +307,10 @@ pub fn load<T: for<'de> Deserialize<'de>>(name: &str) -> Option<T> {
 
 /// Writes a JSON file to the Last.fm folder, readable only by the user.
 pub fn save<T: Serialize>(name: &str, value: &T) -> Result<(), String> {
-    use std::io::Write;
-    use std::os::unix::fs::OpenOptionsExt;
-
     let dir = dir();
     account::private_dir(&dir)?;
     let json = serde_json::to_string(value).map_err(|error| error.to_string())?;
-    std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
-        .open(dir.join(name))
-        .and_then(|mut file| file.write_all(json.as_bytes()))
+    crate::platform::write_private(&dir.join(name), json.as_bytes())
         .map_err(|error| error.to_string())
 }
 

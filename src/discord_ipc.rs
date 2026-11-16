@@ -1,15 +1,16 @@
 //! Discord's local IPC protocol: frames of a little-endian opcode, a length and JSON, over the
-//! Unix socket Discord opens. Encore speaks it itself because it must also read what Discord
-//! sends (join invites and requests), which `discord-rich-presence` cannot.
+//! socket (Linux) or named pipe (Windows) Discord opens. Encore speaks it itself because it must
+//! also read what Discord sends (join invites and requests), which `discord-rich-presence`
+//! cannot.
 
 use std::borrow::Cow;
 use std::io::{Read, Write};
-use std::os::unix::net::UnixStream;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use rust_i18n::t;
 use serde_json::{Value, json};
+
+use crate::discord_pipe::{self, Pipe};
 
 /// The biggest frame read from Discord; anything bigger means the stream is broken.
 const MAX_FRAME: u32 = 1 << 20;
@@ -19,35 +20,9 @@ pub const HANDSHAKE: u32 = 0;
 pub const FRAME: u32 = 1;
 pub const CLOSE: u32 = 2;
 
-/// Where Discord's socket can be: the runtime and temporary folders, and the folders of the
-/// Flatpak and Snap builds and of Vesktop.
-fn socket_candidates() -> Vec<PathBuf> {
-    let mut roots: Vec<PathBuf> = ["XDG_RUNTIME_DIR", "TMPDIR", "TMP", "TEMP"]
-        .iter()
-        .filter_map(std::env::var_os)
-        .map(PathBuf::from)
-        .collect();
-    roots.push(PathBuf::from("/tmp"));
-    let nested = [
-        "",
-        "app/com.discordapp.Discord",
-        "app/com.discordapp.DiscordCanary",
-        "snap.discord",
-        ".flatpak/dev.vencord.Vesktop/xdg-run",
-    ];
-    roots
-        .iter()
-        .flat_map(|root| nested.iter().map(move |inner| root.join(inner)))
-        .flat_map(|dir| (0..10).map(move |index| dir.join(format!("discord-ipc-{index}"))))
-        .collect()
-}
-
 /// Connects to the first Discord socket that answers and says hello as `client_id`.
-pub fn connect(client_id: &str) -> std::io::Result<UnixStream> {
-    let mut stream = socket_candidates()
-        .into_iter()
-        .find_map(|path| UnixStream::connect(path).ok())
-        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "Discord is not open"))?;
+pub fn connect(client_id: &str) -> std::io::Result<Pipe> {
+    let mut stream = discord_pipe::open()?;
     write_frame(
         &mut stream,
         HANDSHAKE,
@@ -63,7 +38,7 @@ pub fn connect(client_id: &str) -> std::io::Result<UnixStream> {
 }
 
 /// Sends one frame.
-pub fn write_frame(stream: &mut UnixStream, opcode: u32, payload: &Value) -> std::io::Result<()> {
+pub fn write_frame(stream: &mut impl Write, opcode: u32, payload: &Value) -> std::io::Result<()> {
     let body = payload.to_string();
     let mut frame = Vec::with_capacity(8 + body.len());
     frame.extend_from_slice(&opcode.to_le_bytes());
@@ -148,10 +123,13 @@ mod tests {
 
     #[test]
     fn frames_go_through() {
-        let (mut left, mut right) = UnixStream::pair().expect("pair");
+        let mut sent = Vec::new();
         let payload = command("SUBSCRIBE", json!({}), Some("ACTIVITY_JOIN"));
-        write_frame(&mut left, FRAME, &payload).expect("write");
-        assert_eq!(read_frame(&mut right).expect("read"), (FRAME, payload));
+        write_frame(&mut sent, FRAME, &payload).expect("write");
+        assert_eq!(
+            read_frame(&mut sent.as_slice()).expect("read"),
+            (FRAME, payload)
+        );
     }
 
     #[test]

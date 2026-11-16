@@ -297,6 +297,11 @@ impl App {
                 return Task::perform(sign_in_window::sign_in(), Message::SignInWindowClosed);
             }
             Message::SignInWindowClosed(Err(error)) => self.account = Account::Failed(error),
+            #[cfg(windows)]
+            Message::MainWindowFound(handle) => {
+                self.media =
+                    crate::media_keys::MediaKeys::start(Some(handle as *mut std::ffi::c_void));
+            }
             Message::SignInWindowClosed(Ok(cookie)) => {
                 let Some(client) = self.online.client() else {
                     return Task::none();

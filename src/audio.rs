@@ -201,11 +201,12 @@ impl Audio {
     }
 }
 
-/// The devices of the first sound system that has any (PipeWire, then PulseAudio), else every
-/// device; never mpv's "auto", which is the system default offered on its own.
+/// The devices of the first sound system that has any (PipeWire, then PulseAudio, then
+/// Windows' WASAPI), else every device; never mpv's "auto", which is the system default offered
+/// on its own.
 fn pick_devices(devices: Vec<Device>) -> Vec<Device> {
     let real = |device: &Device| device.name.contains('/');
-    for system in ["pipewire/", "pulse/"] {
+    for system in ["pipewire/", "pulse/", "wasapi/"] {
         let found: Vec<Device> = devices
             .iter()
             .filter(|device| device.name.starts_with(system))

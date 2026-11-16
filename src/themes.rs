@@ -177,14 +177,7 @@ impl Appearance {
     }
 }
 
-/// `$XDG_CONFIG_HOME/encore`, or `~/.config/encore`.
-pub fn config_dir() -> PathBuf {
-    std::env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))
-        .unwrap_or_else(std::env::temp_dir)
-        .join("encore")
-}
+pub use crate::platform::config_dir;
 
 /// Where custom themes live.
 pub fn themes_dir() -> PathBuf {

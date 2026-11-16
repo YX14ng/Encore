@@ -7,7 +7,6 @@
 //! thread owns it, reconnects every few seconds, and only ever sees the latest state. Another
 //! thread reads what Discord sends and passes join invites and requests to the app.
 
-use std::os::unix::net::UnixStream;
 use std::sync::Mutex;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::thread;
@@ -22,6 +21,7 @@ use serde_json::json;
 
 use crate::Message;
 use crate::discord_ipc::{self, Event};
+use crate::discord_pipe::Pipe;
 use crate::together::host::MAX_GUESTS;
 
 /// The "Encore" application on Discord's developer portal. Public: it names the activity.
@@ -146,7 +146,7 @@ fn same_activity(sent: &Presence, since: Duration, new: &Presence) -> bool {
 }
 
 fn worker(receiver: &Receiver<Command>, events: &UnboundedSender<Event>) {
-    let mut socket: Option<UnixStream> = None;
+    let mut socket: Option<Pipe> = None;
     let mut current: Option<Presence> = None;
     loop {
         let command = match receiver.recv_timeout(RETRY) {
@@ -206,7 +206,7 @@ fn worker(receiver: &Receiver<Command>, events: &UnboundedSender<Event>) {
 }
 
 /// Connects, asks for join invites and requests, and starts the thread that reads them.
-fn connect(events: &UnboundedSender<Event>) -> std::io::Result<UnixStream> {
+fn connect(events: &UnboundedSender<Event>) -> std::io::Result<Pipe> {
     let mut stream = discord_ipc::connect(APPLICATION_ID)?;
     let mut reader = stream.try_clone()?;
     let events = events.clone();

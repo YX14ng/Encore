@@ -1,10 +1,13 @@
-//! Desktop notifications when a song starts, through the freedesktop notification service.
+//! Desktop notifications when a song starts: through the freedesktop notification service on
+//! Linux, as toasts on Windows.
 
+#[cfg(not(windows))]
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use notify_rust::{Notification, Timeout};
 
 /// The last notification shown, so the next one replaces it instead of piling up.
+#[cfg(not(windows))]
 static LAST_ID: AtomicU32 = AtomicU32::new(0);
 
 /// What a song notification says.
@@ -41,6 +44,12 @@ pub async fn show(notice: SongNotice) {
     if let Some(path) = &notice.image_path {
         notification.image_path(path);
     }
+    deliver(notification).await;
+}
+
+/// Replaces the previous notification through the freedesktop service.
+#[cfg(not(windows))]
+async fn deliver(mut notification: Notification) {
     let last = LAST_ID.load(Ordering::Relaxed);
     if last != 0 {
         notification.id(last);
@@ -48,6 +57,14 @@ pub async fn show(notice: SongNotice) {
     if let Ok(handle) = notification.show_async().await {
         LAST_ID.store(handle.id(), Ordering::Relaxed);
     }
+}
+
+/// Shows a Windows toast under Encore's name (the one its Start menu shortcut carries); a new
+/// song's toast pushes the old one into the notification center.
+#[cfg(windows)]
+async fn deliver(mut notification: Notification) {
+    notification.app_id(crate::APP_ID);
+    let _ = tokio::task::spawn_blocking(move || notification.show()).await;
 }
 
 #[cfg(test)]

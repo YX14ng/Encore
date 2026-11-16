@@ -4,7 +4,7 @@
 
 use std::io::Read;
 use std::path::Path;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Stdio};
 use std::sync::mpsc::{Receiver, TryRecvError, sync_channel};
 
 use rust_i18n::t;
@@ -55,7 +55,7 @@ impl Decoder {
             "fps={FPS},scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=decrease,\
              pad={WIDTH}:{HEIGHT}:(ow-iw)/2:(oh-ih)/2:black"
         );
-        let mut child = Command::new("ffmpeg")
+        let mut child = crate::platform::std_command("ffmpeg")
             .args(["-hide_banner", "-nostats", "-nostdin", "-loglevel", "error"])
             .args(["-ss", &format!("{at:.3}"), "-i"])
             .arg(path)
@@ -137,6 +137,7 @@ impl Drop for Decoder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::process::Command;
 
     /// Makes a 3 second test video with ffmpeg in a temporary folder.
     fn test_video(name: &str) -> std::path::PathBuf {

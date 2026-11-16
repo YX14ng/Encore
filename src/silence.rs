@@ -4,8 +4,6 @@
 
 use std::path::{Path, PathBuf};
 
-use tokio::process::Command;
-
 use crate::download;
 
 /// Quieter than this counts as silence.
@@ -78,7 +76,7 @@ async fn find(path: &Path) -> Trim {
 /// What `silencedetect` said about part of the file (its stderr), or `None` if ffmpeg failed.
 async fn listen(path: &Path, window: &[&str]) -> Option<String> {
     let filter = format!("silencedetect=n={THRESHOLD}:d={SHORTEST_HEAD}");
-    let output = Command::new("ffmpeg")
+    let output = crate::platform::command("ffmpeg")
         .args(["-hide_banner", "-nostats", "-nostdin"])
         .args(window)
         .arg("-i")

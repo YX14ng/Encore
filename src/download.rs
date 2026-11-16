@@ -10,7 +10,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
-use tokio::process::Command;
 
 /// Audio formats yt-dlp may leave in the cache, in order of preference.
 const AUDIO_EXTENSIONS: [&str; 4] = ["webm", "opus", "m4a", "mp4"];
@@ -91,14 +90,7 @@ impl Source {
     }
 }
 
-/// Where Encore keeps its cache: `$XDG_CACHE_HOME/encore`, or `~/.cache/encore`.
-pub fn cache_dir() -> PathBuf {
-    let base = std::env::var_os("XDG_CACHE_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
-        .unwrap_or_else(std::env::temp_dir);
-    base.join("encore")
-}
+pub use crate::platform::cache_dir;
 
 /// A finished download of `id` in `dir`, if there is one.
 pub fn find_cached(dir: &Path, id: &str) -> Option<PathBuf> {
@@ -163,9 +155,6 @@ fn cookies_txt(header: &str, expires: u64) -> String {
 /// Writes the session for one yt-dlp run into a file only the user can read. The caller
 /// deletes it once yt-dlp is done.
 fn write_cookies(header: &str) -> Result<PathBuf, String> {
-    use std::io::Write;
-    use std::os::unix::fs::OpenOptionsExt;
-
     static RUNS: AtomicU64 = AtomicU64::new(0);
     let dir = crate::account::data_dir().join("yt-dlp");
     crate::account::private_dir(&dir)?;
@@ -174,14 +163,7 @@ fn write_cookies(header: &str) -> Result<PathBuf, String> {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |since| since.as_secs());
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
-        .open(&path)
-        .map_err(|error| t!("download.session_not_written", error = error).into_owned())?;
-    file.write_all(cookies_txt(header, now + COOKIE_LIFETIME).as_bytes())
+    crate::platform::write_private(&path, cookies_txt(header, now + COOKIE_LIFETIME).as_bytes())
         .map_err(|error| t!("download.session_not_written", error = error).into_owned())?;
     Ok(path)
 }
@@ -214,7 +196,7 @@ pub async fn video(id: String) -> Result<PathBuf, String> {
         return Ok(path);
     }
     let template = dir.join("%(id)s.%(ext)s");
-    let output = Command::new("yt-dlp")
+    let output = crate::platform::command("yt-dlp")
         .args([
             "--no-config",
             "--no-playlist",
@@ -289,7 +271,7 @@ async fn audio_into(
     }
 
     let cookies = cookie.map(write_cookies).transpose()?;
-    let output = Command::new("yt-dlp")
+    let output = crate::platform::command("yt-dlp")
         .args(ytdlp_args(&id, &dir, quality, cookies.as_deref()))
         .output()
         .await;

@@ -478,8 +478,8 @@ impl App {
 
 /// `~/x` as a path in the home folder; anything else as it is.
 fn expand_home(path: &str) -> PathBuf {
-    match (path.strip_prefix("~/"), std::env::var_os("HOME")) {
-        (Some(rest), Some(home)) => PathBuf::from(home).join(rest),
+    match (path.strip_prefix("~/"), crate::platform::home_dir()) {
+        (Some(rest), Some(home)) => home.join(rest),
         _ => PathBuf::from(path),
     }
 }
@@ -503,7 +503,7 @@ mod tests {
 
     #[test]
     fn a_tilde_means_the_home_folder() {
-        let home = PathBuf::from(std::env::var_os("HOME").expect("HOME"));
+        let home = crate::platform::home_dir().expect("home");
         assert_eq!(expand_home("~/a.png"), home.join("a.png"));
         assert_eq!(expand_home("/x/a.png"), PathBuf::from("/x/a.png"));
     }

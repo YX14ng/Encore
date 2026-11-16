@@ -1,4 +1,6 @@
 //! Encore: a YouTube Music desktop player written with iced.
+// No console window behind Encore on Windows; debug builds keep it for their logs.
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 // The interface's texts in every language, from `locales/`; English fills any gap.
 rust_i18n::i18n!("locales", fallback = "en");
@@ -14,6 +16,7 @@ mod clock;
 mod collection;
 mod discord;
 mod discord_ipc;
+mod discord_pipe;
 mod download;
 mod explore;
 mod home;
@@ -34,6 +37,7 @@ mod notifications;
 mod now_playing;
 mod offline;
 mod online;
+mod platform;
 mod player;
 mod playlists;
 mod plugins;
@@ -111,12 +115,36 @@ fn main_window() -> iced::window::Settings {
             None,
         )
         .ok(),
-        platform_specific: iced::window::settings::PlatformSpecific {
-            application_id: APP_ID.to_string(),
-            ..Default::default()
-        },
+        platform_specific: platform_window(),
         ..Default::default()
     }
+}
+
+/// On Linux, the id that ties the window to Encore's desktop entry.
+#[cfg(target_os = "linux")]
+fn platform_window() -> iced::window::settings::PlatformSpecific {
+    iced::window::settings::PlatformSpecific {
+        application_id: APP_ID.to_string(),
+        ..Default::default()
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn platform_window() -> iced::window::settings::PlatformSpecific {
+    iced::window::settings::PlatformSpecific::default()
+}
+
+/// Asks for the main window's handle, which the Windows media controls need.
+#[cfg(windows)]
+fn main_window_found() -> Task<Message> {
+    iced::window::oldest()
+        .and_then(iced::window::raw_id)
+        .map(Message::MainWindowFound)
+}
+
+#[cfg(not(windows))]
+fn main_window_found() -> Task<Message> {
+    Task::none()
 }
 
 /// Everything the app remembers between frames.
@@ -309,6 +337,9 @@ enum Message {
     SignInWindow,
     /// The sign-in window closed: the session's cookies, or why there are none.
     SignInWindowClosed(Result<String, String>),
+    /// The main window's handle, for the Windows media controls.
+    #[cfg(windows)]
+    MainWindowFound(u64),
     SignInWith(Browser),
     CookiePathChanged(String),
     ImportCookies,
@@ -392,7 +423,10 @@ impl App {
             }
             None => Task::none(),
         };
-        (app, Task::batch([cached_images, restore]))
+        (
+            app,
+            Task::batch([cached_images, restore, main_window_found()]),
+        )
     }
 
     fn new() -> Self {
@@ -469,7 +503,8 @@ impl App {
             cookie_path: String::new(),
             offline: Offline::load(),
             immersive: false,
-            media: media_keys::MediaKeys::start(),
+            // Windows ties the media controls to the window, which does not exist yet.
+            media: media_keys::MediaKeys::start(None),
             discord: discord::Discord::start(),
             lastfm: scrobbler::LastFm::load(),
             audio_settings,

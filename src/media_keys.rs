@@ -53,12 +53,16 @@ pub struct MediaKeys {
 }
 
 impl MediaKeys {
-    /// Registers Encore as `org.mpris.MediaPlayer2.encore`. `None` if there is no session bus.
-    pub fn start() -> Option<Self> {
+    /// Registers Encore as `org.mpris.MediaPlayer2.encore` on Linux (`None` if there is no
+    /// session bus), or in the media controls of `window` (its handle, `HWND`) on Windows.
+    pub fn start(window: Option<*mut std::ffi::c_void>) -> Option<Self> {
+        if cfg!(windows) && window.is_none() {
+            return None;
+        }
         let config = PlatformConfig {
             display_name: "Encore",
             dbus_name: "encore",
-            hwnd: None,
+            hwnd: window,
         };
         let mut controls = MediaControls::new(config).ok()?;
         let (sender, receiver) = unbounded();
@@ -158,7 +162,7 @@ mod tests {
     #[test]
     #[ignore = "needs a D-Bus session and busctl"]
     fn talks_mpris() {
-        let mut media = MediaKeys::start().expect("session bus");
+        let mut media = MediaKeys::start(None).expect("session bus");
         media.publish(
             "Test Song",
             "Test Artist",
