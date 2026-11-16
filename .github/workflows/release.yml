@@ -1,6 +1,7 @@
-# Builds Encore's Linux packages when a version tag (v0.1.0) is pushed, and attaches them to the
+# Builds Encore's packages when a version tag (v0.1.0) is pushed, and attaches them to the
 # GitHub release of that tag: the binary as .tar.gz and the .deb on Ubuntu 24.04 (the base of
-# Linux Mint 22), the .rpm on Fedora.
+# Linux Mint 22), the .rpm on Fedora, and the Windows installer and .zip. Run by hand on a
+# branch, it builds everything and keeps the packages as the run's artifacts.
 name: Release
 
 on:
@@ -60,3 +61,80 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: target/generate-rpm/*.rpm
+
+  windows:
+    runs-on: windows-2025
+    env:
+      # Where the import library made from libmpv's DLL is.
+      RUSTFLAGS: -L native=${{ github.workspace }}\deps\mpv
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Download libmpv, yt-dlp, deno and ffmpeg
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p deps
+          mpv=$(gh release view -R shinchiro/mpv-winbuild-cmake --json assets \
+            --jq '.assets[].name | select(test("^mpv-dev-x86_64-[0-9]"))')
+          gh release download -R shinchiro/mpv-winbuild-cmake -p "$mpv" -D deps
+          7z x -y -odeps/mpv "deps/$mpv" > /dev/null
+          gh release download -R yt-dlp/yt-dlp -p yt-dlp.exe -D deps
+          gh release download -R denoland/deno -p deno-x86_64-pc-windows-msvc.zip -D deps
+          7z x -y -odeps "deps/deno-x86_64-pc-windows-msvc.zip" > /dev/null
+          ffmpeg=$(gh release view latest -R BtbN/FFmpeg-Builds --json assets \
+            --jq '[.assets[].name | select(test("^ffmpeg-n[0-9.]+-latest-win64-gpl-shared-[0-9.]+\\.zip$"))] | sort | last')
+          gh release download latest -R BtbN/FFmpeg-Builds -p "$ffmpeg" -D deps
+          7z x -y -odeps "deps/$ffmpeg" > /dev/null
+          mv "deps/${ffmpeg%.zip}" deps/ffmpeg
+          ls deps deps/mpv deps/ffmpeg/bin
+      - name: Make the import library for libmpv
+        shell: pwsh
+        run: |
+          Set-Location deps\mpv
+          if (-not (Test-Path mpv.def)) {
+            $names = dumpbin /exports libmpv-2.dll |
+              Select-String '^\s+\d+\s+[0-9A-F]+\s+[0-9A-F]+\s+(\S+)' |
+              ForEach-Object { $_.Matches[0].Groups[1].Value }
+            Set-Content mpv.def (@('EXPORTS') + $names)
+          }
+          lib /nologo /def:mpv.def /name:libmpv-2.dll /out:mpv.lib /machine:x64
+      - name: Build
+        run: cargo build --release --locked
+      - name: Test
+        shell: bash
+        run: |
+          export PATH="$PWD/deps/mpv:$PWD/deps/ffmpeg/bin:$PWD/deps:$PATH"
+          cargo test --release --locked
+      - name: Package
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          out=dist/Encore
+          mkdir -p "$out/licenses"
+          cp target/release/encore.exe deps/mpv/libmpv-2.dll deps/yt-dlp.exe deps/deno.exe "$out/"
+          cp deps/ffmpeg/bin/ffmpeg.exe deps/ffmpeg/bin/ffprobe.exe deps/ffmpeg/bin/*.dll "$out/"
+          cp LICENSE THIRD_PARTY.md "$out/"
+          cp licenses/* "$out/licenses/"
+          cp deps/ffmpeg/LICENSE.txt "$out/licenses/FFMPEG.txt"
+          (cd dist && 7z a -tzip "encore-$version-x86_64-windows.zip" Encore > /dev/null)
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DAppVersion=$env:VERSION" packaging\windows\encore.iss
+      - uses: actions/upload-artifact@v4
+        with:
+          name: encore-windows
+          path: |
+            dist/*.zip
+            dist/*-setup.exe
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/*.zip
+            dist/*-setup.exe
