@@ -1,8 +1,6 @@
 //! The invite to a session: where the host is and the token that lets a guest in, written as
 //! `encore:<address>:<port>:<token>`. Discord passes it along as the join secret.
 
-use std::io::Read;
-
 use rust_i18n::t;
 
 /// The bytes of randomness in a token.
@@ -67,8 +65,7 @@ impl Invite {
 /// A new random token, from the system's random source.
 pub fn new_token() -> Result<String, String> {
     let mut bytes = [0u8; TOKEN_BYTES];
-    std::fs::File::open("/dev/urandom")
-        .and_then(|mut source| source.read_exact(&mut bytes))
+    getrandom::fill(&mut bytes)
         .map_err(|error| t!("together.no_random", error = error).into_owned())?;
     Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
