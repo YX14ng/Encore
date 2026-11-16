@@ -12,8 +12,9 @@ license=('GPL-3.0-or-later')
 depends=('mpv' 'yt-dlp' 'deno' 'ffmpeg' 'webkit2gtk-4.1' 'gtk3' 'libsoup3' 'hicolor-icon-theme')
 makedepends=('cargo' 'git')
 conflicts=('encore')
-# makepkg's LTO flags break linking ring's C code (used while the dictionary downloads).
-options=('!lto')
+# makepkg's LTO flags break linking ring's C code (used while the dictionary downloads); the
+# debug package would only hold symbols the binary no longer has.
+options=('!lto' '!debug')
 source=("$_name-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('1e67b2eea7a78f607eb0f605086f2a6bd8508fa8095e5b5af35e52e6f51c54e8')
 

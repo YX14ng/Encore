@@ -17,6 +17,7 @@ pkgbase = encore-ytm
 	depends = hicolor-icon-theme
 	conflicts = encore
 	options = !lto
+	options = !debug
 	source = Encore-0.3.0.tar.gz::https://github.com/YX14ng/Encore/archive/refs/tags/v0.3.0.tar.gz
 	sha256sums = 1e67b2eea7a78f607eb0f605086f2a6bd8508fa8095e5b5af35e52e6f51c54e8
 
