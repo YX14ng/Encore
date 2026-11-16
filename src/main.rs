@@ -14,6 +14,7 @@ mod backdrop;
 mod browse;
 mod clock;
 mod collection;
+mod context_area;
 mod discord;
 mod discord_ipc;
 mod discord_pipe;
@@ -56,6 +57,7 @@ mod sidebar;
 mod sign_in_window;
 mod silence;
 mod song;
+mod song_menu;
 mod song_order;
 mod sponsorblock;
 mod theme;
@@ -182,6 +184,7 @@ struct App {
     samples: bool,
     lyrics: Lyrics,
     window_width: f32,
+    window_height: f32,
     /// When the app started; the background zoom is measured from here.
     started: Instant,
     /// The time of the latest tick or animation frame.
@@ -260,6 +263,8 @@ struct App {
     forward: Vec<navigation::Place>,
     /// The search and order of the long song list on screen.
     song_order: song_order::SongOrder,
+    /// The menu of a right-clicked song, while it is open.
+    song_menu: Option<song_menu::Menu>,
     explore: explore::Explore,
 }
 
@@ -295,7 +300,7 @@ enum Message {
     NowPlaying(now_playing::Event),
     Visualizer(visualizer::Event),
     Next,
-    WindowResized(f32),
+    WindowResized(iced::Size),
     SearchChanged(String),
     SuggestionsLoaded(u64, Result<Vec<String>, String>),
     PickSuggestion(String),
@@ -345,6 +350,12 @@ enum Message {
     Forward,
     /// The search box and order of the long song list on screen.
     SongOrder(song_order::Event),
+    /// The menu a right click on a song opens.
+    SongMenu(song_menu::Event),
+    /// Songs like `0` (from its menu's "Start radio"), or why YouTube did not give them.
+    RadioReady(SearchTrack, Result<Vec<SearchTrack>, String>),
+    /// The artist or album a song's menu asked for, or why it was not found.
+    SongPlaceFound(Result<Tile, String>),
     OpenAccount,
     SignInWindow,
     /// The sign-in window closed: the session's cookies, or why there are none.
@@ -513,6 +524,7 @@ impl App {
             samples,
             lyrics,
             window_width: 1280.0,
+            window_height: 800.0,
             started: now,
             now,
             lyrics_scroll: lyrics::scroll_animation(first_line as f32),
@@ -552,6 +564,7 @@ impl App {
             history: Vec::new(),
             forward: Vec::new(),
             song_order: song_order::SongOrder::default(),
+            song_menu: None,
             explore: explore::Explore::default(),
         }
     }

@@ -391,7 +391,7 @@ fn song_row<'a>(
 
     let cover = picture(track.cover_url.as_deref(), 44.0, false, shared);
     let buttons = row![add, save].push(take_out);
-    button(
+    let row = button(
         row![cover, details, right, buttons]
             .spacing(12)
             .align_y(Center),
@@ -405,7 +405,17 @@ fn song_row<'a>(
     .width(Fill)
     .height(SONG_ROW_HEIGHT)
     .padding([6, 8])
-    .style(move |_, status| theme::flat_button(status, is_playing))
+    .style(move |_, status| theme::flat_button(status, is_playing));
+    // A right click opens the song's menu.
+    crate::context_area::ContextArea::new(row, move |at| {
+        Message::SongMenu(crate::song_menu::Event::Open {
+            track: track.clone(),
+            place: crate::song_menu::Place::List {
+                playlist: in_playlist.map(str::to_string),
+            },
+            at,
+        })
+    })
     .into()
 }
 

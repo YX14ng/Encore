@@ -164,12 +164,23 @@ fn song<'a>(
 
     let cover = picture(track.cover_url.as_deref(), 38.0, false, shared);
     let playing = place == Place::Playing;
-    button(row![cover, details, right].spacing(10).align_y(Center))
+    let row = button(row![cover, details, right].spacing(10).align_y(Center))
         .on_press_maybe((!playing).then_some(Message::QueueJump(index)))
         .width(Fill)
         .padding([5, 6])
-        .style(move |_, status| theme::flat_button(status, playing))
-        .into()
+        .style(move |_, status| theme::flat_button(status, playing));
+    // A right click opens the song's menu.
+    crate::context_area::ContextArea::new(row, move |at| {
+        Message::SongMenu(crate::song_menu::Event::Open {
+            track: track.clone(),
+            place: crate::song_menu::Place::Queue {
+                index,
+                upcoming: !playing,
+            },
+            at,
+        })
+    })
+    .into()
 }
 
 /// The switch that turns autoplay on and off.

@@ -49,6 +49,8 @@ impl Rating {
 pub enum Event {
     /// The like or dislike button was pressed.
     Pressed(Rating),
+    /// Like or Dislike was chosen in a song's menu.
+    RateSong(SearchTrack, Rating),
     /// YouTube answered the change of `track` from `previous` to `rating`.
     Saved {
         track: SearchTrack,
@@ -140,7 +142,7 @@ impl App {
         })
     }
 
-    fn rating_of(&self, id: &str) -> Rating {
+    pub(crate) fn rating_of(&self, id: &str) -> Rating {
         if self.disliked.contains(id) {
             return Rating::Dislike;
         }
@@ -159,7 +161,11 @@ impl App {
 
     pub(crate) fn rating_event(&mut self, event: Event) -> Task<Message> {
         match event {
-            Event::Pressed(pressed) => self.rate(pressed),
+            Event::Pressed(pressed) => match self.online.playing_track().cloned() {
+                Some(track) => self.rate(track, pressed),
+                None => Task::none(),
+            },
+            Event::RateSong(track, pressed) => self.rate(track, pressed),
             Event::Saved {
                 track,
                 rating,
@@ -182,17 +188,22 @@ impl App {
         }
     }
 
-    /// Lights the button at once and tells YouTube; disliking the playing song skips it with
-    /// the plugin on.
-    fn rate(&mut self, pressed: Rating) -> Task<Message> {
-        let (Some(client), Some(track)) =
-            (self.rating_client(), self.online.playing_track().cloned())
-        else {
+    /// Rates `track` and tells YouTube; for the playing song the button lights at once, and
+    /// disliking it skips it with the plugin on.
+    fn rate(&mut self, track: SearchTrack, pressed: Rating) -> Task<Message> {
+        let Some(client) = self.rating_client() else {
             return Task::none();
         };
-        let previous = self.rating;
+        let playing = self.is_playing(&track.id);
+        let previous = if playing {
+            self.rating
+        } else {
+            self.rating_of(&track.id)
+        };
         let rating = previous.toggled(pressed);
-        self.rating = rating;
+        if playing {
+            self.rating = rating;
+        }
         let saved = Task::perform(set(client, track.id.clone(), rating), move |result| {
             Message::Rating(Event::Saved {
                 track: track.clone(),
@@ -201,7 +212,7 @@ impl App {
                 result,
             })
         });
-        if rating == Rating::Dislike && self.plugins.skip_disliked {
+        if playing && rating == Rating::Dislike && self.plugins.skip_disliked {
             return Task::batch([saved, self.handle(Message::Next)]);
         }
         saved

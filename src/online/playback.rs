@@ -75,6 +75,29 @@ impl Online {
         self.prefetch_next()
     }
 
+    /// Puts `track` right after the song playing, or plays it when nothing is queued.
+    pub fn play_next(&mut self, track: SearchTrack) -> Task<Message> {
+        if !self.is_active() {
+            return self.play_queue(vec![track], 0);
+        }
+        let index = self.queue.add(track);
+        self.queue.play_next(index);
+        self.prefetch_next()
+    }
+
+    /// Plays `track` followed by the similar songs YouTube found for it, in their order.
+    pub fn play_radio(&mut self, track: SearchTrack, songs: Vec<SearchTrack>) -> Task<Message> {
+        let mut queue = vec![track];
+        for song in songs {
+            if queue.iter().all(|queued| queued.id != song.id) {
+                queue.push(song);
+            }
+        }
+        // A radio plays in its own order, whatever shuffle says.
+        self.queue.replace(queue, 0, false, &mut self.rng);
+        self.play(0)
+    }
+
     /// Moves song `index` of the queue to play right after the current one.
     pub fn queue_play_next(&mut self, index: usize) -> Task<Message> {
         self.queue.play_next(index);

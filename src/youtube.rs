@@ -161,6 +161,48 @@ pub async fn radio(rp: RustyPipe, seed: String) -> Result<Vec<SearchTrack>, Stri
     Ok(radio.items.iter().map(track).collect())
 }
 
+/// Which page of a song to go to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SongPlace {
+    Artist,
+    Album,
+}
+
+/// The artist (the first one with a page) or the album of song `id`, as a card to open.
+pub async fn place_of_song(rp: RustyPipe, id: String, place: SongPlace) -> Result<Tile, String> {
+    let details = rp
+        .query()
+        .music_details(&id)
+        .await
+        .map_err(|error| error.to_string())?;
+    let track = details.track;
+    match place {
+        SongPlace::Artist => track
+            .artists
+            .iter()
+            .find_map(|artist| {
+                Some(Tile {
+                    kind: TileKind::Artist,
+                    id: artist.id.clone()?,
+                    title: artist.name.clone(),
+                    subtitle: String::new(),
+                    image_url: None,
+                })
+            })
+            .ok_or_else(|| t!("song_menu.no_artist").into_owned()),
+        SongPlace::Album => track
+            .album
+            .map(|album| Tile {
+                kind: TileKind::Album,
+                id: album.id,
+                title: album.name,
+                subtitle: artist_names(&track.artists),
+                image_url: best_image(&track.cover),
+            })
+            .ok_or_else(|| t!("song_menu.no_album").into_owned()),
+    }
+}
+
 pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Opened, String> {
     if tile.kind == TileKind::Playlist {
         return open_playlist(rp, tile).await;

@@ -235,6 +235,41 @@ impl Offline {
         }
     }
 
+    /// Takes song `song` out of the downloaded collection `id`, deleting its file unless
+    /// another download uses it.
+    pub fn remove_song(&mut self, id: &str, song: &str) {
+        let Some(collection) = self
+            .collections
+            .iter_mut()
+            .find(|collection| collection.id == id)
+        else {
+            return;
+        };
+        let Some(position) = collection.tracks.iter().position(|track| track.id == song) else {
+            return;
+        };
+        collection.tracks.remove(position);
+        // A download in progress goes on from the same song.
+        if let Some(job) = self.job.as_mut().filter(|job| job.id == id)
+            && position < job.next
+        {
+            job.next -= 1;
+        }
+        let still_used = self
+            .collections
+            .iter()
+            .any(|collection| collection.tracks.iter().any(|track| track.id == song));
+        // Tests must never touch the user's downloads.
+        if !still_used
+            && !cfg!(test)
+            && let Some(path) = download::find_cached(&download::offline_dir(), song)
+        {
+            // A file that is already gone is fine.
+            let _ = std::fs::remove_file(path);
+        }
+        self.save_all();
+    }
+
     /// Deletes a downloaded collection and the songs no other download uses.
     pub fn remove(&mut self, id: &str) {
         let Some(position) = self
@@ -481,5 +516,25 @@ mod tests {
         offline.finish_job();
         assert!(offline.pending().is_empty());
         assert!(!offline.is_busy());
+    }
+
+    #[test]
+    fn a_song_leaves_a_download_and_the_download_goes_on_from_the_same_song() {
+        let mut offline = offline_with(vec![collection("a", &["x", "y", "z"])]);
+        offline.job = Some(Job {
+            id: "a".to_string(),
+            next: 2,
+            failed: 0,
+        });
+        offline.remove_song("a", "x");
+        let ids: Vec<&str> = offline
+            .get("a")
+            .expect("a")
+            .tracks
+            .iter()
+            .map(|t| t.id.as_str())
+            .collect();
+        assert_eq!(ids, ["y", "z"]);
+        assert_eq!(offline.state("a"), State::Downloading { done: 1, total: 2 });
     }
 }

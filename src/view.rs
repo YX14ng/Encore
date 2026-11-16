@@ -268,6 +268,9 @@ impl App {
             .push(self.dialog.as_ref().map(|dialog| {
                 playlists::dialog(dialog, self.own_playlists(), self.online.shared_view())
             }))
+            .push(self.song_menu.as_ref().map(|menu| {
+                crate::song_menu::view(menu, iced::Size::new(self.window_width, self.window_height))
+            }))
             .into()
     }
 
@@ -335,10 +338,18 @@ impl App {
     /// The clock while playing, animation frames while something moves, window resizes and,
     /// in the immersive view, the Escape key.
     pub(crate) fn subscription(&self) -> Subscription<Message> {
-        let resize = window::resize_events().map(|(_id, size)| Message::WindowResized(size.width));
-        // Escape leaves the immersive view.
-        // Escape leaves the immersive view, else closes the now playing page.
-        let escape = if self.immersive {
+        let resize = window::resize_events().map(|(_id, size)| Message::WindowResized(size));
+        // Escape closes a song's menu, else leaves the immersive view, else closes the now
+        // playing page.
+        let escape = if self.song_menu.is_some() {
+            iced::keyboard::listen().filter_map(|event| match event {
+                iced::keyboard::Event::KeyPressed {
+                    key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape),
+                    ..
+                } => Some(Message::SongMenu(crate::song_menu::Event::Close)),
+                _ => None,
+            })
+        } else if self.immersive {
             iced::keyboard::listen().filter_map(|event| match event {
                 iced::keyboard::Event::KeyPressed {
                     key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape),

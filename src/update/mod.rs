@@ -9,6 +9,7 @@ mod places;
 mod playback;
 
 use iced::{Task, window};
+use rust_i18n::t;
 
 use crate::library::Account;
 use crate::media_keys::MediaKey;
@@ -161,7 +162,10 @@ impl App {
                     self.next_track();
                 }
             }
-            Message::WindowResized(width) => self.window_width = width,
+            Message::WindowResized(size) => {
+                self.window_width = size.width;
+                self.window_height = size.height;
+            }
             Message::SearchChanged(query) => return self.online.query_changed(query),
             Message::SuggestionsLoaded(request, result) => {
                 self.online.suggestions_loaded(request, result);
@@ -279,6 +283,15 @@ impl App {
             }
             Message::Back => return self.go_back(),
             Message::Forward => return self.go_forward(),
+            Message::SongMenu(event) => return self.song_menu_event(event),
+            Message::RadioReady(track, Ok(songs)) => return self.online.play_radio(track, songs),
+            Message::RadioReady(track, Err(error)) => {
+                return self.show_toast(
+                    t!("song_menu.radio_failed", title = track.title, error = error).into_owned(),
+                );
+            }
+            Message::SongPlaceFound(Ok(tile)) => return self.handle(Message::OpenTile(tile)),
+            Message::SongPlaceFound(Err(error)) => return self.show_toast(error),
             Message::SongOrder(event) => {
                 self.song_order.handle(event);
                 self.arrange_songs();
