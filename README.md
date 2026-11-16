@@ -8,7 +8,6 @@
 [![GitHub license](https://img.shields.io/github/license/YX14ng/Encore.svg?style=for-the-badge)](https://github.com/YX14ng/Encore/blob/main/LICENSE)
 [![Build status](https://img.shields.io/github/actions/workflow/status/YX14ng/Encore/release.yml?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/YX14ng/Encore/actions/workflows/release.yml)
 [![GitHub all releases](https://img.shields.io/github/downloads/YX14ng/Encore/total?style=for-the-badge&logo=github)](https://github.com/YX14ng/Encore/releases/)
-[![AUR](https://img.shields.io/aur/version/encore-ytm?color=blueviolet&style=for-the-badge&logo=archlinux)](https://aur.archlinux.org/packages/encore-ytm)
 
 ![Encore's home screen](docs/screenshots/home.png)
 
@@ -80,10 +79,12 @@ often break: keep it up to date. It needs a JavaScript runtime for YouTube's cha
 
 ### Arch Linux
 
-Install [`encore-ytm`](https://aur.archlinux.org/packages/encore-ytm) from the AUR:
+Build the package from the [`PKGBUILD`](packaging/arch/PKGBUILD) in this repository:
 
 ```bash
-paru -S encore-ytm
+git clone https://github.com/YX14ng/Encore
+cd Encore/packaging/arch
+makepkg -si
 ```
 
 ### Linux Mint and Ubuntu
@@ -167,7 +168,7 @@ cargo build --release
 The binary is `target/release/encore`. The Japanese dictionary for romanized lyrics is downloaded
 once while building and embedded in it. The packages of each release are built by
 [`.github/workflows/release.yml`](.github/workflows/release.yml) when a version tag is pushed;
-the AUR package is in [`packaging/arch/`](packaging/arch/).
+the Arch package is in [`packaging/arch/`](packaging/arch/).
 
 ## Tests
 
