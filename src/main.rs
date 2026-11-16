@@ -246,6 +246,8 @@ enum Message {
     ImageFetched(String, Result<Vec<u8>, String>),
     OpenTile(Tile),
     CollectionLoaded(Result<youtube::Opened, String>),
+    /// A fresh copy of a collection that was shown as it was left.
+    CollectionRefreshed(Result<Collection, String>),
     /// The next page of the long playlist with this id, and what is left after it.
     MoreTracks(
         String,

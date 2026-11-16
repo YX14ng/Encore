@@ -32,11 +32,7 @@ impl Online {
                 );
                 (false, self.play_queue(queue, 0))
             }
-            Some(TopResult::Tile(tile)) => {
-                let task = self.open(tile);
-                self.play_when_loaded = true;
-                (true, task)
-            }
+            Some(TopResult::Tile(tile)) => (true, self.open_and_play(tile)),
             None => (false, Task::none()),
         }
     }

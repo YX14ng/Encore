@@ -2,6 +2,7 @@
 //! playlists and downloading images. The audio player and its queue are in `playback`.
 
 mod playback;
+mod recent;
 
 use std::collections::{HashMap, HashSet};
 
@@ -42,6 +43,8 @@ pub struct Online {
     filter: Filter,
     collection: Option<Collection>,
     collection_status: Status,
+    /// Collections opened lately, shown at once when opened again.
+    recent: recent::Recent,
     /// Play the opened collection as soon as it loads (the top result's Play button).
     play_when_loaded: bool,
     images: HashMap<String, image::Handle>,
@@ -92,6 +95,7 @@ impl Online {
             filter: Filter::All,
             collection: None,
             collection_status: Status::Idle,
+            recent: recent::Recent::default(),
             play_when_loaded: false,
             images: HashMap::new(),
             image_bytes: HashMap::new(),
@@ -263,17 +267,65 @@ impl Online {
             self.collection_status = Status::Failed(t!("online.client_not_started").into_owned());
             return Task::none();
         };
-        self.collection = None;
-        self.collection_status = Status::Loading;
+        self.leave_collection();
         self.play_when_loaded = false;
+        // Opened lately: shown as it was left at once, then replaced by a fresh copy.
+        if let Some(kept) = self.recent.get(&tile.id).cloned() {
+            return Task::batch([
+                self.collection_loaded(Ok(kept)),
+                Task::perform(
+                    youtube::open_whole(client, tile),
+                    Message::CollectionRefreshed,
+                ),
+                to_top(),
+            ]);
+        }
+        self.collection_status = Status::Loading;
         Task::batch([
             Task::perform(youtube::open(client, tile), Message::CollectionLoaded),
             to_top(),
         ])
     }
 
+    /// Opens a collection and plays it from the start once it is there.
+    pub fn open_and_play(&mut self, tile: Tile) -> Task<Message> {
+        let opened = self.open(tile);
+        match &self.collection {
+            Some(collection) if self.collection_status == Status::Done => {
+                let tracks = collection.tracks.clone();
+                Task::batch([opened, self.play_queue(tracks, 0)])
+            }
+            _ => {
+                self.play_when_loaded = true;
+                opened
+            }
+        }
+    }
+
+    /// Keeps the open collection, as it is now, for when it is opened again.
+    fn leave_collection(&mut self) {
+        if let Some(collection) = self.collection.take() {
+            self.recent.keep(collection);
+        }
+    }
+
+    /// A fresh copy of a collection that was shown from `recent`: it replaces the shown one if
+    /// that is still open.
+    pub fn collection_refreshed(&mut self, fresh: Collection) -> Task<Message> {
+        match &mut self.collection {
+            Some(shown) if shown.id == fresh.id => {
+                if *shown != fresh {
+                    *shown = fresh;
+                }
+                Task::none()
+            }
+            _ => Task::none(),
+        }
+    }
+
     /// Shows a collection that is already known (a download), without asking YouTube.
     pub fn show_collection(&mut self, collection: Collection) -> Task<Message> {
+        self.leave_collection();
         self.play_when_loaded = false;
         Task::batch([self.collection_loaded(Ok(collection)), to_top()])
     }

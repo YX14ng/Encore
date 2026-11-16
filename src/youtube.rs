@@ -239,6 +239,20 @@ async fn open_playlist(rp: RustyPipe, tile: Tile) -> Result<Opened, String> {
     Err(first_error.unwrap_or_default())
 }
 
+/// A collection with every song, all pages of a playlist loaded before it returns.
+pub async fn open_whole(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
+    let Opened {
+        mut collection,
+        mut more,
+    } = open(rp.clone(), tile).await?;
+    while let Some(next) = more {
+        let (tracks, rest) = more_tracks(rp.clone(), next).await?;
+        collection.tracks.extend(tracks);
+        more = rest;
+    }
+    Ok(collection)
+}
+
 /// The next page of a playlist, and what is left after it.
 pub async fn more_tracks(
     rp: RustyPipe,

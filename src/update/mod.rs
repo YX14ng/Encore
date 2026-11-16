@@ -193,6 +193,12 @@ impl App {
                     .map_or_else(Task::none, |more| self.online.load_more(more));
                 return Task::batch([shown, more]);
             }
+            Message::CollectionRefreshed(Ok(fresh)) => {
+                let refreshed = self.online.collection_refreshed(fresh);
+                return Task::batch([refreshed, self.fetch_covers_in_sight()]);
+            }
+            // The copy that is shown stays.
+            Message::CollectionRefreshed(Err(_)) => {}
             Message::CollectionLoaded(Err(error)) => {
                 return self.online.collection_loaded(Err(error));
             }
