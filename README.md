@@ -80,7 +80,14 @@ Windows build includes all of them; on Linux they come from your distribution.
 
 ### Arch Linux
 
-Build the package from the [`PKGBUILD`](packaging/arch/PKGBUILD) in this repository:
+Download `encore-ytm-<version>-1-x86_64.pkg.tar.zst` from the releases page and install it:
+
+```bash
+sudo pacman -U ./encore-ytm-*-x86_64.pkg.tar.zst
+```
+
+Or build it yourself from the [`PKGBUILD`](packaging/arch/PKGBUILD) in this repository, which
+also works if a ready-made package stops opening after Arch updates libmpv or WebKitGTK:
 
 ```bash
 git clone https://github.com/YX14ng/Encore
