@@ -72,6 +72,10 @@ the equalizer and normalization), and can skip silence: ffmpeg's `silencedetect`
 first 20 and last 30 seconds of each downloaded song, and mpv starts and ends the song where its
 music does (`src/silence.rs`). Silences inside a song stay.
 
+The mouse wheel over the volume bar moves the volume by 1, 2, 5 or 10 % a notch (picked on the
+audio screen; touchpad scrolls add up to notches), and the bar shows the percentage while the
+pointer is over it.
+
 The audio quality is Low (Opus around 60 kbit/s), Normal (around 130 kbit/s, the best YouTube
 gives anyone) or High: with YouTube Music Premium, Opus around 256 kbit/s. For High, yt-dlp gets
 the signed-in session in a cookies file that only the user can read
