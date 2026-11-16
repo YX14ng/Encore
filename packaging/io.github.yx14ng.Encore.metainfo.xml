@@ -52,6 +52,12 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.2.0" date="2026-11-16">
+      <description>
+        <p>Encore runs on Windows, with an installer that includes everything it needs.</p>
+        <p>Play starts a song again if it never started instead of doing nothing.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-11-16">
       <description>
         <p>The first release.</p>
