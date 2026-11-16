@@ -91,6 +91,9 @@ pub fn client() -> Result<RustyPipe, String> {
     crate::account::private_dir(&storage)?;
     RustyPipe::builder()
         .storage_dir(storage)
+        // rustypipe's error reports keep whole answers (the user's library) and signed
+        // request headers on disk; Encore does not keep them.
+        .no_reporter()
         .lang(crate::i18n::youtube_language())
         .build()
         .map_err(|error| error.to_string())
