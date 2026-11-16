@@ -29,6 +29,20 @@
     <category>Audio</category>
     <category>Player</category>
   </categories>
+  <screenshots>
+    <screenshot type="default">
+      <caption>The home screen, with the lyrics beside it</caption>
+      <image>https://raw.githubusercontent.com/YX14ng/Encore/main/docs/screenshots/home.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The now playing page</caption>
+      <image>https://raw.githubusercontent.com/YX14ng/Encore/main/docs/screenshots/now-playing.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The full screen view with the visualizer</caption>
+      <image>https://raw.githubusercontent.com/YX14ng/Encore/main/docs/screenshots/full-screen.png</image>
+    </screenshot>
+  </screenshots>
   <content_rating type="oars-1.1"/>
   <requires>
     <display_length compare="ge">768</display_length>

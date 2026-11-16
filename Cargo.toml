@@ -25,7 +25,7 @@ pinyin = { version = "0.11", default-features = false, features = ["with_tone"] 
 reqwest = "0.12"
 rfd = { version = "0.18", default-features = false, features = ["xdg-portal"] }
 # Encore's fork: upstream's main plus fixes it needs (its "encore" branch).
-rustypipe = { git = "ssh://git@github.com/YX14ng/rustypipe.git", branch = "encore", features = ["userdata"] }
+rustypipe = { git = "https://github.com/YX14ng/rustypipe.git", branch = "encore", features = ["userdata"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
