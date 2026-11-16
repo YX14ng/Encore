@@ -1,7 +1,7 @@
 # Maintainer: YX14ng <173115510+YX14ng@users.noreply.github.com>
 pkgname=encore-ytm
 _name=Encore
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
 pkgdesc='Desktop player for YouTube Music, with synced lyrics'
 arch=('x86_64')
@@ -15,7 +15,7 @@ conflicts=('encore')
 # makepkg's LTO flags break linking ring's C code (used while the dictionary downloads).
 options=('!lto')
 source=("$_name-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('0ce4b8a2f9f3d6afec2f80c8b77d1677816c8f24c22d863d6acfa77fc46cb116')
+sha256sums=('1e67b2eea7a78f607eb0f605086f2a6bd8508fa8095e5b5af35e52e6f51c54e8')
 
 prepare() {
   cd "$_name-$pkgver"
