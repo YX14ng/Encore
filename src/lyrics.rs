@@ -7,9 +7,7 @@ use std::time::Duration;
 
 use iced::animation::{Animation, Easing};
 use iced::mouse::ScrollDelta;
-use iced::widget::{
-    Column, button, column, container, mouse_area, pin, scrollable, space, stack, text,
-};
+use iced::widget::{Column, button, column, container, mouse_area, scrollable, space, stack, text};
 use iced::{Color, Degrees, Element, Fill, Font, mouse};
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
@@ -61,10 +59,13 @@ impl Lyrics {
 #[derive(Debug, Clone, Copy)]
 pub struct Style {
     pub width: f32,
-    pub height_hint: f32,
     pub current_size: f32,
     pub other_size: f32,
+    /// About how tall a line is with the space around it, to turn a touchpad's pixels into
+    /// lines.
     pub row_height: f32,
+    /// The space above and below each line.
+    pub line_gap: f32,
     /// Whether the panel fades into its background at the top and bottom.
     pub fade: bool,
 }
@@ -72,30 +73,30 @@ pub struct Style {
 /// The panel at the right of the window.
 pub const PANEL: Style = Style {
     width: WIDTH,
-    height_hint: 760.0,
     current_size: 26.0,
     other_size: 22.0,
     row_height: 88.0,
+    line_gap: 20.0,
     fade: true,
 };
 
 /// The lyrics tab of the now playing page.
 pub const PAGE: Style = Style {
     width: 420.0,
-    height_hint: 760.0,
     current_size: 26.0,
     other_size: 22.0,
     row_height: 88.0,
+    line_gap: 20.0,
     fade: false,
 };
 
 /// The large lyrics of the immersive view.
 pub const IMMERSIVE: Style = Style {
     width: 620.0,
-    height_hint: 900.0,
     current_size: 40.0,
     other_size: 32.0,
     row_height: 118.0,
+    line_gap: 28.0,
     fade: false,
 };
 
@@ -156,9 +157,6 @@ pub fn current_line(lines: &[LyricLine], elapsed_ms: u32) -> Option<usize> {
     lines.iter().rposition(|line| line.start_ms <= elapsed_ms)
 }
 
-/// How much taller a line is with its romanization under it.
-const ROMANIZED_ROW: f32 = 1.35;
-
 /// The lyrics in `style`: synced ones scrolled so the line at `scroll` (a line index, animated
 /// between whole numbers) sits near the top, plain ones as a scrollable text, or a note. The
 /// wheel scrolls synced lyrics by hand, and clicking a line jumps to where it starts.
@@ -183,24 +181,16 @@ pub fn view<'a>(
     };
     let content: Element<'_, Message> = match lyrics {
         Lyrics::Synced(lines) if !lines.is_empty() => {
-            let style = if romanized.is_some() {
-                Style {
-                    row_height: style.row_height * ROMANIZED_ROW,
-                    ..style
-                }
-            } else {
-                style
-            };
+            // Each line as tall as its words: a long line wraps, a romanized one adds a row.
             let rows = lines.iter().enumerate().map(move |(index, line)| {
                 let is_current = Some(index) == current;
                 let words = column![lyric(&line.text, is_current, style)]
                     .push(under(index).map(|line| romanization(line, is_current, style)))
                     .spacing(4);
-                button(container(words).padding([0, 10]).clip(true))
+                button(container(words).padding([0, 10]))
                     .on_press(Message::LyricLine(index))
-                    .height(style.row_height)
                     .width(Fill)
-                    .padding(0)
+                    .padding([style.line_gap, 0.0])
                     .style(|_, status| button::Style {
                         // A line under the pointer shows it can be clicked.
                         background: matches!(status, button::Status::Hovered)
@@ -213,8 +203,7 @@ pub fn view<'a>(
             let list = Column::with_children(rows)
                 .width(style.width)
                 .padding([0, 16]);
-            let offset = style.height_hint * FOCUS - scroll * style.row_height;
-            mouse_area(pin(list).y(offset).width(Fill).height(Fill))
+            mouse_area(crate::lyrics_focus::LyricsFocus::new(list, scroll, FOCUS))
                 .on_scroll(move |delta| Message::LyricsScrolled(scrolled_lines(delta, style)))
                 .interaction(mouse::Interaction::Pointer)
                 .into()

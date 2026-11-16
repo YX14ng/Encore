@@ -10,7 +10,7 @@ chrono = "0.4"
 discord-rich-presence = "1.1"
 fastrand = "2"
 gtk = "0.18"
-iced = { version = "0.14", features = ["tokio", "image", "svg"] }
+iced = { version = "0.14", features = ["tokio", "image", "svg", "advanced"] }
 image = "0.25.10"
 libmpv2 = "7"
 # Japanese word splitting with readings, for romanized lyrics. The IPADIC dictionary is

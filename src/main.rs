@@ -23,6 +23,7 @@ mod lastfm;
 mod layout;
 mod library;
 mod lyrics;
+mod lyrics_focus;
 mod lyrics_source;
 mod media_keys;
 mod mini_player;
