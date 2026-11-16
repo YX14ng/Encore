@@ -138,7 +138,7 @@ fn platform_window() -> iced::window::settings::PlatformSpecific {
 #[cfg(windows)]
 fn main_window_found() -> Task<Message> {
     iced::window::oldest()
-        .and_then(iced::window::raw_id)
+        .and_then(iced::window::raw_id::<Message>)
         .map(Message::MainWindowFound)
 }
 
