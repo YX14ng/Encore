@@ -207,14 +207,15 @@ fn top_card<'a>(top: &'a TopResult, shared: Shared<'a>) -> Element<'a, Message> 
             t!("search.song_by", artist = track.artist).into_owned(),
             track.cover_url.as_deref(),
             false,
-            None,
+            // A song's card plays it, like an album's or artist's opens it.
+            Message::PlayTop,
         ),
         TopResult::Tile(tile) => (
             tile.title.as_str(),
             tile.subtitle.clone(),
             tile.image_url.as_deref(),
             tile.kind == TileKind::Artist,
-            Some(Message::OpenTile(tile.clone())),
+            Message::OpenTile(tile.clone()),
         ),
     };
 
@@ -245,7 +246,7 @@ fn top_card<'a>(top: &'a TopResult, shared: Shared<'a>) -> Element<'a, Message> 
         .align_y(Center);
 
     button(card)
-        .on_press_maybe(open)
+        .on_press(open)
         .padding(16)
         .style(|_, status| {
             let mut style = theme::flat_button(status, false);

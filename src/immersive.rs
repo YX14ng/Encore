@@ -78,9 +78,7 @@ pub fn view<'a>(
                     weight: Weight::Bold,
                     ..theme::INTER
                 }),
-                text(format!("{} \u{b7} {}", song.artist, song.album))
-                    .size(15)
-                    .color(theme::text_secondary()),
+                text(song.byline()).size(15).color(theme::text_secondary()),
             ]
             .spacing(4),
             space::horizontal(),
@@ -103,9 +101,7 @@ pub fn view<'a>(
             weight: Weight::Bold,
             ..theme::INTER
         }),
-        text(format!("{} \u{b7} {}", song.artist, song.album))
-            .size(17)
-            .color(theme::text_secondary()),
+        text(song.byline()).size(17).color(theme::text_secondary()),
         exit,
     ]
     .spacing(14)

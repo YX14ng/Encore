@@ -16,6 +16,15 @@ pub struct Song {
 }
 
 impl Song {
+    /// "Artist · Album", or what of it is known.
+    pub fn byline(&self) -> String {
+        [self.artist.as_str(), self.album.as_str()]
+            .into_iter()
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join(" \u{b7} ")
+    }
+
     /// No song: what the player bar shows before anything plays.
     pub fn nothing() -> Self {
         Self {
@@ -61,5 +70,20 @@ impl Song {
                 format!("file://{}", path.display())
             }),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_byline_leaves_out_what_is_unknown() {
+        let mut song = Song::nothing();
+        assert_eq!(song.byline(), "");
+        song.artist = "Ado".to_string();
+        assert_eq!(song.byline(), "Ado");
+        song.album = "Kyougen".to_string();
+        assert_eq!(song.byline(), "Ado \u{b7} Kyougen");
     }
 }

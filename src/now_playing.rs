@@ -176,12 +176,9 @@ impl App {
             weight: Weight::Bold,
             ..theme::INTER
         });
-        let artist = text(format!(
-            "{} \u{b7} {}",
-            self.now_playing.artist, self.now_playing.album
-        ))
-        .size(15)
-        .color(theme::text_secondary());
+        let artist = text(self.now_playing.byline())
+            .size(15)
+            .color(theme::text_secondary());
         container(
             column![cover, title, artist]
                 .push(note)

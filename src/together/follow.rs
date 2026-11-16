@@ -80,7 +80,7 @@ impl App {
                     self.together.error = Some(t!("together.end_before_joining").into_owned());
                     return Task::none();
                 }
-                self.screen = Screen::Together;
+                self.go_to(Screen::Together);
                 self.together.target = None;
                 self.together.invite_input = secret;
                 self.together_event(Event::Join)

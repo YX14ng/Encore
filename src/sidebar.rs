@@ -179,17 +179,25 @@ pub fn view<'a>(
     };
     let mut content = column![search_box(query), suggestion_list(suggestions)].spacing(2);
 
-    content = content.push(section_header("YouTube Music", Section::Music));
+    content = content.push(section_header("YouTube Music", Section::Music, state));
     if state.is_open(Section::Music) {
         content = content.push(entries(&MUSIC, selected));
     }
 
-    content = content.push(section_header(&t!("sidebar.library"), Section::Library));
+    content = content.push(section_header(
+        &t!("sidebar.library"),
+        Section::Library,
+        state,
+    ));
     if state.is_open(Section::Library) {
         content = content.push(entries(&LIBRARY, selected));
     }
 
-    content = content.push(section_header(&t!("search.playlists"), Section::Playlists));
+    content = content.push(section_header(
+        &t!("search.playlists"),
+        Section::Playlists,
+        state,
+    ));
     if state.is_open(Section::Playlists) {
         content = content.push(entries(&PLAYLIST_ACTIONS, selected));
         match account.playlists {
@@ -334,15 +342,21 @@ fn search_box(query: &str) -> Element<'_, Message> {
     .into()
 }
 
-fn section_header(label: &str, section: Section) -> Element<'static, Message> {
+/// A section's title, which folds and unfolds it; the chevron points down while it is open.
+fn section_header(
+    label: &str,
+    section: Section,
+    state: &SidebarState,
+) -> Element<'static, Message> {
     let title = text(label.to_uppercase())
         .size(11)
         .color(theme::text_secondary());
-    let chevron = theme::icon(
-        include_bytes!("../assets/icons/chevron-down.svg"),
-        theme::text_secondary(),
-        18.0,
-    );
+    let icon: &'static [u8] = if state.is_open(section) {
+        include_bytes!("../assets/icons/chevron-down.svg")
+    } else {
+        include_bytes!("../assets/icons/chevron-right.svg")
+    };
+    let chevron = theme::icon(icon, theme::text_secondary(), 18.0);
 
     button(row![title, space::horizontal(), chevron])
         .on_press(Message::ToggleSection(section))

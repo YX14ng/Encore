@@ -44,7 +44,7 @@ pub fn view<'a>(
             .wrapping(text::Wrapping::None)
             .width(Fill)
             .align_x(Center),
-        text(format!("{} \u{b7} {}", song.artist, song.album))
+        text(song.byline())
             .size(12)
             .color(theme::text_secondary())
             .wrapping(text::Wrapping::None)

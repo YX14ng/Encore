@@ -167,16 +167,16 @@ impl App {
             }
             Message::PickSuggestion(term) => {
                 self.online.query = term;
-                self.screen = Screen::Search;
+                self.go_to(Screen::Search);
                 return self.online.search();
             }
             Message::Search => {
-                self.screen = Screen::Search;
+                self.go_to(Screen::Search);
                 return self.online.search();
             }
             Message::SearchFinished(result) => return self.online.search_finished(result),
             Message::SetFilter(filter) => {
-                self.screen = Screen::Search;
+                self.go_to(Screen::Search);
                 self.online.set_filter(filter);
             }
             Message::ImageFetched(url, bytes) => {
@@ -242,7 +242,7 @@ impl App {
             Message::QueuePlayNext(index) => return self.online.queue_play_next(index),
             Message::QueueRemove(index) => return self.online.queue_remove(index),
             Message::QueueClear => return self.online.queue_clear(),
-            Message::OpenTogether => self.screen = Screen::Together,
+            Message::OpenTogether => self.go_to(Screen::Together),
             Message::Together(event) => return self.together_event(event),
             Message::Discord(event) => return self.discord_event(event),
             Message::ToggleMini => return self.toggle_mini(),
@@ -419,6 +419,8 @@ impl App {
             Message::Previous => return self.previous(),
             Message::LyricsScrolled(lines) => self.lyrics_scrolled(lines),
             Message::LyricLine(index) => self.lyric_clicked(index),
+            // With no song, the bar has nothing to jump through.
+            Message::Seeking(_) if !self.has_song() => {}
             Message::Seeking(seconds) => self.seeking = Some(seconds),
             Message::SeekDone => {
                 if let Some(seconds) = self.seeking.take() {
@@ -463,7 +465,7 @@ impl App {
                     // Headphones may have been plugged in since the screen was last open.
                     self.audio_devices = self.online.audio_devices();
                 }
-                self.screen = Screen::Settings(tab);
+                self.go_to(Screen::Settings(tab));
             }
             Message::PickTheme(name) => {
                 self.appearance.theme = name;

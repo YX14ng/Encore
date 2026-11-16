@@ -32,6 +32,8 @@ pub struct Controls {
     pub muted: bool,
     pub shuffle: bool,
     pub repeat: Repeat,
+    /// A song is in the player: previous, play and next have something to act on.
+    pub has_song: bool,
 }
 
 /// The progress bar, the transport buttons and the card of the track that is playing.
@@ -124,19 +126,19 @@ pub(crate) fn transport(playback: &Playback, controls: Controls) -> Element<'sta
             include_bytes!("../assets/icons/previous.svg"),
             theme::text_primary(),
             18.0,
-            Some(Message::Previous)
+            controls.has_song.then_some(Message::Previous)
         ),
         icon_button(
             play_icon,
             theme::text_primary(),
             26.0,
-            Some(Message::TogglePlay)
+            controls.has_song.then_some(Message::TogglePlay)
         ),
         icon_button(
             include_bytes!("../assets/icons/next.svg"),
             theme::text_primary(),
             18.0,
-            Some(Message::Next)
+            controls.has_song.then_some(Message::Next)
         ),
         icon_button(
             repeat_icon,
@@ -258,7 +260,7 @@ fn now_playing<'a>(song: &'a Song, format: Option<&'a str>, loading: bool) -> El
             text(&song.title)
                 .size(14)
                 .wrapping(iced::widget::text::Wrapping::None),
-            text(format!("{} \u{b7} {}", song.artist, song.album))
+            text(song.byline())
                 .size(12)
                 .color(theme::text_secondary())
                 .wrapping(iced::widget::text::Wrapping::None),

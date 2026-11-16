@@ -47,6 +47,7 @@ impl App {
             repeat: settings.repeat,
             compact: self.player_width() < player::COMPACT_WIDTH,
             loading: self.loading_shown.is_some(),
+            has_song: self.has_song(),
         }
     }
 
@@ -232,7 +233,10 @@ impl App {
                             covers: self.online.shared_view().covers,
                             highlight: matches!(
                                 self.screen,
-                                Screen::Home | Screen::Library(_) | Screen::Account
+                                Screen::Home
+                                    | Screen::Library(_)
+                                    | Screen::Account
+                                    | Screen::Explore
                             ),
                         },
                     )
