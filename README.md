@@ -64,6 +64,12 @@ before it and its stream only works once the ad would have played, so yt-dlp wai
 seconds more. Meanwhile the player bar already shows it with "Loading…" and the previous song
 stops.
 
+Shuffle is Encore's own, not YouTube's: albums, playlists and the library's song lists have a
+Shuffle button, and Play with shuffle on starts from a random song too, so no song always comes
+first. The order is a uniform random one (Fisher-Yates, seeded anew each start); songs of a
+playlist that load after it started playing land at random places among those still to play.
+The library loads every saved and liked song, so the oldest ones are in the mix too.
+
 Long lists (a playlist of a thousand songs, the library's songs, likes and history) only build
 the rows in sight and download covers as they scroll into view (`src/virtual_list.rs`). A long
 playlist shows its first hundred songs at once and loads the rest a page at a time; albums and
