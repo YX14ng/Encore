@@ -75,7 +75,8 @@ Get the latest version from the [releases page](https://github.com/YX14ng/Encore
 
 Encore downloads songs with [yt-dlp](https://github.com/yt-dlp/yt-dlp), which YouTube changes
 often break: keep it up to date. It needs a JavaScript runtime for YouTube's challenges
-([deno](https://deno.com)), and [mpv](https://mpv.io) and [ffmpeg](https://ffmpeg.org).
+([deno](https://deno.com)), and [mpv](https://mpv.io) and [ffmpeg](https://ffmpeg.org). The
+Windows build includes all of them; on Linux they come from your distribution.
 
 ### Arch Linux
 
@@ -119,7 +120,14 @@ WebKitGTK 4.1, GTK 3 and libsoup 3, plus yt-dlp, deno and ffmpeg.
 
 ### Windows
 
-Not yet: the sign-in window is built on WebKitGTK, which only runs on Linux.
+Download `encore-<version>-x86_64-windows-setup.exe` from the releases page and run it. It
+installs Encore for your user only (no administrator rights), with yt-dlp, deno, ffmpeg and
+libmpv included. If you prefer not to install it, unpack `encore-<version>-x86_64-windows.zip`
+anywhere and run `encore.exe`.
+
+It needs 64-bit Windows 10 or 11. The sign-in window uses the WebView2 Runtime, which Windows 11
+and an up-to-date Windows 10 already have. Encore is not signed, so the first time SmartScreen
+may say "Windows protected your PC": choose **More info → Run anyway**.
 
 ## Screenshots
 
@@ -156,6 +164,10 @@ cargo run
 
 Building needs Rust (2024 edition), pkg-config and the development files of libmpv, WebKitGTK 4.1,
 GTK 3 and libsoup 3. On Arch: `sudo pacman -S mpv webkit2gtk-4.1 gtk3 libsoup3`.
+
+On Windows, building needs Rust with the MSVC tools and libmpv's DLL with an import library
+(`mpv.lib`); the `windows` job of [`.github/workflows/release.yml`](.github/workflows/release.yml)
+shows each step.
 
 The design notes of each phase are in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 
