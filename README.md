@@ -65,6 +65,14 @@ bar already shows it with "Loading…" and the previous song stops.
 Synced lyrics can be scrolled by hand (they slide back to the line being sung four seconds
 later), and clicking a line jumps to where it starts.
 
+Japanese, Korean and Chinese lyrics also show each line in the Latin alphabet, small under it
+(the "Romanized lyrics" plugin, on by default; songs in the interface's language are left alone).
+Japanese is split into words with lindera and its IPADIC dictionary, which reads kanji in context
+(君 is "kimi"), and written in Hepburn ("kimi no namae wo yonde iru"); Korean follows the Revised
+Romanization with its sound changes ("byeolbichi", "gamsahamnida"); Chinese is pinyin with tone
+marks. The dictionary is downloaded once while building and embedded in the binary, which makes
+it about 45 MB larger (`src/romanize/`).
+
 The audio screen (the equalizer button in the player bar) also picks the sound output (the
 system's default or any PipeWire device; a saved device that is unplugged gives way to the
 default), has a compressor that evens out loud and quiet parts (Light, Medium or Strong, between
