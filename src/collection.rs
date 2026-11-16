@@ -202,6 +202,8 @@ pub(crate) fn download_button<'a>(
     let state = offline.state(&collection.id);
     let label = match state {
         State::NotDownloaded => t!("collection.download"),
+        State::Preparing => t!("collection.preparing"),
+        State::Waiting => t!("collection.waiting"),
         State::Downloading { done, total } => {
             t!("collection.downloading", done = done, total = total)
         }
@@ -209,7 +211,7 @@ pub(crate) fn download_button<'a>(
     };
     let message = match state {
         State::NotDownloaded => !collection.tracks.is_empty(),
-        State::Downloading { .. } => false,
+        State::Preparing | State::Waiting | State::Downloading { .. } => false,
         State::Downloaded => true,
     }
     .then_some(move || match state {

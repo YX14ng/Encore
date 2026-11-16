@@ -229,6 +229,8 @@ struct App {
     lastfm: scrobbler::LastFm,
     /// Volume, shuffle and repeat, remembered between sessions.
     audio_settings: audio_settings::AudioSettings,
+    /// Whether the downloads are being moved to another folder, and what went wrong last time.
+    download_folder: offline::FolderStatus,
     /// Where the progress bar is being dragged to, in seconds.
     seeking: Option<f32>,
     /// What mpv said when it refused the audio filters, shown on the audio screen.
@@ -350,7 +352,18 @@ enum Message {
     SignedOut,
     Renewal(renewal::Event),
     DownloadCollection(Collection),
+    /// The whole song list of a collection to download (every page of a playlist), or why it
+    /// could not be fetched; the collection as shown goes with it.
+    DownloadListReady(Collection, Result<Collection, String>),
     OfflineTrackDone(Result<std::path::PathBuf, String>),
+    /// Settings → Audio: choose where downloads are kept.
+    PickDownloadFolder,
+    /// The folder picked, or `None` if the dialog was closed.
+    DownloadFolderPicked(Option<std::path::PathBuf>),
+    /// Back to Encore's own downloads folder.
+    UseDefaultDownloadFolder,
+    /// The downloads were moved to the folder (`None` is the default one), or why not.
+    DownloadFolderMoved(Option<std::path::PathBuf>, Result<(), String>),
     RemoveDownload(String),
     OpenOffline(String),
     LyricsLoaded(String, Lyrics),
@@ -424,9 +437,11 @@ impl App {
             }
             None => Task::none(),
         };
+        // Downloads left unfinished when Encore closed go on.
+        let downloads = app.offline.resume();
         (
             app,
-            Task::batch([cached_images, restore, main_window_found()]),
+            Task::batch([cached_images, restore, downloads, main_window_found()]),
         )
     }
 
@@ -458,6 +473,10 @@ impl App {
         let first_line = lyrics::current_line(lyrics.synced(), elapsed * 1000).unwrap_or(0);
         let now = Instant::now();
         let audio_settings = audio_settings::AudioSettings::load();
+        // Downloads live where the user chose, read before the downloads themselves are.
+        if !cfg!(test) {
+            download::set_offline_folder(audio_settings.download_folder.clone());
+        }
 
         Self {
             tracks,
@@ -509,6 +528,7 @@ impl App {
             discord: discord::Discord::start(),
             lastfm: scrobbler::LastFm::load(),
             audio_settings,
+            download_folder: offline::FolderStatus::default(),
             seeking: None,
             audio_error: None,
             audio_devices: Vec::new(),

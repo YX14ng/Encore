@@ -164,6 +164,8 @@ pub struct AudioSettings {
     pub autoplay: bool,
     /// How much a notch of the mouse wheel over the volume bar changes the volume, in percent.
     pub volume_step: u32,
+    /// Where downloaded songs are kept; `None` is Encore's own data folder.
+    pub download_folder: Option<std::path::PathBuf>,
 }
 
 impl Default for AudioSettings {
@@ -185,6 +187,7 @@ impl Default for AudioSettings {
             crossfade: 0,
             autoplay: true,
             volume_step: crate::volume::DEFAULT_STEP,
+            download_folder: None,
         }
     }
 }

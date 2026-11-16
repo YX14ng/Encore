@@ -38,10 +38,10 @@ impl App {
         Task::batch([leave_immersive, shrink])
     }
 
-    /// Once a download finishes, saves its covers so they show without a connection. Covers that
-    /// are not in memory yet are downloaded again and saved when they arrive.
+    /// Once a download is asked for, saves its covers so they show without a connection.
+    /// Covers that are not in memory yet are downloaded again and saved when they arrive.
     pub(crate) fn save_offline_covers(&mut self, task: Task<Message>) -> Task<Message> {
-        let Some(collection) = self.offline.take_finished() else {
+        let Some(collection) = self.offline.take_new() else {
             return task;
         };
         let mut missing = Vec::new();

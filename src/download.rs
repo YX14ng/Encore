@@ -168,9 +168,28 @@ fn write_cookies(header: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+/// The folder the user chose for downloads, if not the default one.
+static OFFLINE_FOLDER: std::sync::RwLock<Option<PathBuf>> = std::sync::RwLock::new(None);
+
+/// Keeps downloads in `folder` from now on, or in the default one with `None`.
+pub fn set_offline_folder(folder: Option<PathBuf>) {
+    if let Ok(mut chosen) = OFFLINE_FOLDER.write() {
+        *chosen = folder;
+    }
+}
+
+/// Where downloads go unless the user chose another folder: `offline` in Encore's data.
+pub fn default_offline_dir() -> PathBuf {
+    crate::account::data_dir().join("offline")
+}
+
 /// Where downloaded (offline) songs live: kept until the user removes them.
 pub fn offline_dir() -> PathBuf {
-    crate::account::data_dir().join("offline")
+    OFFLINE_FOLDER
+        .read()
+        .ok()
+        .and_then(|chosen| chosen.clone())
+        .unwrap_or_else(default_offline_dir)
 }
 
 /// Returns the audio of `id`: the offline copy if there is one, else the cache, else a new

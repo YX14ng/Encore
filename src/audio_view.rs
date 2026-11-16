@@ -1,6 +1,6 @@
 //! The audio tab of the settings: the sound output, the volume wheel's step, download quality,
-//! equalizer with presets, compressor, volume normalization, silence skipping, playback speed and crossfade. Opened with the equalizer
-//! button in the player bar.
+//! the downloads folder, equalizer with presets, compressor, volume normalization, silence
+//! skipping, playback speed and crossfade. Opened with the equalizer button in the player bar.
 
 use iced::font::Weight;
 use iced::widget::{
@@ -16,20 +16,23 @@ use crate::audio_settings::{
     PRESETS,
 };
 use crate::download::Quality;
-use crate::{Message, theme};
+use crate::offline::FolderStatus;
+use crate::{Message, download, theme};
 
-/// The tab's content: `devices` are the outputs to pick from, and `error` is what mpv said when
-/// it refused the settings, if it did.
+/// The tab's content: `devices` are the outputs to pick from, `error` is what mpv said when it
+/// refused the settings, if it did, and `folder` how moving the downloads goes.
 pub fn view<'a>(
     settings: &'a AudioSettings,
     devices: &'a [Device],
     error: Option<&'a str>,
+    folder: &'a FolderStatus,
 ) -> Element<'a, Message> {
     column![]
         .push(error.map(|error| text(error).color(theme::accent())))
         .push(output(settings, devices))
         .push(volume_step(settings))
         .push(quality(settings))
+        .push(download_folder(settings, folder))
         .push(equalizer(settings))
         .push(compressor(settings))
         .push(normalization(settings))
@@ -185,6 +188,43 @@ fn quality(settings: &AudioSettings) -> Element<'_, Message> {
         note(t!("audio.quality_session_note")),
         note(t!("audio.quality_next_song")),
     ]
+    .spacing(10)
+    .into()
+}
+
+/// Where downloads are kept, with buttons to choose another folder or go back to the default.
+fn download_folder<'a>(settings: &AudioSettings, folder: &'a FolderStatus) -> Element<'a, Message> {
+    let path = download::offline_dir().display().to_string();
+    let mut buttons = row![chip(
+        t!("audio.download_folder_change"),
+        false,
+        Message::PickDownloadFolder
+    )]
+    .spacing(8);
+    if settings.download_folder.is_some() {
+        buttons = buttons.push(chip(
+            t!("audio.download_folder_default"),
+            false,
+            Message::UseDefaultDownloadFolder,
+        ));
+    }
+    let status = if folder.moving {
+        note(t!("audio.download_folder_moving"))
+    } else {
+        note(t!("audio.download_folder_note"))
+    };
+    column![
+        heading(t!("audio.download_folder"), 16.0),
+        text(path).size(13)
+    ]
+    .push((!folder.moving).then_some(buttons))
+    .push(status)
+    .push(
+        folder
+            .error
+            .as_deref()
+            .map(|error| text(error).size(13).color(theme::accent())),
+    )
     .spacing(10)
     .into()
 }

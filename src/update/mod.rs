@@ -3,6 +3,7 @@
 //! player, looks) and `places` (sidebar entries and the library).
 
 mod display;
+mod downloads;
 pub(crate) mod lyric_scroll;
 mod places;
 mod playback;
@@ -369,10 +370,25 @@ impl App {
                 }
             }
             Message::SignedOut => {}
-            Message::DownloadCollection(collection) => {
+            Message::DownloadCollection(collection) => return self.download_collection(collection),
+            Message::DownloadListReady(shown, whole) => {
+                // The whole list, under the id and looks of the collection on screen.
+                let mut collection = shown;
+                if let Ok(whole) = whole
+                    && whole.tracks.len() >= collection.tracks.len()
+                {
+                    collection.tracks = whole.tracks;
+                }
                 let task = self.offline.start(collection);
                 return self.save_offline_covers(task);
             }
+            Message::PickDownloadFolder => return downloads::pick_folder(),
+            Message::DownloadFolderPicked(Some(folder)) => {
+                return self.move_downloads(Some(folder));
+            }
+            Message::DownloadFolderPicked(None) => {}
+            Message::UseDefaultDownloadFolder => return self.move_downloads(None),
+            Message::DownloadFolderMoved(folder, result) => self.downloads_moved(folder, result),
             Message::OfflineTrackDone(result) => {
                 let task = self.offline.track_done(result);
                 return self.save_offline_covers(task);

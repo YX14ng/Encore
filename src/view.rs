@@ -159,6 +159,7 @@ impl App {
                         &self.audio_settings,
                         &self.audio_devices,
                         self.audio_error.as_deref(),
+                        &self.download_folder,
                     ),
                     settings_view::Tab::Plugins => self.plugins.view(),
                 },
