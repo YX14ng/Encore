@@ -167,3 +167,11 @@ by you.
 - iced for the interface
 - WebKitGTK (webkit2gtk 4.1) for the sign-in window
 - rustypipe for the YouTube Music catalog, yt-dlp for audio downloads, mpv (libmpv) for playback
+
+## License
+
+Encore is free software: you can redistribute it and/or modify it under the terms of the GNU
+General Public License as published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version. It is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY; see `LICENSE` for the full text. The fonts, the Japanese
+dictionary and the libraries it uses keep their own licenses; see `THIRD_PARTY.md`.
