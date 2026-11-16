@@ -52,6 +52,12 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.4.0" date="2026-11-16">
+      <description>
+        <p>Playlists, albums and the library's song lists can be searched and ordered by title, artist, album or duration.</p>
+        <p>A right click on a song opens its menu: play next, add to the queue, start a radio, add to or remove from a playlist, the queue or the downloads, go to its artist or album, like, dislike and copy its link.</p>
+      </description>
+    </release>
     <release version="0.3.1" date="2026-11-16">
       <description>
         <p>The cover of the song playing is sharp on the now playing page.</p>
