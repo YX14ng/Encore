@@ -70,6 +70,10 @@ impl App {
             // Nothing to play or pause before a song is picked.
             Message::TogglePlay if !self.has_song() => {}
             Message::TogglePlay => {
+                // A song that never started (or nothing loaded) starts again instead.
+                if let Some(restart) = self.online.restart_if_stuck(self.now) {
+                    return restart;
+                }
                 self.playback.toggle();
                 if self.online.is_active() {
                     self.online.set_paused(!self.playback.is_playing);

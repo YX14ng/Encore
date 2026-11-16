@@ -56,6 +56,8 @@ pub struct Online {
     shuffle: bool,
     rng: fastrand::Rng,
     loading: Option<String>,
+    /// The queue index of the song in `loading` and when its download started.
+    loading_started: Option<(usize, std::time::Instant)>,
     /// The next song's audio once it is downloaded, ready to crossfade into.
     next_file: Option<(String, SongFile)>,
     /// Whether mpv reported a position for the current song; until then idle means "opening".
@@ -104,6 +106,7 @@ impl Online {
             shuffle: settings.shuffle,
             rng: fastrand::Rng::new(),
             loading: None,
+            loading_started: None,
             next_file: None,
             heard: false,
             error: None,

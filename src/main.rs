@@ -38,6 +38,7 @@ mod now_playing;
 mod offline;
 mod online;
 mod platform;
+mod playback_log;
 mod player;
 mod playlists;
 mod plugins;

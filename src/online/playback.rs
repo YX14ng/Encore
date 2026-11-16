@@ -12,9 +12,13 @@ use crate::Message;
 use crate::audio_settings::AudioSettings;
 use crate::download;
 use crate::mixer::Mixer;
+use crate::playback_log;
 use crate::queue::{Queue, Repeat};
 use crate::silence::{self, SongFile};
 use crate::youtube::{self, SearchTrack, TopResult};
+
+/// How long a song may take to download before Play starts its download again.
+const STALLED: std::time::Duration = std::time::Duration::from_secs(20);
 
 impl Online {
     /// The top result's Play button: plays the song, or opens and plays the collection.
@@ -262,8 +266,12 @@ impl Online {
     /// Keeps a downloaded next song for crossfading, and queues it in mpv to follow the
     /// current one with no gap.
     pub fn prefetched(&mut self, id: String, song: Result<SongFile, String>) {
-        let Ok(song) = song else {
-            return;
+        let song = match song {
+            Ok(song) => song,
+            Err(error) => {
+                playback_log::note(format!("prefetch of {id} failed: {error}"));
+                return;
+            }
         };
         let next = self
             .following()
@@ -286,6 +294,7 @@ impl Online {
         self.queued = None;
         self.playing_file = self.next_file.take().map(|(_, song)| song.path);
         self.queue.set_playing(next);
+        playback_log::note(format!("went on into #{next}"));
         self.heard = false;
         let track = self.queue.get(next)?.clone();
         Some((track, self.prefetch_next()))
@@ -374,7 +383,9 @@ impl Online {
             return Task::none();
         };
         self.error = None;
+        playback_log::note(format!("play {id} (#{index})"));
         self.loading = Some(id.clone());
+        self.loading_started = Some((index, std::time::Instant::now()));
         // The song playing now must not go on into the queued one while this one downloads,
         // nor keep playing under the new song's name.
         self.forget_queued();
@@ -394,13 +405,20 @@ impl Online {
         song: Result<SongFile, String>,
     ) -> (Option<SearchTrack>, Task<Message>) {
         let Some(track) = self.queue.get(index) else {
+            playback_log::note(format!("ready #{index} ignored: not in the queue"));
             return (None, Task::none());
         };
         if self.loading.as_deref() != Some(track.id.as_str()) {
             // Another song was picked while this one was downloading.
+            playback_log::note(format!(
+                "ready {} ignored: loading {:?}",
+                track.id, self.loading
+            ));
             return (None, Task::none());
         }
+        let id = track.id.clone();
         self.loading = None;
+        self.loading_started = None;
 
         let started = song.and_then(|song| {
             let mixer = self
@@ -411,8 +429,12 @@ impl Online {
             Ok(song.path)
         });
         match started {
-            Ok(path) => self.playing_file = Some(path),
+            Ok(path) => {
+                playback_log::note(format!("started {id}"));
+                self.playing_file = Some(path);
+            }
             Err(error) => {
+                playback_log::note(format!("failed {id}: {error}"));
                 self.error = Some(error);
                 return (None, Task::none());
             }
@@ -446,10 +468,33 @@ impl Online {
         self.queue.playing()
     }
 
+    /// Play pressed while nothing plays: downloads again a song that has been downloading
+    /// for too long (its download may be lost), or starts the current song over when mpv has
+    /// nothing loaded. `None` when Play can just resume.
+    pub fn restart_if_stuck(&mut self, now: std::time::Instant) -> Option<Task<Message>> {
+        if self.loading.is_some() {
+            let (index, since) = self.loading_started?;
+            if now.saturating_duration_since(since) < STALLED {
+                return None;
+            }
+            playback_log::note(format!("play pressed: downloading #{index} again"));
+            return Some(self.play(index));
+        }
+        let index = self.queue.playing()?;
+        if !self.mixer.as_ref().is_some_and(Mixer::is_idle) {
+            return None;
+        }
+        playback_log::note(format!(
+            "play pressed: nothing loaded, starting #{index} again"
+        ));
+        Some(self.play(index))
+    }
+
     /// Pauses or resumes the audio.
     pub fn set_paused(&mut self, paused: bool) {
         // While a new song downloads, the old one stays paused; the new one starts by itself.
         if !paused && self.loading.is_some() {
+            playback_log::note(format!("play ignored: loading {:?}", self.loading));
             return;
         }
         if let Some(mixer) = &mut self.mixer {
@@ -485,6 +530,7 @@ impl Online {
             return Poll::Position(position as u32);
         }
         if self.heard && mixer.is_idle() {
+            playback_log::note("finished");
             self.heard = false;
             return Poll::Finished;
         }
@@ -556,5 +602,33 @@ mod tests {
         );
         assert!(matches!(online.poll(), Poll::Waiting));
         assert_eq!(online.position_ms(), None);
+    }
+
+    #[test]
+    fn play_downloads_again_a_song_that_never_came() {
+        let mut online = Online::new(&AudioSettings::default());
+        online.queue.replace(
+            vec![track("a"), track("b")],
+            0,
+            false,
+            &mut fastrand::Rng::with_seed(1),
+        );
+        let _ = online.play(1);
+        let (index, since) = online.loading_started.expect("downloading");
+        assert_eq!(index, 1);
+        assert!(
+            online.restart_if_stuck(since).is_none(),
+            "a download that just started is left alone"
+        );
+        assert!(online.restart_if_stuck(since + STALLED).is_some());
+        assert_eq!(online.loading.as_deref(), Some("b"));
+        let (_, again) = online.loading_started.expect("downloading again");
+        assert!(again >= since);
+    }
+
+    #[test]
+    fn play_just_resumes_when_nothing_is_stuck() {
+        let mut online = Online::new(&AudioSettings::default());
+        assert!(online.restart_if_stuck(std::time::Instant::now()).is_none());
     }
 }
