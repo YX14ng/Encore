@@ -65,16 +65,16 @@ mod tests {
     fn reads_name_handle_and_largest_photo() {
         let response = r#"{"actions":[{"openPopupAction":{"popup":{"multiPageMenuRenderer":{
             "header":{"activeAccountHeaderRenderer":{
-                "accountName":{"runs":[{"text":"Fujimaru"}]},
-                "channelHandle":{"runs":[{"text":"@fujimaru"}]},
+                "accountName":{"runs":[{"text":"Ada"}]},
+                "channelHandle":{"runs":[{"text":"@ada"}]},
                 "accountPhoto":{"thumbnails":[
                     {"url":"https://small","width":48},
                     {"url":"https://big","width":88}]}}}}}}}]}"#;
         assert_eq!(
             parse(response),
             Some(Profile {
-                name: "Fujimaru".to_string(),
-                handle: Some("@fujimaru".to_string()),
+                name: "Ada".to_string(),
+                handle: Some("@ada".to_string()),
                 photo_url: Some("https://big".to_string()),
             })
         );
