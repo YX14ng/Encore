@@ -51,6 +51,9 @@ pub struct Online {
     /// `image_bytes` reads them for the few uses that need the bytes.
     images: HashMap<String, image::Handle>,
     requested_images: HashSet<String>,
+    /// The large cover of the song playing, asked for once it starts. Only this one is kept
+    /// large; the previous song's is dropped.
+    large_cover: Option<String>,
     queue: Queue,
     /// Whether new queues start shuffled; mirrors the shuffle button.
     shuffle: bool,
@@ -102,6 +105,7 @@ impl Online {
             play_when_loaded: false,
             images: HashMap::new(),
             requested_images: HashSet::new(),
+            large_cover: None,
             queue: Queue::default(),
             shuffle: settings.shuffle,
             rng: fastrand::Rng::new(),
@@ -258,7 +262,8 @@ impl Online {
         };
         let playing = self
             .playing_track()
-            .is_some_and(|track| track.cover_url.as_deref() == Some(url.as_str()));
+            .is_some_and(|track| track.cover_url.as_deref() == Some(url.as_str()))
+            || self.large_cover.as_deref() == Some(url.as_str());
         self.images.insert(url, image::Handle::from_bytes(bytes));
         playing
     }
@@ -425,6 +430,36 @@ impl Online {
     /// An image, ready to draw.
     pub fn image(&self, url: &str) -> Option<image::Handle> {
         self.images.get(url).cloned()
+    }
+
+    /// The cover to show for the song playing (`url` is its usual one): the large one once it
+    /// is downloaded, else the usual one.
+    pub fn playing_cover(&self, url: &str) -> Option<image::Handle> {
+        self.large_cover
+            .as_deref()
+            .filter(|large| youtube::large_cover(url).as_deref() == Some(*large))
+            .and_then(|large| self.image(large))
+            .or_else(|| self.image(url))
+    }
+
+    /// Downloads the large cover for a song that started with cover `url`, dropping the one of
+    /// the song before.
+    pub fn fetch_large_cover(&mut self, url: &str) -> Task<Message> {
+        let large = youtube::large_cover(url);
+        if large == self.large_cover {
+            return Task::none();
+        }
+        if let Some(old) = self.large_cover.take() {
+            self.images.remove(&old);
+            self.requested_images.remove(&old);
+        }
+        self.large_cover = large.clone();
+        self.fetch_images(large.into_iter().collect())
+    }
+
+    /// Whether `url` is the large cover of the song playing.
+    pub fn is_large_cover(&self, url: &str) -> bool {
+        self.large_cover.as_deref() == Some(url)
     }
 
     /// Sets or (with `None`) forgets the cover the user picked for playlist `id`.

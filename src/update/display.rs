@@ -54,9 +54,20 @@ impl App {
         Task::batch([task, self.online.refetch_images(missing)])
     }
 
-    /// Puts a freshly downloaded cover on the player and behind the home greeting.
+    /// Puts a freshly downloaded cover on the player and behind the home greeting. The large
+    /// cover only goes on the player: the background and the accent come from the small one.
     pub(crate) fn show_cover(&mut self, url: &str) {
-        self.now_playing.cover = self.online.image(url);
+        let Some(usual) = self
+            .online
+            .playing_track()
+            .and_then(|track| track.cover_url.clone())
+        else {
+            return;
+        };
+        self.now_playing.cover = self.online.playing_cover(&usual);
+        if self.online.is_large_cover(url) {
+            return;
+        }
         let looks = cover_looks(self.online.image_bytes(url).as_deref());
         self.set_cover_looks(looks);
     }

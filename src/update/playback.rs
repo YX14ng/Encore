@@ -45,7 +45,12 @@ impl App {
         let cover = track
             .cover_url
             .as_deref()
-            .and_then(|url| self.online.image(url));
+            .and_then(|url| self.online.playing_cover(url));
+        // The list's cover is small: the player shows a large one once it arrives.
+        let large_cover = track
+            .cover_url
+            .as_deref()
+            .map_or_else(Task::none, |url| self.online.fetch_large_cover(url));
         self.now_playing = Song::from_search(&track, cover);
         self.audio_format = None;
         let looks = cover_looks(
@@ -114,7 +119,15 @@ impl App {
             lyrics_source::fetch(track, self.online.client()),
             move |lyrics| Message::LyricsLoaded(id.clone(), lyrics),
         );
-        Task::batch([lyrics, now_playing, notice, segments, visualizer, video])
+        Task::batch([
+            lyrics,
+            now_playing,
+            notice,
+            segments,
+            visualizer,
+            video,
+            large_cover,
+        ])
     }
 
     /// With SponsorBlock on, jumps over the part of the video that is playing if the community

@@ -427,6 +427,39 @@ fn artist_names(artists: &[rustypipe::model::ArtistId]) -> String {
         .join(", ")
 }
 
+/// How big the cover of the song playing is asked for: sharp on the now playing page.
+const LARGE_COVER: u32 = 1200;
+
+/// The same cover as `url`, `LARGE_COVER` pixels wide. Song covers in lists come about 120
+/// pixels wide, and Google's image servers make any size when the size options after the `=`
+/// (`=w120-h120-l90-rj`) ask for it. `None` for other images, such as video thumbnails.
+pub fn large_cover(url: &str) -> Option<String> {
+    let host = url.split('/').nth(2)?;
+    if !host.ends_with(".googleusercontent.com") && !host.ends_with(".ggpht.com") {
+        return None;
+    }
+    let (base, options) = url.rsplit_once('=')?;
+    let mut sized = false;
+    let options: Vec<String> = options
+        .split('-')
+        .map(|option| {
+            let is_size = |letter: char| {
+                option.strip_prefix(letter).is_some_and(|number| {
+                    !number.is_empty() && number.bytes().all(|byte| byte.is_ascii_digit())
+                })
+            };
+            match option.chars().next() {
+                Some(letter @ ('w' | 'h' | 's')) if is_size(letter) => {
+                    sized = true;
+                    format!("{letter}{LARGE_COVER}")
+                }
+                _ => option.to_string(),
+            }
+        })
+        .collect();
+    sized.then(|| format!("{base}={}", options.join("-")))
+}
+
 fn best_image(thumbnails: &[Thumbnail]) -> Option<String> {
     image_up_to(thumbnails, COVER_MAX_WIDTH)
 }
@@ -604,5 +637,27 @@ mod tests {
         assert!(songs.len() > 10, "only {} songs", songs.len());
         let others = songs.iter().filter(|song| song.id != "Rgrt_8mXrK8").count();
         assert!(others > 10, "only {others} other songs");
+    }
+
+    #[test]
+    fn asks_google_for_a_large_cover() {
+        assert_eq!(
+            large_cover("https://lh3.googleusercontent.com/abc=w120-h120-l90-rj").as_deref(),
+            Some("https://lh3.googleusercontent.com/abc=w1200-h1200-l90-rj")
+        );
+        assert_eq!(
+            large_cover("https://yt3.ggpht.com/abc=s88-c-k").as_deref(),
+            Some("https://yt3.ggpht.com/abc=s1200-c-k")
+        );
+        assert_eq!(
+            large_cover("https://i.ytimg.com/vi/abc/hqdefault.jpg"),
+            None,
+            "video thumbnails stay"
+        );
+        assert_eq!(
+            large_cover("https://lh3.googleusercontent.com/abc=rj"),
+            None,
+            "no size to change"
+        );
     }
 }
