@@ -1,7 +1,7 @@
 # Encore — keeping the YouTube Music session alive
 
 Date: 2026-11-15
-Status: steps 1 and 2 built (2026-11-15); step 3 not built
+Status: steps 1, 2 and 3 built (2026-11-15); step 3 not yet tried on a real session
 
 ## What happens today
 
@@ -44,6 +44,32 @@ Unknowns that only a live test answers:
 A wrong rotation is not harmless: once Google issues a new `__Secure-1PSIDTS`, the old one is
 superseded, so a rotation whose answer is not stored signs Encore out.
 
+## Step 3 as built
+
+Browsers renew YouTube's copy of the session on `accounts.youtube.com`, not `accounts.google.com`,
+so the `.youtube.com` cookies Encore already keeps are enough and the sign-in window needs no
+change. The YouTube page embeds
+`accounts.youtube.com/RotateCookiesPage?origin=https://www.youtube.com&yt_pid=1`, whose script
+calls `init('<token>', m, o, l, interval)`; it posts the protobuf-as-JSON array `[m, "<token>",
+o, l]` (zeros as `null`, trailing nulls left out, e.g. `[null,"-36…09",1]`) to
+`accounts.youtube.com/RotateCookies` with `Origin`/`Referer` on `accounts.youtube.com`. The new
+cookies come back in `Set-Cookie`; the answer `)]}'\n[["identity.hfcr",600],…]` carries the
+wait. Without a session the page answers 401 (checked anonymously).
+
+- rustypipe fork (`src/client/cookie_rotation.rs`): `user_auth_rotate_cookie()` does both
+  requests, merges the `Domain=.youtube.com` cookies of both answers into the stored header
+  (replaced, added, or removed when expired), saves it, and returns the wait (at least a
+  minute). 401 is `AuthError::NoLogin`. If the cookie changed meanwhile (sign-in, sign-out) the
+  rotated one is dropped.
+- Encore (`src/renewal.rs`): renews at start (after the library is restored or signed in) and
+  then after each wait; another failure tries again in ten minutes, a refusal shows the
+  sign-in banner. Each sign-in or sign-out starts a new run, ending the old waits. Only sessions
+  from the sign-in window are renewed (`renewable` in `session.json`): music-assistant
+  (PR #7075, removed in #7448) renewed browser sessions and signed the browser's copy out after
+  about 20 minutes. The yt-dlp copy is taken fresh for each download, so it follows the
+  renewals.
+- `renews_the_real_session` (ignored) is the one live test; it needs the user's go-ahead.
+
 ## Plan
 
 Steps 1 and 2 are in `src/session.rs` (the log in `~/.local/share/encore/session.json`), the
@@ -69,3 +95,5 @@ banner in `view.rs`. Likes and playlist changes refused for the session show the
 - gemini-webapi (`HanaokaYuzu/Gemini-API`): `src/gemini_webapi/utils/rotate_1psidts.py`,
   `constants.py` (`Endpoint.ROTATE_COOKIES`, `Headers.ROTATE_COOKIES`).
 - notebooklm-py, `docs/auth-cookie-lifecycle.md` (rotation interval, supersede timing).
+- catbus (`cv-cat/catbus`) PR #59: `RotateCookiesPage` → `RotateCookies` on `accounts.youtube.com`.
+- yMusic (`TonybynMp4/yMusic`) PR #48; music-assistant PRs #7075 and #7448.

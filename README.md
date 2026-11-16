@@ -20,7 +20,11 @@ Signing in happens in a small window of Encore's own (WebKitGTK), the way Pear D
 you sign in to Google there, and the session belongs to Encore alone. A session read from your
 browser stops working as soon as that browser renews its cookies, often within minutes, so reading
 it from a browser or a cookies.txt is only offered as another way. The window keeps nothing on
-disk; Encore keeps only the YouTube cookies, in `~/.local/share/encore/rustypipe/`.
+disk; Encore keeps only the YouTube cookies, in `~/.local/share/encore/rustypipe/`. While Encore
+is open it renews a session from its window the way an open YouTube tab does, about every ten
+minutes; a session read from a browser is left alone, since renewing it would sign the browser
+out. When YouTube stops accepting the session, a banner offers to sign in again and the saved
+library stays on screen; the account screen says how long the session has worked.
 
 The queue button in the top bar swaps the lyrics panel for the queue: the song that is playing and
 the ones up next, which you can jump to, move up to play next or take out. The + on any song row
