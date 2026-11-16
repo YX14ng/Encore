@@ -64,6 +64,11 @@ before it and its stream only works once the ad would have played, so yt-dlp wai
 seconds more. Meanwhile the player bar already shows it with "Loading…" and the previous song
 stops.
 
+Long lists (a playlist of a thousand songs, the library's songs, likes and history) only build
+the rows in sight and download covers as they scroll into view (`src/virtual_list.rs`). A long
+playlist shows its first hundred songs at once and loads the rest a page at a time; albums and
+playlists opened lately show at once as they were left while a fresh copy loads.
+
 Synced lyrics can be scrolled by hand (they slide back to the line being sung four seconds
 later), and clicking a line jumps to where it starts.
 
