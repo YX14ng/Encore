@@ -58,9 +58,11 @@ YouTube Music's answer (`src/browse.rs`).
 
 Songs follow each other with no gap: once the next song is downloaded, it is queued in mpv, which
 goes on into it without reopening the sound output. With crossfade on, the fade takes over.
-The two songs after it are downloaded ahead too: YouTube holds every new download back for about
-six seconds, so a song that is not in the cache yet takes a while to start. Meanwhile the player
-bar already shows it with "Loading…" and the previous song stops.
+The two songs after it are downloaded ahead too. Signed in, a song that is not in the cache yet
+takes about three seconds (yt-dlp starting and the download); signed out, YouTube puts an ad
+before it and its stream only works once the ad would have played, so yt-dlp waits about six
+seconds more. Meanwhile the player bar already shows it with "Loading…" and the previous song
+stops.
 
 Synced lyrics can be scrolled by hand (they slide back to the line being sung four seconds
 later), and clicking a line jumps to where it starts.
@@ -85,10 +87,11 @@ audio screen; touchpad scrolls add up to notches), and the bar shows the percent
 pointer is over it.
 
 The audio quality is Low (Opus around 60 kbit/s), Normal (around 130 kbit/s, the best YouTube
-gives anyone) or High: with YouTube Music Premium, Opus around 256 kbit/s. For High, yt-dlp gets
-the signed-in session in a cookies file that only the user can read
-(`~/.local/share/encore/yt-dlp/`), written for that one download and deleted when yt-dlp ends.
-yt-dlp warns that accounts used this way can get blocked for a while, so High is off by default.
+gives anyone) or High: with YouTube Music Premium, Opus around 256 kbit/s. Signed in, yt-dlp
+gets the session for every download (with Premium that means no ad and no wait for one), in a
+cookies file that only the user can read (`~/.local/share/encore/yt-dlp/`), written for that one
+download and deleted when yt-dlp ends. yt-dlp warns that accounts used this way can get blocked
+for a while; the audio screen says so.
 Each quality has its own cache folder (`~/.cache/encore/audio-low`, `audio`, `audio-high`).
 
 The thumbs in the player bar like and dislike the playing song on YouTube Music (signed in;
