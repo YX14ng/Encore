@@ -52,6 +52,13 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.3.0" date="2026-11-16">
+      <description>
+        <p>Downloads go on after Encore restarts, download whole playlists, wait in line and show in Downloads while they run.</p>
+        <p>The downloads folder can be chosen in Settings, Audio.</p>
+        <p>An Arch Linux package comes with each release.</p>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-11-16">
       <description>
         <p>Encore runs on Windows, with an installer that includes everything it needs.</p>
