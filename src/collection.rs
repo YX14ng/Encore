@@ -1,14 +1,14 @@
 //! An opened album, playlist or artist: a header with its image and a Play button, then its songs.
 
 use iced::font::Weight;
-use iced::widget::{button, column, row, scrollable, space, text};
+use iced::widget::{Row, button, column, row, scrollable, space, text};
 use iced::{Center, Element, Fill, Font, border};
 use rust_i18n::t;
 
 use crate::offline::{Offline, State};
 use crate::search::{self, Shared, Status};
 use crate::virtual_list::Scroll;
-use crate::youtube::{Collection, TileKind};
+use crate::youtube::{Collection, SearchTrack, TileKind};
 use crate::{Message, playlists, theme};
 
 /// The scrollable of the collection screen, scrolled back to the top when another opens.
@@ -65,22 +65,6 @@ fn loaded<'a>(
         TileKind::Radio => t!("collection.kind_mix"),
     };
 
-    let play = button(
-        text(t!("search.play"))
-            .size(14)
-            .color(theme::text_primary()),
-    )
-    .on_press_maybe(
-        (!collection.tracks.is_empty()).then(|| Message::PlayQueue(collection.tracks.clone(), 0)),
-    )
-    .padding([8, 22])
-    .style(|_, status| {
-        let mut style = theme::flat_button(status, false);
-        style.background = Some(theme::accent().into());
-        style.border = border::rounded(18);
-        style
-    });
-
     let details = column![
         text(kind).size(11).color(theme::text_secondary()),
         text(&collection.title).size(34).font(Font {
@@ -94,9 +78,9 @@ fn loaded<'a>(
             .size(13)
             .color(theme::text_secondary()),
         space().height(8),
-        row![play, download_button(collection, offline)]
-            .push((collection.kind == TileKind::Playlist).then(|| cover_button(collection)))
-            .spacing(10),
+        play_buttons(&collection.tracks)
+            .push(download_button(collection, offline))
+            .push((collection.kind == TileKind::Playlist).then(|| cover_button(collection))),
     ]
     .push(
         offline
@@ -155,39 +139,99 @@ fn cover_button(collection: &Collection) -> Element<'_, Message> {
 }
 
 /// Download, the progress while downloading, or Remove download once it is on disk.
+/// `button` sending what `message` makes when pressed, or disabled without it. The message is
+/// made only on a press: those of a collection copy all of its songs.
+fn pressable<'a>(
+    button: button::Button<'a, Message>,
+    message: Option<impl Fn() -> Message + 'a>,
+) -> button::Button<'a, Message> {
+    match message {
+        Some(message) => button.on_press_with(message),
+        None => button,
+    }
+}
+
+/// Play (from the first song, or a random one with shuffle on) and Shuffle (random order from
+/// a random song, leaving shuffle on) for a list of songs. The messages copy the songs, so they
+/// are made only when a button is pressed.
+pub(crate) fn play_buttons(tracks: &[SearchTrack]) -> Row<'_, Message> {
+    let has_songs = !tracks.is_empty();
+    let play = pressable(
+        button(
+            text(t!("search.play"))
+                .size(14)
+                .color(theme::text_primary()),
+        ),
+        has_songs.then_some(move || Message::PlayAll(tracks.to_vec(), false)),
+    )
+    .padding([8, 22])
+    .style(|_, status| {
+        let mut style = theme::flat_button(status, false);
+        style.background = Some(theme::accent().into());
+        style.border = border::rounded(18);
+        style
+    });
+    let shuffle = pressable(
+        button(
+            row![
+                theme::icon(
+                    include_bytes!("../assets/icons/shuffle.svg"),
+                    theme::text_primary(),
+                    16.0
+                ),
+                text(t!("collection.shuffle")).size(14),
+            ]
+            .spacing(8)
+            .align_y(Center),
+        ),
+        has_songs.then_some(move || Message::PlayAll(tracks.to_vec(), true)),
+    )
+    .padding([8, 18])
+    .style(|_, status| {
+        let mut style = theme::flat_button(status, false);
+        style.border = border::rounded(18).color(theme::line()).width(1);
+        style
+    });
+    row![play, shuffle].spacing(10)
+}
+
 pub(crate) fn download_button<'a>(
     collection: &'a Collection,
     offline: &'a Offline,
 ) -> Element<'a, Message> {
-    let (label, message) = match offline.state(&collection.id) {
-        State::NotDownloaded => (
-            t!("collection.download"),
-            (!collection.tracks.is_empty())
-                .then(|| Message::DownloadCollection(collection.clone())),
-        ),
-        State::Downloading { done, total } => (
-            t!("collection.downloading", done = done, total = total),
-            None,
-        ),
-        State::Downloaded => (
-            t!("collection.downloaded"),
-            Some(Message::RemoveDownload(collection.id.clone())),
-        ),
+    let state = offline.state(&collection.id);
+    let label = match state {
+        State::NotDownloaded => t!("collection.download"),
+        State::Downloading { done, total } => {
+            t!("collection.downloading", done = done, total = total)
+        }
+        State::Downloaded => t!("collection.downloaded"),
     };
+    let message = match state {
+        State::NotDownloaded => !collection.tracks.is_empty(),
+        State::Downloading { .. } => false,
+        State::Downloaded => true,
+    }
+    .then_some(move || match state {
+        State::Downloaded => Message::RemoveDownload(collection.id.clone()),
+        _ => Message::DownloadCollection(collection.clone()),
+    });
 
-    button(
-        row![
-            theme::icon(
-                include_bytes!("../assets/icons/download.svg"),
-                theme::text_primary(),
-                16.0
-            ),
-            text(label).size(14),
-        ]
-        .spacing(8)
-        .align_y(Center),
+    pressable(
+        button(
+            row![
+                theme::icon(
+                    include_bytes!("../assets/icons/download.svg"),
+                    theme::text_primary(),
+                    16.0
+                ),
+                text(label).size(14),
+            ]
+            .spacing(8)
+            .align_y(Center),
+        ),
+        message,
     )
-    .on_press_maybe(message)
     .padding([8, 18])
     .style(|_, status| {
         let mut style = theme::flat_button(status, false);

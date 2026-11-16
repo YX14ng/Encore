@@ -192,7 +192,7 @@ fn buttons<'a>(
     offline: &'a Offline,
 ) -> Element<'a, Message> {
     let play =
-        (!collection.tracks.is_empty()).then(|| Message::PlayQueue(collection.tracks.clone(), 0));
+        (!collection.tracks.is_empty()).then(|| Message::PlayAll(collection.tracks.clone(), false));
     let radio = page.radio.as_ref().map(|id| {
         Message::OpenTile(Tile {
             kind: TileKind::Radio,

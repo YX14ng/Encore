@@ -111,9 +111,9 @@ impl LibraryData {
 
 /// The scrollable of the library screens, scrolled back to the top when another opens.
 pub const SHELF_SCROLL_ID: &str = "shelf";
-/// Where a library screen's song list starts in its scrollable: the padding, the heading and
-/// the space below it (see `virtual_list`).
-const SHELF_LIST_TOP: f32 = 28.0 + 40.0 + 18.0;
+/// Where a library screen's song list starts in its scrollable: the padding, the heading, the
+/// Play and Shuffle buttons and the spaces between them (see `virtual_list`).
+const SHELF_LIST_TOP: f32 = 28.0 + 40.0 + 18.0 + 36.0 + 18.0;
 
 /// The songs of a library list in sight when scrolled to `scroll`.
 pub fn shelf_rows_in_sight(scroll: Scroll, count: usize) -> std::ops::Range<usize> {
@@ -147,8 +147,12 @@ pub enum Shelf {
     Downloads,
 }
 
-/// How many songs to load from long lists (history, saved songs, liked music).
-const SONG_LIMIT: usize = 500;
+/// How many songs of the history to load.
+const HISTORY_LIMIT: usize = 500;
+/// How many saved and liked songs to load: all of them in practice, so playing them shuffled
+/// does not leave the older ones out. It loads in the background, with the saved library on
+/// screen meanwhile (about three seconds for a thousand songs).
+const SONG_LIMIT: usize = 20_000;
 /// How many albums, artists or playlists to load.
 const CARD_LIMIT: usize = 200;
 /// How many mixes the home screen offers.
@@ -185,7 +189,7 @@ pub async fn load(rp: RustyPipe) -> Result<LibraryData, String> {
     // The history paginator only knows how to fetch one more page at a time.
     let more_history = async {
         if let Ok(page) = &mut history {
-            while page.items.len() < SONG_LIMIT && matches!(page.extend(&q).await, Ok(true)) {}
+            while page.items.len() < HISTORY_LIMIT && matches!(page.extend(&q).await, Ok(true)) {}
         }
     };
     let more_songs = async {
@@ -419,7 +423,12 @@ pub fn shelf_view<'a>(
             Shelf::History | Shelf::Songs | Shelf::Liked => {
                 let tracks = data.shelf_tracks(shelf).unwrap_or_default();
                 let rows = shelf_rows_in_sight(scroll, tracks.len());
-                search::long_track_list(tracks, None, rows, shared)
+                column![
+                    crate::collection::play_buttons(tracks),
+                    search::long_track_list(tracks, None, rows, shared)
+                ]
+                .spacing(18)
+                .into()
             }
             Shelf::Albums => search::card_grid(&data.albums, shared),
             // A library saved before Encore read its artists has only the subscriptions.

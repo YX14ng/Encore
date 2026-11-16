@@ -260,6 +260,8 @@ enum Message {
     /// The library screen's list scrolled.
     ShelfScrolled(virtual_list::Scroll),
     PlayQueue(Vec<SearchTrack>, usize),
+    /// An album's or playlist's Play (or, with `true`, Shuffle) button.
+    PlayAll(Vec<SearchTrack>, bool),
     AddToQueue(SearchTrack),
     QueueJump(usize),
     QueuePlayNext(usize),

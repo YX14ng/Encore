@@ -389,15 +389,20 @@ impl Online {
         }
     }
 
-    /// Adds a page of songs to playlist `id`. Returns `false` if that playlist is no longer
-    /// open, so its other pages are not needed.
+    /// Adds a page of songs to playlist `id`, on screen and in the queue if it plays. Returns
+    /// `false` if the playlist is neither open nor playing, so its other pages are not needed.
     pub fn more_tracks_loaded(&mut self, id: &str, tracks: Vec<SearchTrack>) -> bool {
+        let playing = self.queue.is_from(id);
+        if playing {
+            self.queue
+                .extend(tracks.clone(), self.shuffle, &mut self.rng);
+        }
         match &mut self.collection {
             Some(collection) if collection.id == id => {
                 collection.tracks.extend(tracks);
                 true
             }
-            _ => false,
+            _ => playing,
         }
     }
 

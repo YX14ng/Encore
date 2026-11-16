@@ -40,9 +40,26 @@ impl Online {
     /// Replaces the queue with `tracks` and plays song `index`; with shuffle on, the rest play
     /// in random order.
     pub fn play_queue(&mut self, tracks: Vec<SearchTrack>, index: usize) -> Task<Message> {
+        // The open collection's songs: the pages of it that load later join the queue.
+        let source = self
+            .collection
+            .as_ref()
+            .filter(|collection| collection.tracks == tracks)
+            .map(|collection| collection.id.clone());
         self.queue
             .replace(tracks, index, self.shuffle, &mut self.rng);
+        if let Some(id) = source {
+            self.queue.set_source(&id);
+        }
         self.play(index)
+    }
+
+    /// Plays all of `tracks` (an album's or playlist's Play button): from the first song, or
+    /// with shuffle on (`shuffle` turns it on) from a random one, so no song always starts.
+    pub fn play_all(&mut self, tracks: Vec<SearchTrack>, shuffle: bool) -> Task<Message> {
+        self.shuffle |= shuffle;
+        let first = crate::queue::first_song(tracks.len(), self.shuffle, &mut self.rng);
+        self.play_queue(tracks, first)
     }
 
     /// Adds `track` at the end of the queue, or plays it when nothing is queued.

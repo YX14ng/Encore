@@ -1,4 +1,20 @@
 _version: 2
+collection.shuffle:
+  en: "Shuffle"
+  zh-CN: "随机播放"
+  zh-TW: "隨機播放"
+  hi: "शफ़ल करें"
+  es: "Aleatorio"
+  ar: "ترتيب عشوائي"
+  fr: "Lecture aléatoire"
+  bn: "এলোমেলো চালান"
+  pt-BR: "Aleatório"
+  ru: "Перемешать"
+  id: "Acak"
+  it: "Riproduzione casuale"
+  de: "Zufallswiedergabe"
+  ja: "シャッフル"
+  ko: "셔플"
 search.results_for:
   en: "Results for “%{query}”"
   zh-CN: "“%{query}”的搜索结果"

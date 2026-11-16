@@ -223,6 +223,13 @@ impl App {
                 return self.fetch_covers_in_sight();
             }
             Message::PlayQueue(tracks, index) => return self.online.play_queue(tracks, index),
+            Message::PlayAll(tracks, shuffle) => {
+                if shuffle && !self.audio_settings.shuffle {
+                    self.audio_settings.shuffle = true;
+                    self.audio_settings.save();
+                }
+                return self.online.play_all(tracks, shuffle);
+            }
             Message::AddToQueue(track) => return self.online.add_to_queue(track),
             Message::QueueJump(index) => return self.online.play(index),
             Message::QueuePlayNext(index) => return self.online.queue_play_next(index),

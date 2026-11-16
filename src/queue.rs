@@ -42,6 +42,9 @@ pub struct Queue {
     cursor: Option<usize>,
     /// The songs autoplay added (similar songs after the ones picked).
     suggested: HashSet<usize>,
+    /// The album or playlist the songs came from, when the queue is one: songs of it that load
+    /// later join the queue.
+    source: Option<String>,
 }
 
 impl Queue {
@@ -57,6 +60,34 @@ impl Queue {
         self.tracks = tracks;
         self.cursor = None;
         self.suggested.clear();
+        self.source = None;
+    }
+
+    /// Notes that the songs are those of collection `id`.
+    pub fn set_source(&mut self, id: &str) {
+        self.source = Some(id.to_string());
+    }
+
+    /// Whether the songs are those of collection `id`.
+    pub fn is_from(&self, id: &str) -> bool {
+        self.source.as_deref() == Some(id)
+    }
+
+    /// Adds songs of the queue's collection that loaded after it started. With `shuffle`
+    /// each lands at a random place among the songs still to play (which keeps every order
+    /// of them equally likely); else they go at the end.
+    pub fn extend(&mut self, tracks: Vec<SearchTrack>, shuffle: bool, rng: &mut fastrand::Rng) {
+        for track in tracks {
+            let index = self.tracks.len();
+            self.tracks.push(track);
+            let first_free = self.cursor.map_or(0, |cursor| cursor + 1);
+            let at = if shuffle {
+                rng.usize(first_free..=self.order.len())
+            } else {
+                self.order.len()
+            };
+            self.order.insert(at, index);
+        }
     }
 
     /// Song `index` (in list order).
@@ -219,6 +250,16 @@ impl Queue {
         if let Some(cursor) = self.cursor {
             self.order.truncate(cursor + 1);
         }
+    }
+}
+
+/// The song a list of `len` songs starts with when played whole: the first, or with
+/// `shuffle` any of them, each as likely.
+pub fn first_song(len: usize, shuffle: bool, rng: &mut fastrand::Rng) -> usize {
+    if shuffle && len > 0 {
+        rng.usize(..len)
+    } else {
+        0
     }
 }
 
@@ -387,5 +428,54 @@ mod tests {
         assert_eq!(Repeat::Off.next(), Repeat::All);
         assert_eq!(Repeat::All.next(), Repeat::One);
         assert_eq!(Repeat::One.next(), Repeat::Off);
+    }
+
+    #[test]
+    fn songs_that_load_later_join_the_shuffle_anywhere_ahead() {
+        let mut rng = fastrand::Rng::with_seed(7);
+        // How often each late song lands among the next ten, over many queues.
+        let mut early = 0;
+        for _ in 0..200 {
+            let mut queue = Queue::default();
+            queue.replace(songs(100), 0, true, &mut rng);
+            queue.set_playing(0);
+            queue.extend(songs(100), true, &mut rng);
+            assert_eq!(queue.playing(), Some(0), "the song playing stays");
+            let ahead = queue.upcoming();
+            assert_eq!(ahead.len(), 199);
+            early += ahead[..10].iter().filter(|&&song| song >= 100).count();
+        }
+        // Half the songs ahead are late ones, so about 5 of each 10 should be.
+        let share = early as f32 / 2000.0;
+        assert!(
+            (0.4..0.6).contains(&share),
+            "late songs are not mixed in: {share}"
+        );
+    }
+
+    #[test]
+    fn songs_that_load_later_go_at_the_end_in_order() {
+        let mut rng = fastrand::Rng::with_seed(1);
+        let mut queue = Queue::default();
+        queue.replace(songs(3), 0, false, &mut rng);
+        queue.set_playing(0);
+        queue.extend(songs(2), false, &mut rng);
+        assert_eq!(queue.upcoming(), &[1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn shuffled_lists_start_anywhere() {
+        let mut rng = fastrand::Rng::with_seed(5);
+        let mut starts = [0usize; 10];
+        for _ in 0..5000 {
+            starts[first_song(10, true, &mut rng)] += 1;
+        }
+        // Each of the ten songs starts about 500 times in 5000.
+        assert!(
+            starts.iter().all(|&n| (400..600).contains(&n)),
+            "{starts:?}"
+        );
+        assert_eq!(first_song(10, false, &mut rng), 0);
+        assert_eq!(first_song(0, true, &mut rng), 0);
     }
 }
