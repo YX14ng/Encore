@@ -312,10 +312,9 @@ impl App {
     /// The lyrics in `style`, scrolled to the current line.
     pub(crate) fn lyrics_view(&self, style: lyrics::Style) -> Element<'_, Message> {
         let current = lyrics::current_line(self.lyrics.synced(), self.position_ms());
-        let scroll = match self.lyrics_browse {
-            Some((at, _)) => at,
-            None => self.lyrics_scroll.interpolate_with(|line| line, self.now),
-        };
+        let scroll = self
+            .browsed_line()
+            .unwrap_or_else(|| self.lyrics_scroll.interpolate_with(|line| line, self.now));
         lyrics::view(
             &self.lyrics,
             self.romanized.as_deref(),

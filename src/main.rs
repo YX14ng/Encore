@@ -140,7 +140,7 @@ struct App {
     lyrics_scroll: Animation<f32>,
     /// Where the user scrolled the lyrics by hand (a line index) and when; `None` follows the
     /// song.
-    lyrics_browse: Option<(f32, Instant)>,
+    lyrics_browse: Option<update::lyric_scroll::Browse>,
     /// The song shown in the player bar while it downloads, so the bar changes at once.
     loading_shown: Option<String>,
     /// How long YouTube Music sessions last, measured.

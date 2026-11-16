@@ -3,7 +3,7 @@
 //! player, looks) and `places` (sidebar entries and the library).
 
 mod display;
-mod lyric_scroll;
+pub(crate) mod lyric_scroll;
 mod places;
 mod playback;
 
