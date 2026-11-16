@@ -7,8 +7,15 @@ use rust_i18n::t;
 
 use crate::offline::{Offline, State};
 use crate::search::{self, Shared, Status};
+use crate::virtual_list::Scroll;
 use crate::youtube::{Collection, TileKind};
 use crate::{Message, playlists, theme};
+
+/// The scrollable of the collection screen, scrolled back to the top when another opens.
+pub const SCROLL_ID: &str = "collection";
+/// Where the song list starts in the scrollable: the padding, the header and the space below
+/// it. Only a guide for which rows to build; a few pixels off are covered by the overscan.
+const LIST_TOP: f32 = 28.0 + 180.0 + 24.0;
 
 /// The collection screen, or its loading or error state. In the user's `own` playlist, songs
 /// can be taken out.
@@ -18,6 +25,7 @@ pub fn view<'a>(
     shared: Shared<'a>,
     offline: &'a Offline,
     own: bool,
+    scroll: Scroll,
 ) -> Element<'a, Message> {
     if let (Status::Done, Some(collection)) = (status, collection)
         && let Some(page) = &collection.artist
@@ -26,11 +34,18 @@ pub fn view<'a>(
     }
     let content = match (status, collection) {
         (Status::Failed(error), _) => column![note(t!("collection.open_failed", error = error))],
-        (_, Some(collection)) => loaded(collection, shared, offline, own),
+        (_, Some(collection)) => loaded(collection, shared, offline, own, scroll),
         _ => column![note(t!("search.loading"))],
     };
 
     scrollable(content.spacing(24).padding([28, 32]))
+        .id(SCROLL_ID)
+        .on_scroll(|viewport| {
+            Message::CollectionScrolled(Scroll {
+                offset: viewport.absolute_offset().y,
+                height: viewport.bounds().height,
+            })
+        })
         .height(Fill)
         .into()
 }
@@ -40,6 +55,7 @@ fn loaded<'a>(
     shared: Shared<'a>,
     offline: &'a Offline,
     own: bool,
+    scroll: Scroll,
 ) -> iced::widget::Column<'a, Message> {
     let round = collection.kind == TileKind::Artist;
     let kind = match collection.kind {
@@ -104,13 +120,18 @@ fn loaded<'a>(
 
     let songs: iced::Element<'a, Message> = if collection.tracks.is_empty() {
         note(t!("collection.no_songs"))
-    } else if own {
-        search::playlist_track_list(&collection.tracks, &collection.id, shared)
     } else {
-        search::track_list(&collection.tracks, None, shared)
+        let rows = rows_in_sight(scroll, collection.tracks.len());
+        let own = own.then_some(collection.id.as_str());
+        search::long_track_list(&collection.tracks, own, rows, shared)
     };
 
     column![header, songs].width(Fill)
+}
+
+/// The songs of the collection in sight when scrolled to `scroll`.
+pub fn rows_in_sight(scroll: Scroll, count: usize) -> std::ops::Range<usize> {
+    search::song_rows_in_sight(scroll, LIST_TOP, count)
 }
 
 fn note<'a>(message: impl text::IntoFragment<'a>) -> Element<'a, Message> {

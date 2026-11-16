@@ -336,7 +336,8 @@ mod tests {
             tile(TileKind::Artist, "UCln9P4Qm3-EAY4aiEPmRwEA"),
         )
         .await
-        .expect("artist");
+        .expect("artist")
+        .collection;
         let page = artist.artist.as_deref().expect("an artist page");
         let found = format!(
             "{}: {} songs, banner {:?}, albums {}, singles {}, playlists {}, similar {}, \
@@ -362,13 +363,15 @@ mod tests {
             .unwrap_or_else(|| panic!("no radio: {found}"));
         let radio = youtube::open(rp.clone(), tile(TileKind::Radio, &radio))
             .await
-            .expect("radio");
+            .expect("radio")
+            .collection;
         assert!(!radio.tracks.is_empty(), "the radio is empty: {found}");
         let songs =
             (page.songs_playlist.clone()).unwrap_or_else(|| panic!("no songs playlist: {found}"));
         let songs = youtube::open(rp, tile(TileKind::Playlist, &songs))
             .await
-            .expect("songs");
+            .expect("songs")
+            .collection;
         assert!(
             songs.tracks.len() > artist.tracks.len(),
             "all songs: {}; {found}",

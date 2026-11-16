@@ -302,7 +302,8 @@ mod tests {
         );
         let mix = youtube::open(rp.clone(), extras.mixes[0].clone())
             .await
-            .unwrap_or_else(|error| panic!("{found}; the first mix: {error}"));
+            .unwrap_or_else(|error| panic!("{found}; the first mix: {error}"))
+            .collection;
         assert!(!mix.tracks.is_empty(), "{found}; {} is empty", mix.title);
         if let Some(later) = extras.podcasts.iter().find(|tile| tile.id == "SE") {
             youtube::open(rp, later.clone())

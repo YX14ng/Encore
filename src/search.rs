@@ -256,6 +256,41 @@ fn top_card<'a>(top: &'a TopResult, shared: Shared<'a>) -> Element<'a, Message> 
         .into()
 }
 
+/// How tall a song row is.
+pub const SONG_ROW_HEIGHT: f32 = 56.0;
+/// The space between song rows.
+const SONG_ROW_SPACING: f32 = 2.0;
+
+/// The songs of a long list (`in_playlist` when it is the user's own playlist), building only
+/// the rows in `rows` (see `virtual_list`).
+pub fn long_track_list<'a>(
+    tracks: &'a [SearchTrack],
+    in_playlist: Option<&'a str>,
+    rows: std::ops::Range<usize>,
+    shared: Shared<'a>,
+) -> Element<'a, Message> {
+    crate::virtual_list::view(
+        tracks.len(),
+        rows,
+        SONG_ROW_HEIGHT + SONG_ROW_SPACING,
+        move |index| {
+            iced::widget::container(song_row(tracks, index, in_playlist, shared))
+                .padding(iced::Padding::default().bottom(SONG_ROW_SPACING))
+                .into()
+        },
+    )
+}
+
+/// The rows a long song list builds when scrolled to `scroll`, starting `top` pixels into its
+/// scrollable.
+pub fn song_rows_in_sight(
+    scroll: crate::virtual_list::Scroll,
+    top: f32,
+    count: usize,
+) -> std::ops::Range<usize> {
+    crate::virtual_list::visible(scroll, top, SONG_ROW_HEIGHT + SONG_ROW_SPACING, count)
+}
+
 /// A list of song rows. Clicking a row plays the list from that song.
 pub fn track_list<'a>(
     tracks: &'a [SearchTrack],
@@ -264,16 +299,6 @@ pub fn track_list<'a>(
 ) -> Element<'a, Message> {
     let shown = limit.unwrap_or(tracks.len()).min(tracks.len());
     let rows = (0..shown).map(|index| song_row(tracks, index, None, shared));
-    Column::with_children(rows).spacing(2).into()
-}
-
-/// The songs of the user's own playlist `playlist_id`, each with a button to take it out.
-pub fn playlist_track_list<'a>(
-    tracks: &'a [SearchTrack],
-    playlist_id: &'a str,
-    shared: Shared<'a>,
-) -> Element<'a, Message> {
-    let rows = (0..tracks.len()).map(|index| song_row(tracks, index, Some(playlist_id), shared));
     Column::with_children(rows).spacing(2).into()
 }
 
@@ -324,29 +349,21 @@ fn song_row<'a>(
         text(duration).size(12).color(theme::text_secondary())
     };
 
-    let row_button = |icon: &'static [u8], message: Message| {
-        button(theme::icon(icon, theme::text_secondary(), 16.0))
-            .on_press(message)
-            .padding(6)
-            .style(|_, status| theme::flat_button(status, false))
-    };
-    let add = row_button(
-        include_bytes!("../assets/icons/plus.svg"),
-        Message::AddToQueue(track.clone()),
-    );
+    let add = row_button(include_bytes!("../assets/icons/plus.svg"), move || {
+        Message::AddToQueue(track.clone())
+    });
     let save = row_button(
         include_bytes!("../assets/icons/playlist-add.svg"),
-        Message::Playlist(playlists::Event::OpenAddTo(track.clone())),
+        move || Message::Playlist(playlists::Event::OpenAddTo(track.clone())),
     );
     let take_out = in_playlist.map(|id| {
-        row_button(
-            include_bytes!("../assets/icons/close.svg"),
+        row_button(include_bytes!("../assets/icons/close.svg"), move || {
             Message::Playlist(playlists::Event::Remove {
                 id: id.to_string(),
                 song_id: track.id.clone(),
                 entry: track.entry.clone(),
-            }),
-        )
+            })
+        })
     });
 
     let cover = picture(track.cover_url.as_deref(), 44.0, false, shared);
@@ -356,11 +373,25 @@ fn song_row<'a>(
             .spacing(12)
             .align_y(Center),
     )
-    .on_press(Message::PlayQueue(tracks.to_vec(), index))
+    // The list is copied only when the row is clicked: views are rebuilt often, and a copy
+    // per row would copy a long playlist once per song on every rebuild.
+    .on_press_with(move || Message::PlayQueue(tracks.to_vec(), index))
     .width(Fill)
+    .height(SONG_ROW_HEIGHT)
     .padding([6, 8])
     .style(move |_, status| theme::flat_button(status, is_playing))
     .into()
+}
+
+/// A small icon button at the end of a song row; its message is made only when pressed.
+fn row_button<'a>(
+    icon: &'static [u8],
+    message: impl Fn() -> Message + 'a,
+) -> button::Button<'a, Message> {
+    button(theme::icon(icon, theme::text_secondary(), 16.0))
+        .on_press_with(message)
+        .padding(6)
+        .style(|_, status| theme::flat_button(status, false))
 }
 
 /// A horizontal row of cards.

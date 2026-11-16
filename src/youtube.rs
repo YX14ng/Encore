@@ -8,8 +8,9 @@ use rustypipe::model::{
 };
 use serde::{Deserialize, Serialize};
 
-/// How many songs of a playlist to load.
-const PLAYLIST_LIMIT: usize = 1000;
+/// How many songs of a playlist to load. The first page shows at once and the rest follow
+/// a page at a time (`more_tracks`).
+const PLAYLIST_LIMIT: usize = 5000;
 
 /// The widest image worth downloading for covers and the blurred background.
 const COVER_MAX_WIDTH: u32 = 544;
@@ -157,7 +158,115 @@ pub async fn radio(rp: RustyPipe, seed: String) -> Result<Vec<SearchTrack>, Stri
     Ok(radio.items.iter().map(track).collect())
 }
 
-pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
+pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Opened, String> {
+    if tile.kind == TileKind::Playlist {
+        return open_playlist(rp, tile).await;
+    }
+    open_collection(rp, tile).await.map(|collection| Opened {
+        collection,
+        more: None,
+    })
+}
+
+/// An opened collection, and for a long playlist the songs still to load.
+#[derive(Debug, Clone)]
+pub struct Opened {
+    pub collection: Collection,
+    pub more: Option<MoreTracks>,
+}
+
+/// The rest of a playlist, loaded a page (about 100 songs) at a time after the first page is
+/// on screen.
+#[derive(Debug, Clone)]
+pub struct MoreTracks {
+    /// The playlist the songs belong to.
+    pub collection_id: String,
+    page: rustypipe::model::paginator::Paginator<rustypipe::model::TrackItem>,
+    /// The playlist was read with the session, so the next pages are too.
+    signed_in: bool,
+    /// How many songs are loaded already.
+    loaded: usize,
+}
+
+/// A playlist's first page. With a session, it is asked for with the session first: the
+/// user's own playlists are private, and asking without it first only adds a failed request.
+async fn open_playlist(rp: RustyPipe, tile: Tile) -> Result<Opened, String> {
+    let q = rp.query();
+    let has_session = rp.user_auth_cookie_header().is_some();
+    let attempts = if has_session {
+        [true, false]
+    } else {
+        [false, true]
+    };
+    let mut first_error = None;
+    for signed_in in attempts {
+        let q = if signed_in {
+            q.clone().authenticated()
+        } else {
+            q.clone()
+        };
+        match q.music_playlist(&tile.id).await {
+            Ok(playlist) => {
+                let collection = Collection {
+                    id: tile.id.clone(),
+                    kind: TileKind::Playlist,
+                    title: playlist.name.clone(),
+                    subtitle: tile.subtitle,
+                    image_url: best_image(&playlist.thumbnail),
+                    tracks: playlist.tracks.items.iter().map(track).collect(),
+                    artist: None,
+                };
+                let loaded = collection.tracks.len();
+                let more =
+                    (!playlist.tracks.is_exhausted() && loaded < PLAYLIST_LIMIT).then(|| {
+                        MoreTracks {
+                            collection_id: tile.id.clone(),
+                            page: playlist.tracks,
+                            signed_in,
+                            loaded,
+                        }
+                    });
+                return Ok(Opened { collection, more });
+            }
+            Err(error) => {
+                first_error.get_or_insert(error.to_string());
+            }
+        }
+    }
+    Err(first_error.unwrap_or_default())
+}
+
+/// The next page of a playlist, and what is left after it.
+pub async fn more_tracks(
+    rp: RustyPipe,
+    more: MoreTracks,
+) -> Result<(Vec<SearchTrack>, Option<MoreTracks>), String> {
+    let q = if more.signed_in {
+        rp.query().authenticated()
+    } else {
+        rp.query()
+    };
+    let Some(page) = more
+        .page
+        .next(&q)
+        .await
+        .map_err(|error| error.to_string())?
+    else {
+        return Ok((Vec::new(), None));
+    };
+    let tracks: Vec<SearchTrack> = page.items.iter().map(track).collect();
+    let loaded = more.loaded + tracks.len();
+    let go_on = !page.is_exhausted() && !tracks.is_empty() && loaded < PLAYLIST_LIMIT;
+    let rest = go_on.then_some(MoreTracks {
+        page,
+        loaded,
+        ..more
+    });
+    Ok((tracks, rest))
+}
+
+/// An album, artist or radio.
+async fn open_collection(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
     let q = rp.query();
     match tile.kind {
         TileKind::Album => {
@@ -212,30 +321,9 @@ pub async fn open(rp: RustyPipe, tile: Tile) -> Result<Collection, String> {
                 artist: None,
             })
         }
-        TileKind::Playlist => {
-            // Private playlists only exist for the signed-in user: if the anonymous request
-            // finds nothing, ask again with the session (which fails if there is none).
-            let (mut playlist, q) = match q.music_playlist(&tile.id).await {
-                Ok(playlist) => (playlist, q),
-                Err(anonymous) => {
-                    let signed_in = q.clone().authenticated();
-                    match signed_in.music_playlist(&tile.id).await {
-                        Ok(playlist) => (playlist, signed_in),
-                        Err(_) => return Err(anonymous.to_string()),
-                    }
-                }
-            };
-            let _ = playlist.tracks.extend_limit(&q, PLAYLIST_LIMIT).await;
-            Ok(Collection {
-                id: tile.id.clone(),
-                kind: TileKind::Playlist,
-                title: playlist.name.clone(),
-                subtitle: tile.subtitle,
-                image_url: best_image(&playlist.thumbnail),
-                tracks: playlist.tracks.items.iter().map(track).collect(),
-                artist: None,
-            })
-        }
+        TileKind::Playlist => Box::pin(open_playlist(rp, tile))
+            .await
+            .map(|opened| opened.collection),
         TileKind::Artist => {
             let artist = q
                 .music_artist(&tile.id, false)
@@ -467,7 +555,7 @@ mod tests {
         );
 
         let album = page.albums.first().cloned().expect("an album");
-        let collection = open(rp, album).await.expect("open album");
+        let collection = open(rp, album).await.expect("open album").collection;
         assert!(!collection.tracks.is_empty(), "the album has no songs");
     }
 
@@ -482,7 +570,10 @@ mod tests {
             subtitle: String::new(),
             image_url: None,
         };
-        let radio = open(client().expect("client"), tile).await.expect("radio");
+        let radio = open(client().expect("client"), tile)
+            .await
+            .expect("radio")
+            .collection;
         assert!(radio.tracks.len() > 10, "only {} songs", radio.tracks.len());
     }
 

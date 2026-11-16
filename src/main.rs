@@ -58,6 +58,7 @@ mod top_bar;
 mod update;
 mod video;
 mod view;
+mod virtual_list;
 mod visualizer;
 mod volume;
 mod youtube;
@@ -148,6 +149,8 @@ struct App {
     /// The lyrics in the Latin alphabet, a line per line of `lyrics`, when they are in Japanese,
     /// Korean or Chinese and the plugin is on.
     romanized: Option<Vec<String>>,
+    /// How far the open collection's song list is scrolled, so only the rows in sight are built.
+    collection_scroll: virtual_list::Scroll,
     /// The part of a touchpad scroll over the volume bar not yet a whole step.
     volume_scroll: f32,
     /// Renewing the session while Encore is open.
@@ -242,7 +245,14 @@ enum Message {
     SetFilter(Filter),
     ImageFetched(String, Result<Vec<u8>, String>),
     OpenTile(Tile),
-    CollectionLoaded(Result<Collection, String>),
+    CollectionLoaded(Result<youtube::Opened, String>),
+    /// The next page of the long playlist with this id, and what is left after it.
+    MoreTracks(
+        String,
+        Result<(Vec<youtube::SearchTrack>, Option<youtube::MoreTracks>), String>,
+    ),
+    /// The open collection's song list scrolled.
+    CollectionScrolled(virtual_list::Scroll),
     PlayQueue(Vec<SearchTrack>, usize),
     AddToQueue(SearchTrack),
     QueueJump(usize),
@@ -420,6 +430,7 @@ impl App {
             session_expired: false,
             romanized: None,
             volume_scroll: 0.0,
+            collection_scroll: virtual_list::Scroll::default(),
             renewal: renewal::Renewal::default(),
             screen: Screen::Home,
             online: Online::new(&audio_settings),

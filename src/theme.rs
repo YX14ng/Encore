@@ -132,7 +132,7 @@ pub fn flat_button(status: button::Status, selected: bool) -> button::Style {
 }
 
 /// A square SVG icon painted in one color.
-pub fn icon(bytes: &'static [u8], color: Color, size: f32) -> svg::Svg<'static> {
+pub fn icon<'a>(bytes: &'static [u8], color: Color, size: f32) -> svg::Svg<'a> {
     svg(svg::Handle::from_memory(bytes))
         .width(size)
         .height(size)

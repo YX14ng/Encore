@@ -266,13 +266,16 @@ impl Online {
         self.collection = None;
         self.collection_status = Status::Loading;
         self.play_when_loaded = false;
-        Task::perform(youtube::open(client, tile), Message::CollectionLoaded)
+        Task::batch([
+            Task::perform(youtube::open(client, tile), Message::CollectionLoaded),
+            to_top(),
+        ])
     }
 
     /// Shows a collection that is already known (a download), without asking YouTube.
     pub fn show_collection(&mut self, collection: Collection) -> Task<Message> {
         self.play_when_loaded = false;
-        self.collection_loaded(Ok(collection))
+        Task::batch([self.collection_loaded(Ok(collection)), to_top()])
     }
 
     /// Shows an opened collection and downloads its images.
@@ -280,17 +283,28 @@ impl Online {
         match result {
             Ok(collection) => {
                 self.collection_status = Status::Done;
+                // The songs' covers come as the list is scrolled (`fetch_collection_covers`):
+                // a long playlist has hundreds, and each one that arrives redraws the screen.
                 let urls = collection
                     .image_url
                     .iter()
                     .cloned()
-                    .chain(collection.tracks.iter().filter_map(|t| t.cover_url.clone()))
                     .chain(collection.artist.iter().flat_map(|page| page.image_urls()))
                     .collect();
-                let tracks = collection.tracks.clone();
+                // The songs are copied only to play them right away.
+                let play = std::mem::take(&mut self.play_when_loaded)
+                    .then(|| collection.tracks.clone())
+                    .filter(|tracks| !tracks.is_empty());
+                let count = collection.tracks.len();
                 self.collection = Some(collection);
-                let images = self.fetch_images(urls);
-                if std::mem::take(&mut self.play_when_loaded) && !tracks.is_empty() {
+                // A collection opens at its top: the covers of the first songs come now.
+                let first_rows =
+                    crate::collection::rows_in_sight(crate::virtual_list::Scroll::default(), count);
+                let images = Task::batch([
+                    self.fetch_images(urls),
+                    self.fetch_collection_covers(first_rows),
+                ]);
+                if let Some(tracks) = play {
                     return Task::batch([images, self.play_queue(tracks, 0)]);
                 }
                 images
@@ -300,6 +314,44 @@ impl Online {
                 Task::none()
             }
         }
+    }
+
+    /// Asks YouTube for the next page of the open playlist.
+    pub fn load_more(&self, more: youtube::MoreTracks) -> Task<Message> {
+        match &self.client {
+            Some(client) => {
+                let id = more.collection_id.clone();
+                Task::perform(youtube::more_tracks(client.clone(), more), move |page| {
+                    Message::MoreTracks(id.clone(), page)
+                })
+            }
+            None => Task::none(),
+        }
+    }
+
+    /// Adds a page of songs to playlist `id`. Returns `false` if that playlist is no longer
+    /// open, so its other pages are not needed.
+    pub fn more_tracks_loaded(&mut self, id: &str, tracks: Vec<SearchTrack>) -> bool {
+        match &mut self.collection {
+            Some(collection) if collection.id == id => {
+                collection.tracks.extend(tracks);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Downloads the covers of the open collection's songs in `rows`.
+    pub fn fetch_collection_covers(&mut self, rows: std::ops::Range<usize>) -> Task<Message> {
+        let urls = match &self.collection {
+            Some(collection) => collection.tracks
+                [rows.start.min(collection.tracks.len())..rows.end.min(collection.tracks.len())]
+                .iter()
+                .filter_map(|track| track.cover_url.clone())
+                .collect(),
+            None => Vec::new(),
+        };
+        self.fetch_images(urls)
     }
 
     /// An image as raw bytes, for the blurred background.
@@ -372,4 +424,12 @@ impl Online {
             self.shared(),
         )
     }
+}
+
+/// Scrolls the collection screen back to its top, for a collection that just opened.
+fn to_top() -> Task<Message> {
+    iced::widget::operation::snap_to(
+        crate::collection::SCROLL_ID,
+        iced::widget::operation::RelativeOffset::START,
+    )
 }

@@ -210,6 +210,14 @@ impl App {
         }
     }
 
+    /// Downloads the covers of the open collection's songs in sight; the others wait until the
+    /// list is scrolled to them.
+    pub(crate) fn fetch_covers_in_sight(&mut self) -> Task<Message> {
+        let count = self.online.collection().0.map_or(0, |c| c.tracks.len());
+        let rows = crate::collection::rows_in_sight(self.collection_scroll, count);
+        self.online.fetch_collection_covers(rows)
+    }
+
     /// Whether a song is in the player: one from YouTube, or a sample.
     pub(crate) fn has_song(&self) -> bool {
         self.online.is_active() || self.samples

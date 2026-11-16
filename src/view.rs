@@ -129,7 +129,14 @@ impl App {
             Screen::Collection => {
                 let (collection, status, shared) = self.online.collection();
                 let own = collection.is_some_and(|collection| self.is_own_playlist(&collection.id));
-                collection::view(collection, status, shared, &self.offline, own)
+                collection::view(
+                    collection,
+                    status,
+                    shared,
+                    &self.offline,
+                    own,
+                    self.collection_scroll,
+                )
             }
             Screen::Library(shelf) => library::shelf_view(
                 shelf,

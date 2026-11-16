@@ -186,7 +186,32 @@ impl App {
                 self.go_to(Screen::Collection);
                 return self.online.open(tile);
             }
-            Message::CollectionLoaded(result) => return self.online.collection_loaded(result),
+            Message::CollectionLoaded(Ok(opened)) => {
+                let shown = self.online.collection_loaded(Ok(opened.collection));
+                let more = opened
+                    .more
+                    .map_or_else(Task::none, |more| self.online.load_more(more));
+                return Task::batch([shown, more]);
+            }
+            Message::CollectionLoaded(Err(error)) => {
+                return self.online.collection_loaded(Err(error));
+            }
+            Message::MoreTracks(id, Ok((tracks, more))) => {
+                // Pages of a playlist that was left are dropped, and stop coming.
+                if self.online.more_tracks_loaded(&id, tracks)
+                    && let Some(more) = more
+                {
+                    let next = self.online.load_more(more);
+                    return Task::batch([next, self.fetch_covers_in_sight()]);
+                }
+                return self.fetch_covers_in_sight();
+            }
+            // The songs loaded so far stay; the rest of the playlist is missing.
+            Message::MoreTracks(_, Err(_)) => {}
+            Message::CollectionScrolled(scroll) => {
+                self.collection_scroll = scroll;
+                return self.fetch_covers_in_sight();
+            }
             Message::PlayQueue(tracks, index) => return self.online.play_queue(tracks, index),
             Message::AddToQueue(track) => return self.online.add_to_queue(track),
             Message::QueueJump(index) => return self.online.play(index),
