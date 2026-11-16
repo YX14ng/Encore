@@ -106,9 +106,15 @@ impl App {
                         albums: &data.albums,
                         shared: self.online.shared_view(),
                     },
-                    _ => home::Sections::Sample {
+                    _ if self.samples => home::Sections::Sample {
                         recents: &self.recents,
                         mixes: &self.mixes,
+                    },
+                    account => home::Sections::SignedOut {
+                        checking: matches!(
+                            account,
+                            Account::Checking | Account::SigningIn | Account::Waiting
+                        ),
                     },
                 };
                 home::view(
@@ -201,7 +207,8 @@ impl App {
                 .push(columns.sidebar.then(|| {
                     sidebar::view(
                         &self.sidebar,
-                        &self.playlists,
+                        // The sample playlists only stand in for the user's in tests.
+                        if self.samples { &self.playlists } else { &[] },
                         &self.online.query,
                         self.online.suggestions(),
                         SidebarAccount {

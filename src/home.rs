@@ -32,7 +32,10 @@ const RECENT_MIN_WIDTH: f32 = 300.0;
 
 /// What the home screen shows below the greeting.
 pub enum Sections<'a> {
-    /// Signed out: the sample data.
+    /// Not signed in: a button to sign in, or (`checking`) a note while the saved session is
+    /// checked.
+    SignedOut { checking: bool },
+    /// The sample data (only in tests).
     Sample {
         recents: &'a [Card],
         mixes: &'a [Card],
@@ -59,6 +62,17 @@ pub fn view<'a>(
     let content = column![hero(hour, backdrop, zoom)];
     let columns = recent_columns(width);
     let content = match sections {
+        Sections::SignedOut { checking: true } => {
+            content.push(container(crate::library::note(t!("library.loading"))).padding([12, 32]))
+        }
+        Sections::SignedOut { checking: false } => content.push(
+            column![
+                crate::library::note(t!("library.signed_out")),
+                crate::library::accent_button(t!("library.sign_in"), Message::OpenAccount),
+            ]
+            .spacing(12)
+            .padding([12, 32]),
+        ),
         Sections::Sample { recents, mixes } => content
             .push(section(
                 t!("home.recently_played"),
