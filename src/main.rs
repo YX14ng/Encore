@@ -126,6 +126,8 @@ struct App {
     /// The bars that move with the music in the immersive view.
     visualizer: visualizer::Visualizer,
     current: usize,
+    /// The sample songs play when nothing from YouTube does (only in tests).
+    samples: bool,
     lyrics: Lyrics,
     window_width: f32,
     /// When the app started; the background zoom is measured from here.
@@ -355,19 +357,32 @@ impl App {
     }
 
     fn new() -> Self {
+        // Tests start on a sample song, so their screens have something to show.
+        Self::starting(cfg!(test))
+    }
+
+    /// The app at start: with nothing playing, or (`samples`) on the first sample song, which
+    /// plays on its own clock.
+    fn starting(samples: bool) -> Self {
         // The language comes first: the YouTube client below asks in it.
         let appearance = themes::Appearance::load();
         i18n::apply(appearance.language.as_deref());
         let tracks = mock::parse_tracks(include_str!("../assets/mock/tracks.tsv"));
         let first = tracks.first().expect("tracks.tsv lists at least one track");
-        let duration = first.duration;
-        let (backdrop, cover_color) = load_cover(first);
         let (themes, theme_errors) = themes::load_all();
-        let lyrics = load_lyrics(first);
-        let elapsed = 93;
+        let (duration, elapsed, (backdrop, cover_color), lyrics, now_playing) = if samples {
+            (
+                first.duration,
+                93,
+                load_cover(first),
+                load_lyrics(first),
+                Song::from_mock(first),
+            )
+        } else {
+            (0, 0, (None, None), Lyrics::Idle, Song::nothing())
+        };
         let first_line = lyrics::current_line(lyrics.synced(), elapsed * 1000).unwrap_or(0);
         let now = Instant::now();
-        let now_playing = Song::from_mock(first);
         let audio_settings = audio_settings::AudioSettings::load();
 
         Self {
@@ -393,6 +408,7 @@ impl App {
             page: None,
             visualizer: visualizer::Visualizer::default(),
             current: 0,
+            samples,
             lyrics,
             window_width: 1280.0,
             started: now,

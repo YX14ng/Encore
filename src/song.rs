@@ -16,6 +16,22 @@ pub struct Song {
 }
 
 impl Song {
+    /// No song: what the player bar shows before anything plays.
+    pub fn nothing() -> Self {
+        Self {
+            title: String::new(),
+            artist: String::new(),
+            album: String::new(),
+            cover: None,
+            art_url: None,
+        }
+    }
+
+    /// Whether this is no song.
+    pub fn is_nothing(&self) -> bool {
+        self.title.is_empty()
+    }
+
     /// A sample track, with its cover from `assets/covers/`.
     pub fn from_mock(track: &Track) -> Self {
         Self {

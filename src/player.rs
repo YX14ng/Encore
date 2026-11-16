@@ -246,15 +246,24 @@ fn now_playing<'a>(song: &'a Song, format: Option<&'a str>, loading: bool) -> El
             .into(),
     };
 
-    let details = column![
-        text(&song.title)
-            .size(14)
-            .wrapping(iced::widget::text::Wrapping::None),
-        text(format!("{} \u{b7} {}", song.artist, song.album))
-            .size(12)
-            .color(theme::text_secondary())
-            .wrapping(iced::widget::text::Wrapping::None),
-    ]
+    let details = if song.is_nothing() {
+        column![
+            text(rust_i18n::t!("player.nothing_playing"))
+                .size(14)
+                .color(theme::text_secondary())
+                .wrapping(iced::widget::text::Wrapping::None)
+        ]
+    } else {
+        column![
+            text(&song.title)
+                .size(14)
+                .wrapping(iced::widget::text::Wrapping::None),
+            text(format!("{} \u{b7} {}", song.artist, song.album))
+                .size(12)
+                .color(theme::text_secondary())
+                .wrapping(iced::widget::text::Wrapping::None),
+        ]
+    }
     .spacing(2)
     .width(Fill)
     .clip(true);
@@ -281,7 +290,9 @@ fn now_playing<'a>(song: &'a Song, format: Option<&'a str>, loading: bool) -> El
             .spacing(11)
             .align_y(Center),
     )
-    .on_press(Message::NowPlaying(crate::now_playing::Event::Toggle))
+    .on_press_maybe(
+        (!song.is_nothing()).then_some(Message::NowPlaying(crate::now_playing::Event::Toggle)),
+    )
     .width(Fill)
     .padding([6, 10])
     .style(|_, status| {

@@ -65,6 +65,8 @@ impl App {
 
     pub(crate) fn handle(&mut self, message: Message) -> Task<Message> {
         match message {
+            // Nothing to play or pause before a song is picked.
+            Message::TogglePlay if !self.has_song() => {}
             Message::TogglePlay => {
                 self.playback.toggle();
                 if self.online.is_active() {
@@ -106,7 +108,7 @@ impl App {
                         Poll::Finished => return self.song_finished(),
                         Poll::Waiting => {}
                     }
-                } else {
+                } else if self.samples {
                     self.playback.tick();
                 }
                 self.follow_lyrics();
@@ -147,7 +149,9 @@ impl App {
                 if self.online.is_active() {
                     return self.play_next_online();
                 }
-                self.next_track();
+                if self.samples {
+                    self.next_track();
+                }
             }
             Message::WindowResized(width) => self.window_width = width,
             Message::SearchChanged(query) => return self.online.query_changed(query),

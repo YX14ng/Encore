@@ -82,7 +82,7 @@ pub fn lines(lyrics: &Lyrics, interface: &str) -> Option<Vec<String>> {
     let texts: Vec<&str> = match lyrics {
         Lyrics::Synced(lines) => lines.iter().map(|line| line.text.as_str()).collect(),
         Lyrics::Plain(lines) => lines.iter().map(String::as_str).collect(),
-        Lyrics::Loading | Lyrics::Instrumental | Lyrics::Missing => return None,
+        Lyrics::Idle | Lyrics::Loading | Lyrics::Instrumental | Lyrics::Missing => return None,
     };
     let script = Script::of_lines(texts.iter().copied())?;
     if Script::of_language(interface) == Some(script) {

@@ -99,11 +99,13 @@ impl MediaKeys {
             art_url.map(str::to_string),
             duration,
         );
+        // Nothing has played yet: the desktop shows no song.
+        let nothing = title.is_empty();
         if song != self.published.song {
             let _ = self.controls.set_metadata(MediaMetadata {
-                title: Some(title),
-                artist: Some(artist),
-                album: Some(album),
+                title: (!nothing).then_some(title),
+                artist: (!nothing).then_some(artist),
+                album: (!nothing).then_some(album),
                 cover_url: art_url,
                 duration: (duration > 0).then(|| Duration::from_secs(u64::from(duration))),
             });
@@ -112,7 +114,9 @@ impl MediaKeys {
         }
         if self.published.playing != Some(playing) || playing {
             let progress = Some(MediaPosition(Duration::from_secs(u64::from(elapsed))));
-            let playback = if playing {
+            let playback = if nothing {
+                MediaPlayback::Stopped
+            } else if playing {
                 MediaPlayback::Playing { progress }
             } else {
                 MediaPlayback::Paused { progress }

@@ -33,6 +33,8 @@ pub struct LyricLine {
 /// The lyrics of the song that is playing.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Lyrics {
+    /// No song has played yet.
+    Idle,
     /// Still looking for them.
     Loading,
     /// Lines with times, highlighted as the song plays.
@@ -241,6 +243,7 @@ pub fn view<'a>(
             .height(Fill)
             .into()
         }
+        Lyrics::Idle => note(t!("lyrics.nothing_playing")),
         Lyrics::Loading => note(t!("lyrics.looking")),
         Lyrics::Instrumental => note(t!("lyrics.instrumental")),
         Lyrics::Missing | Lyrics::Synced(_) => note(t!("lyrics.missing")),

@@ -168,7 +168,7 @@ impl App {
                 if let Some(index) = self.online.previous_index(wrap) {
                     return self.online.play(index);
                 }
-            } else {
+            } else if self.samples {
                 let count = self.tracks.len();
                 self.show_sample((self.current + count - 1) % count);
                 return Task::none();
@@ -208,6 +208,11 @@ impl App {
                 Task::none()
             }
         }
+    }
+
+    /// Whether a song is in the player: one from YouTube, or a sample.
+    pub(crate) fn has_song(&self) -> bool {
+        self.online.is_active() || self.samples
     }
 
     /// Moves to the next sample track: new cover, new background and the clock back at zero.
@@ -261,5 +266,22 @@ impl App {
         self.audio_format = None;
         self.lyrics = Lyrics::Loading;
         self.romanized = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Message;
+
+    #[test]
+    fn the_app_starts_with_nothing_playing() {
+        let mut app = App::starting(false);
+        assert!(app.now_playing.is_nothing());
+        assert_eq!(app.lyrics, Lyrics::Idle);
+        let _ = app.handle(Message::TogglePlay);
+        let _ = app.handle(Message::Next);
+        assert!(!app.playback.is_playing, "there is nothing to play");
+        assert!(app.now_playing.is_nothing());
     }
 }
