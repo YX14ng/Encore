@@ -221,8 +221,8 @@ mod tests {
     #[test]
     fn zen_is_read_as_a_firefox_profile() {
         let home = std::env::temp_dir().join(format!("encore-zen-test-{}", std::process::id()));
-        let old = home.join(".zen/old.default");
-        let new = home.join(".zen/new.default-release");
+        let old = home.join(".zen").join("old.default");
+        let new = home.join(".zen").join("new.default-release");
         std::fs::create_dir_all(&old).expect("old profile");
         std::fs::create_dir_all(&new).expect("new profile");
         std::fs::write(old.join("cookies.sqlite"), b"old").expect("old cookies");

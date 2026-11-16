@@ -329,7 +329,8 @@ mod tests {
             args.iter()
                 .any(|arg| arg.starts_with("bestaudio[ext=webm]"))
         );
-        assert!(args.contains(&"/cache/%(id)s.%(ext)s".to_string()));
+        let template = Path::new("/cache").join("%(id)s.%(ext)s");
+        assert!(args.contains(&template.to_string_lossy().into_owned()));
         assert!(!args.contains(&"--cookies".to_string()));
         assert_eq!(
             args.last().map(String::as_str),
