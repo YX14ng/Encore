@@ -95,6 +95,31 @@ impl Online {
     }
 
     /// The queue, for the queue panel.
+    /// Downloads the covers of the song loading or playing and of the songs up next that the
+    /// queue panel shows first; covers asked for before are not asked again.
+    pub fn fetch_queue_covers(&mut self) -> Task<Message> {
+        const AHEAD: usize = 20;
+        let current = self.loading_track().or_else(|| self.queue.playing_track());
+        let upcoming = self
+            .queue
+            .upcoming()
+            .iter()
+            .take(AHEAD)
+            .filter_map(|&index| self.queue.get(index));
+        let urls: Vec<String> = current
+            .into_iter()
+            .chain(upcoming)
+            .filter_map(|track| track.cover_url.as_ref())
+            .filter(|url| !self.requested_images.contains(*url))
+            .cloned()
+            .collect();
+        if urls.is_empty() {
+            Task::none()
+        } else {
+            self.fetch_images(urls)
+        }
+    }
+
     pub fn queue(&self) -> &Queue {
         &self.queue
     }

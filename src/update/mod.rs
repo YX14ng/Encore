@@ -28,7 +28,9 @@ impl App {
         let task = self.handle(message);
         self.show_loading_song();
         self.publish_media();
-        task
+        // The covers of the song in the player and the next ones, wherever they came from.
+        let covers = self.online.fetch_queue_covers();
+        Task::batch([task, covers])
     }
 
     /// Tells the desktop's media controls (MPRIS) and Discord about the song and the playback

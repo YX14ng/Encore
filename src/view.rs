@@ -358,17 +358,23 @@ impl App {
             self.together.subscription().map(Message::Together),
         ]);
 
-        // About 30 frames per second, only while something is moving.
-        let frames = time::every(Duration::from_millis(33)).map(Message::Frame);
+        // While something slides (the lyrics, the now playing page) a frame for each one the
+        // screen draws, so the motion is even; a fixed timer would land a step on one screen
+        // frame and two steps on the next. Otherwise about 30 a second keep the lyrics, the
+        // video and crossfades on time, and nothing at all when nothing moves.
+        let sliding = self.lyrics_scroll.is_animating(self.now)
+            || self.page_sliding()
+            || self.lyrics_browse.is_some();
+        let frames = if sliding {
+            window::frames().map(Message::Frame)
+        } else {
+            time::every(Duration::from_millis(33)).map(Message::Frame)
+        };
 
         if self.playback.is_playing {
             let tick = time::every(Duration::from_secs(1)).map(Message::Tick);
             Subscription::batch([tick, frames, resize])
-        } else if self.lyrics_scroll.is_animating(self.now)
-            || (self.immersive && self.visualizer.is_showing())
-            || self.page_sliding()
-            || self.lyrics_browse.is_some()
-        {
+        } else if sliding || (self.immersive && self.visualizer.is_showing()) {
             Subscription::batch([frames, resize])
         } else {
             resize
