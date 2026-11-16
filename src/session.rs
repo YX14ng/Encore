@@ -22,6 +22,10 @@ pub struct SessionLog {
     pub since: Option<u64>,
     /// How long the last session that stopped working had worked, in seconds.
     pub last_lasted: Option<u64>,
+    /// The session came from Encore's sign-in window, so nothing else holds it and Encore
+    /// renews it (see `renewal.rs`). A session copied from a browser is left alone: renewing
+    /// it would sign the browser out.
+    pub renewable: bool,
 }
 
 impl SessionLog {
@@ -38,7 +42,9 @@ impl SessionLog {
     }
 
     /// Saves the log. A failed write only means the times are not remembered next start.
+    /// Tests keep the real file untouched.
     pub fn save(&self) {
+        #[cfg(not(test))]
         self.write(&path());
     }
 
@@ -52,9 +58,11 @@ impl SessionLog {
         }
     }
 
-    /// A new session started (the user signed in) at `now`.
-    pub fn signed_in(&mut self, now: u64) {
+    /// A new session started (the user signed in) at `now`; `renewable` when it came from the
+    /// sign-in window.
+    pub fn signed_in(&mut self, now: u64, renewable: bool) {
         self.since = Some(now);
+        self.renewable = renewable;
     }
 
     /// The saved session worked at `now`; the first time it is seen, that is when it starts.
@@ -67,11 +75,13 @@ impl SessionLog {
         if let Some(since) = self.since.take() {
             self.last_lasted = Some(now.saturating_sub(since));
         }
+        self.renewable = false;
     }
 
     /// The user signed out: the session did not expire, so its length says nothing.
     pub fn signed_out(&mut self) {
         self.since = None;
+        self.renewable = false;
     }
 
     /// "This session has worked for 3 days." for the account screen.
@@ -102,6 +112,7 @@ pub fn now() -> u64 {
         .map_or(0, |since| since.as_secs())
 }
 
+#[cfg_attr(test, allow(dead_code))]
 fn path() -> PathBuf {
     crate::account::data_dir().join("session.json")
 }
@@ -130,9 +141,11 @@ mod tests {
             log.last_text().as_deref(),
             Some("The previous session lasted 3 days.")
         );
-        log.signed_in(9_000);
+        log.signed_in(9_000, true);
+        assert!(log.renewable);
         log.signed_out();
         assert_eq!(log.since, None);
+        assert!(!log.renewable);
         assert_eq!(
             log.last_lasted,
             Some(3 * DAY + 60),
@@ -144,7 +157,7 @@ mod tests {
     fn says_how_old_the_session_is() {
         let log = SessionLog {
             since: Some(0),
-            last_lasted: None,
+            ..SessionLog::default()
         };
         assert_eq!(
             log.age_text(DAY / 2).as_deref(),
@@ -166,6 +179,7 @@ mod tests {
         let log = SessionLog {
             since: Some(42),
             last_lasted: Some(7),
+            renewable: true,
         };
         let path = in_temp(&log);
         assert_eq!(SessionLog::read(&path), log);

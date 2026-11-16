@@ -4769,7 +4769,7 @@ dependencies = [
 [[package]]
 name = "rustypipe"
 version = "0.11.4"
-source = "git+ssh://git@github.com/YX14ng/rustypipe.git?branch=encore#551e20b3d4b1fb599afa3dd2d2c06f146c830e5f"
+source = "git+ssh://git@github.com/YX14ng/rustypipe.git?branch=encore#774e3370cc601976da3126f58acf9cde7a764fe2"
 dependencies = [
  "data-encoding",
  "fancy-regex",

@@ -40,6 +40,7 @@ mod profile;
 mod queue;
 mod queue_view;
 mod rating;
+mod renewal;
 mod scrobbler;
 mod search;
 mod session;
@@ -140,6 +141,8 @@ struct App {
     session_log: session::SessionLog,
     /// YouTube stopped accepting the saved session; a banner asks to sign in again.
     session_expired: bool,
+    /// Renewing the session while Encore is open.
+    renewal: renewal::Renewal,
     /// What the center column shows.
     screen: Screen,
     /// Search, downloads and audio.
@@ -265,6 +268,7 @@ enum Message {
     Restored(Result<LibraryData, library::RestoreError>),
     SignOut,
     SignedOut,
+    Renewal(renewal::Event),
     DownloadCollection(Collection),
     OfflineTrackDone(Result<std::path::PathBuf, String>),
     RemoveDownload(String),
@@ -389,6 +393,7 @@ impl App {
             loading_shown: None,
             session_log: session::SessionLog::load(),
             session_expired: false,
+            renewal: renewal::Renewal::default(),
             screen: Screen::Home,
             online: Online::new(&audio_settings),
             now_playing,

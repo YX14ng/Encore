@@ -138,6 +138,7 @@ impl App {
             Message::Select(item) => return self.select(item),
             Message::Rating(event) => return self.rating_event(event),
             Message::Video(event) => return self.video_event(event),
+            Message::Renewal(event) => return self.renewal_event(event),
             Message::ToggleVideo => return self.toggle_video(),
             Message::NowPlaying(event) => return self.now_playing_event(event),
             Message::Visualizer(event) => self.visualizer.event(event),
@@ -236,6 +237,7 @@ impl App {
                     return Task::none();
                 };
                 self.account = Account::SigningIn;
+                self.signing_in_from_window(false);
                 return Task::perform(
                     library::sign_in_with_browser(client, browser),
                     Message::SignedIn,
@@ -252,6 +254,7 @@ impl App {
                 };
                 // Loading the library takes a few seconds; say so as soon as the window is gone.
                 self.account = Account::SigningIn;
+                self.signing_in_from_window(true);
                 return Task::perform(
                     library::sign_in_with_cookie(client, cookie),
                     Message::SignedIn,
@@ -263,22 +266,27 @@ impl App {
                     return Task::none();
                 };
                 self.account = Account::SigningIn;
+                self.signing_in_from_window(false);
                 let cookies = account::read_from_file(&self.cookie_path);
                 return Task::perform(library::sign_in(client, cookies), Message::SignedIn);
             }
             Message::SignedIn(result) => {
-                if result.is_ok() {
-                    self.session_log.signed_in(session::now());
-                    self.session_log.save();
-                    self.session_expired = false;
+                if result.is_err() {
+                    return self.library_loaded(result);
                 }
-                return self.library_loaded(result);
+                let from_window = self.signed_in_from_window();
+                self.session_log.signed_in(session::now(), from_window);
+                self.session_log.save();
+                self.session_expired = false;
+                let renew = self.start_renewal();
+                return Task::batch([self.library_loaded(result), renew]);
             }
             Message::Restored(Ok(data)) => {
                 self.session_log.working(session::now());
                 self.session_log.save();
                 self.session_expired = false;
-                return self.library_loaded(Ok(data));
+                let renew = self.start_renewal();
+                return Task::batch([self.library_loaded(Ok(data)), renew]);
             }
             Message::Restored(Err(library::RestoreError::Expired)) => self.session_rejected(),
             Message::Restored(Err(library::RestoreError::NoSession)) => {
@@ -292,6 +300,7 @@ impl App {
                 }
             }
             Message::SignOut => {
+                self.stop_renewal();
                 self.session_log.signed_out();
                 self.session_log.save();
                 self.session_expired = false;
@@ -439,6 +448,7 @@ impl App {
     /// YouTube no longer accepts the saved session: remember how long it lasted and ask to
     /// sign in again, keeping the saved library on screen meanwhile.
     pub(crate) fn session_rejected(&mut self) {
+        self.stop_renewal();
         if !self.session_expired {
             self.session_expired = true;
             self.session_log.expired(session::now());
