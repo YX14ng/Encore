@@ -1,7 +1,7 @@
 # Maintainer: YX14ng <173115510+YX14ng@users.noreply.github.com>
 pkgname=encore-ytm
 _name=Encore
-pkgver=0.4.0
+pkgver=0.4.1
 pkgrel=1
 pkgdesc='Desktop player for YouTube Music, with synced lyrics'
 arch=('x86_64')
@@ -16,7 +16,7 @@ conflicts=('encore')
 # debug package would only hold symbols the binary no longer has.
 options=('!lto' '!debug')
 source=("$_name-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('a5b1c15ad5c437fe27dbfa5a5cb6aff262189d11fd3551aef49e76dfd11e226d')
+sha256sums=('609f4111745111a099b585391d690b0ae3028620457e4eda7899ca96fbee5c78')
 
 prepare() {
   cd "$_name-$pkgver"
