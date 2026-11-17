@@ -52,6 +52,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.4.3" date="2026-11-16">
+      <description>
+        <p>Keyboard shortcuts: the up and down arrows turn the volume, left and right go back or forward five seconds, and Space plays or pauses.</p>
+      </description>
+    </release>
     <release version="0.4.2" date="2026-11-16">
       <description>
         <p>Encore stays in the desktop's media controls (MPRIS) even when another program asks for its name.</p>
