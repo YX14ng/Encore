@@ -53,15 +53,19 @@ pub struct MediaKeys {
 }
 
 impl MediaKeys {
-    /// Registers Encore as `org.mpris.MediaPlayer2.encore` on Linux (`None` if there is no
-    /// session bus), or in the media controls of `window` (its handle, `HWND`) on Windows.
+    /// Registers Encore as `org.mpris.MediaPlayer2.encore.instance<pid>` on Linux (`None` if
+    /// there is no session bus), or in the media controls of `window` (its handle, `HWND`) on
+    /// Windows.
     pub fn start(window: Option<*mut std::ffi::c_void>) -> Option<Self> {
         if cfg!(windows) && window.is_none() {
             return None;
         }
+        // A name of this process's own: with a shared one, any other process asking for it
+        // (another Encore, a test) takes it, and the bus never gives it back.
+        let dbus_name = bus_name_suffix();
         let config = PlatformConfig {
             display_name: "Encore",
-            dbus_name: "encore",
+            dbus_name: &dbus_name,
             hwnd: window,
         };
         let mut controls = MediaControls::new(config).ok()?;
@@ -131,6 +135,12 @@ impl MediaKeys {
     }
 }
 
+/// The end of Encore's MPRIS name, `org.mpris.MediaPlayer2.encore.instance<pid>`: one per
+/// process, as the MPRIS spec allows, so two can never take each other's.
+fn bus_name_suffix() -> String {
+    format!("encore.instance{}", std::process::id())
+}
+
 /// The media key presses, as app messages. Runs for the whole life of the app.
 pub fn events() -> impl Stream<Item = Message> {
     let receiver = EVENTS.lock().ok().and_then(|mut events| events.take());
@@ -184,7 +194,8 @@ mod tests {
         };
         let path = "/org/mpris/MediaPlayer2";
         let player = "org.mpris.MediaPlayer2.Player";
-        let name = "org.mpris.MediaPlayer2.encore";
+        let name = format!("org.mpris.MediaPlayer2.{}", bus_name_suffix());
+        let name = name.as_str();
         let metadata = busctl(&["get-property", name, path, player, "Metadata"]);
         assert!(metadata.contains("Test Song"), "metadata: {metadata}");
         let status = busctl(&["get-property", name, path, player, "PlaybackStatus"]);
