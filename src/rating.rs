@@ -80,6 +80,10 @@ impl Disliked {
 
     /// Saves the list. A failed write only means it is not remembered next time.
     fn save(&self) {
+        // Tests must never touch the user's settings and data.
+        if cfg!(test) {
+            return;
+        }
         self.write(&path());
     }
 

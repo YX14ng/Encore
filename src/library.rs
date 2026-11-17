@@ -388,6 +388,10 @@ pub fn load_cache() -> Option<LibraryData> {
 /// Saves the library for the next start. It holds the history, so it goes in the private
 /// data folder.
 pub fn save_cache(data: &LibraryData) {
+    // Tests must never touch the user's settings and data.
+    if cfg!(test) {
+        return;
+    }
     if account::private_dir(&account::data_dir()).is_err() {
         return;
     }

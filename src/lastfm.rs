@@ -307,6 +307,10 @@ pub fn load<T: for<'de> Deserialize<'de>>(name: &str) -> Option<T> {
 
 /// Writes a JSON file to the Last.fm folder, readable only by the user.
 pub fn save<T: Serialize>(name: &str, value: &T) -> Result<(), String> {
+    // Tests must never touch the user's settings and data.
+    if cfg!(test) {
+        return Ok(());
+    }
     let dir = dir();
     account::private_dir(&dir)?;
     let json = serde_json::to_string(value).map_err(|error| error.to_string())?;

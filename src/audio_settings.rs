@@ -204,6 +204,10 @@ impl AudioSettings {
 
     /// Saves the settings. A failed write only means they are not remembered next time.
     pub fn save(&self) {
+        // Tests must never touch the user's settings and data.
+        if cfg!(test) {
+            return;
+        }
         let path = path();
         if let Some(dir) = path.parent()
             && std::fs::create_dir_all(dir).is_ok()

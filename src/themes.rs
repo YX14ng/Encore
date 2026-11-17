@@ -145,6 +145,10 @@ impl Appearance {
 
     /// Saves the choices. A failed write only means they are not remembered next time.
     pub fn save(&self) {
+        // Tests must never touch the user's settings and data.
+        if cfg!(test) {
+            return;
+        }
         let dir = config_dir();
         if std::fs::create_dir_all(&dir).is_ok()
             && let Ok(json) = serde_json::to_string_pretty(self)
