@@ -458,15 +458,9 @@ impl App {
             Message::VolumeDone => self.audio_settings.save(),
             Message::VolumeScrolled(delta) => {
                 let notches = volume::notches(&mut self.volume_scroll, delta);
-                if notches != 0 {
-                    let from = self.audio_settings.effective_volume();
-                    let volume = volume::stepped(from, notches, self.audio_settings.volume_step);
-                    self.audio_settings.volume = volume;
-                    self.audio_settings.muted = false;
-                    self.online.set_volume(volume);
-                    self.audio_settings.save();
-                }
+                self.step_volume(notches);
             }
+            Message::Shortcut(shortcut) => return self.shortcut(shortcut),
             Message::ToggleMute => {
                 self.audio_settings.muted = !self.audio_settings.muted;
                 self.online

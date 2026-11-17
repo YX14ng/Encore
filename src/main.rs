@@ -53,6 +53,7 @@ mod scrobbler;
 mod search;
 mod session;
 mod settings_view;
+mod shortcuts;
 mod sidebar;
 mod sign_in_window;
 mod silence;
@@ -352,6 +353,8 @@ enum Message {
     SongOrder(song_order::Event),
     /// The menu a right click on a song opens.
     SongMenu(song_menu::Event),
+    /// A keyboard shortcut of the player.
+    Shortcut(shortcuts::Shortcut),
     /// Songs like `0` (from its menu's "Start radio"), or why YouTube did not give them.
     RadioReady(SearchTrack, Result<Vec<SearchTrack>, String>),
     /// The artist or album a song's menu asked for, or why it was not found.

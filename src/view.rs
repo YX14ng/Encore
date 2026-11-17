@@ -371,6 +371,7 @@ impl App {
         let resize = Subscription::batch([
             resize,
             escape,
+            iced::keyboard::listen().filter_map(crate::shortcuts::from_key),
             Subscription::run(media_keys::events),
             Subscription::run(discord::events),
             self.together.subscription().map(Message::Together),
