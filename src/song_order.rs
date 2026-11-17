@@ -216,7 +216,9 @@ pub fn toolbar(order: &SongOrder, total: usize) -> Element<'_, Message> {
         Message::SongOrder(Event::Sort(sort))
     })
     .text_size(14)
-    .padding([8, 12]);
+    .padding([8, 14])
+    .style(|_, status| theme::pick_list(status))
+    .menu_style(|_| theme::pick_menu());
     let (arrow, label) = if order.descending {
         ("\u{2193}", t!("songs.descending"))
     } else {

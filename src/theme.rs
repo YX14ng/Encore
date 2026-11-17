@@ -131,6 +131,35 @@ pub fn flat_button(status: button::Status, selected: bool) -> button::Style {
     }
 }
 
+/// A drop-down like the round outlined buttons beside it: clear, gray while hovered or open.
+pub fn pick_list(status: iced::widget::pick_list::Status) -> iced::widget::pick_list::Style {
+    use iced::widget::pick_list::Status;
+    let lit = matches!(status, Status::Hovered | Status::Opened { .. });
+    iced::widget::pick_list::Style {
+        text_color: text_primary(),
+        placeholder_color: text_dim(),
+        handle_color: text_secondary(),
+        background: Background::Color(if lit { tint(0.06) } else { Color::TRANSPARENT }),
+        border: border::rounded(18).color(line()).width(1),
+    }
+}
+
+/// The open list of a drop-down, like a song's menu: a raised panel, the hovered choice gray.
+pub fn pick_menu() -> iced::overlay::menu::Style {
+    iced::overlay::menu::Style {
+        background: Background::Color(hero()),
+        border: border::rounded(10).color(line()).width(1),
+        text_color: text_primary(),
+        selected_text_color: text_primary(),
+        selected_background: Background::Color(tint(0.10)),
+        shadow: iced::Shadow {
+            color: Color::BLACK.scale_alpha(0.4),
+            offset: iced::Vector::new(0.0, 4.0),
+            blur_radius: 16.0,
+        },
+    }
+}
+
 /// A square SVG icon painted in one color.
 pub fn icon<'a>(bytes: &'static [u8], color: Color, size: f32) -> svg::Svg<'a> {
     svg(svg::Handle::from_memory(bytes))
