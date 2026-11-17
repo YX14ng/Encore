@@ -52,6 +52,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.4.1" date="2026-11-16">
+      <description>
+        <p>The order drop-down of song lists looks like Encore's other buttons.</p>
+      </description>
+    </release>
     <release version="0.4.0" date="2026-11-16">
       <description>
         <p>Playlists, albums and the library's song lists can be searched and ordered by title, artist, album or duration.</p>
