@@ -52,6 +52,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.6.0" date="2026-11-17">
+      <description>
+        <p>Encore looks for a new version when it starts and offers to install it: it downloads the package for your system, checks it and installs it, then restarts. Settings, About turns the check off or runs it now.</p>
+      </description>
+    </release>
     <release version="0.5.0" date="2026-11-17">
       <description>
         <p>Encore keeps the Google sign-in and, when YouTube drops the session, signs in again by itself with no window. It only asks for the password when Google wants it.</p>
