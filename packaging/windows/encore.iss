@@ -52,4 +52,6 @@ Name: "{autoprograms}\Encore"; Filename: "{app}\encore.exe"; AppUserModelID: "io
 Name: "{autodesktop}\Encore"; Filename: "{app}\encore.exe"; Tasks: desktopicon; AppUserModelID: "io.github.yx14ng.Encore"
 
 [Run]
-Filename: "{app}\encore.exe"; Description: "{cm:LaunchProgram,Encore}"; Flags: nowait postinstall skipifsilent
+; Also after a silent install: that is how Encore's own updater runs the installer, closing
+; Encore first, so it has to start again.
+Filename: "{app}\encore.exe"; Description: "{cm:LaunchProgram,Encore}"; Flags: nowait postinstall
