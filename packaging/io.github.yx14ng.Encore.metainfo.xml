@@ -52,6 +52,12 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.5.0" date="2026-11-17">
+      <description>
+        <p>Encore keeps the Google sign-in and, when YouTube drops the session, signs in again by itself with no window. It only asks for the password when Google wants it.</p>
+        <p>What the session does is written to session.log in the cache.</p>
+      </description>
+    </release>
     <release version="0.4.3" date="2026-11-16">
       <description>
         <p>Keyboard shortcuts: the up and down arrows turn the volume, left and right go back or forward five seconds, and Space plays or pauses.</p>
