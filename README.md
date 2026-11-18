@@ -215,4 +215,6 @@ for it, about six seconds more.
 ### How do I sign in?
 
 Account → Sign in opens a small window where you sign in to Google. The session belongs to
-Encore alone, and Encore keeps it alive while it is open.
+Encore alone: Encore keeps it alive while it is open, and when YouTube drops it, Encore signs in
+again by itself, with no window, from the Google sign-in it keeps. It only asks you again when
+Google wants your password.

@@ -8,12 +8,18 @@ works the way it does. The [README](../README.md) has the short version.
 Signing in happens in a small window of Encore's own (WebKitGTK), the way Pear Desktop does it:
 you sign in to Google there, and the session belongs to Encore alone. A session read from your
 browser stops working as soon as that browser renews its cookies, often within minutes, so reading
-it from a browser or a cookies.txt is only offered as another way. The window keeps nothing on
-disk; Encore keeps only the YouTube cookies, in `~/.local/share/encore/rustypipe/`. While Encore
-is open it renews a session from its window the way an open YouTube tab does, about every ten
-minutes; a session read from a browser is left alone, since renewing it would sign the browser
-out. When YouTube stops accepting the session, a banner offers to sign in again and the saved
-library stays on screen; the account screen says how long the session has worked.
+it from a browser or a cookies.txt is only offered as another way. The window keeps its browser
+profile (the Google sign-in) in `~/.local/share/encore/web/`, readable by you only, and Encore
+keeps the YouTube cookies in `~/.local/share/encore/rustypipe/`. While Encore is open it renews a
+session from its window the way an open YouTube tab does, about every ten minutes; a session read
+from a browser is left alone, since renewing it would sign the browser out.
+
+When YouTube stops accepting the session anyway, Encore signs in again by itself: it opens the
+same page with no window, and Google, still knowing your account, sends it back to YouTube Music
+signed in, in a second or two. Only when Google wants your password again does a banner offer to
+sign in, and the saved library stays on screen meanwhile; the account screen says how long the
+session has worked. Signing out deletes the browser profile too. What happened is written to
+`~/.cache/encore/session.log` (times and outcomes, never cookies).
 
 ## The queue
 
