@@ -165,6 +165,7 @@ impl App {
                         &self.download_folder,
                     ),
                     settings_view::Tab::Plugins => self.plugins.view(),
+                    settings_view::Tab::About => crate::updater::about(&self.updater),
                 },
             ),
             Screen::Together => together::view(&self.together),
@@ -191,6 +192,7 @@ impl App {
                 self.together.is_active(),
             ),
             self.session_banner(),
+            crate::updater::banner(&self.updater),
             content,
             player::view(
                 &self.now_playing,

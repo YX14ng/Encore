@@ -67,6 +67,7 @@ mod themes;
 mod together;
 mod top_bar;
 mod update;
+mod updater;
 mod video;
 mod view;
 mod virtual_list;
@@ -267,6 +268,8 @@ struct App {
     song_order: song_order::SongOrder,
     /// The menu of a right-clicked song, while it is open.
     song_menu: Option<song_menu::Menu>,
+    /// Looking for and installing new versions.
+    updater: updater::Updater,
     explore: explore::Explore,
 }
 
@@ -356,6 +359,8 @@ enum Message {
     SongMenu(song_menu::Event),
     /// A keyboard shortcut of the player.
     Shortcut(shortcuts::Shortcut),
+    /// Looking for and installing a new version of Encore.
+    Update(updater::Event),
     /// Songs like `0` (from its menu's "Start radio"), or why YouTube did not give them.
     RadioReady(SearchTrack, Result<Vec<SearchTrack>, String>),
     /// The artist or album a song's menu asked for, or why it was not found.
@@ -465,9 +470,16 @@ impl App {
         };
         // Downloads left unfinished when Encore closed go on.
         let downloads = app.offline.resume();
+        let update = app.check_for_update_at_start();
         (
             app,
-            Task::batch([cached_images, restore, downloads, main_window_found()]),
+            Task::batch([
+                cached_images,
+                restore,
+                downloads,
+                update,
+                main_window_found(),
+            ]),
         )
     }
 
@@ -571,6 +583,7 @@ impl App {
             forward: Vec::new(),
             song_order: song_order::SongOrder::default(),
             song_menu: None,
+            updater: updater::Updater::new(),
             explore: explore::Explore::default(),
         }
     }

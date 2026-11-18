@@ -18,12 +18,14 @@ pub enum Tab {
     Appearance,
     Audio,
     Plugins,
+    About,
 }
 
-const TABS: [(Tab, &str); 3] = [
+const TABS: [(Tab, &str); 4] = [
     (Tab::Appearance, "settings.appearance"),
     (Tab::Audio, "settings.audio"),
     (Tab::Plugins, "settings.plugins"),
+    (Tab::About, "settings.about"),
 ];
 
 /// The screen: a heading, the tabs and the selected tab's `content`.

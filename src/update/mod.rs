@@ -467,6 +467,7 @@ impl App {
                 self.step_volume(notches);
             }
             Message::Shortcut(shortcut) => return self.shortcut(shortcut),
+            Message::Update(event) => return self.update_event(event),
             Message::ToggleMute => {
                 self.audio_settings.muted = !self.audio_settings.muted;
                 self.online
