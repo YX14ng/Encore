@@ -212,6 +212,14 @@ ahead, so the wait only shows when you jump to a song that is not queued. Signed
 it takes about three seconds; signed out, YouTube puts an ad before the song and yt-dlp waits
 for it, about six seconds more.
 
+### How do I update?
+
+Each time it starts, Encore asks GitHub whether there is a newer version (one request, nothing
+about you goes with it). If there is, a banner offers to update: Encore downloads the package for
+your system, checks its SHA-256 and installs it, asking for your password, then offers to restart.
+On Windows it runs the installer. With the `.tar.gz` or the Windows `.zip` it opens the release
+page instead. Settings → About turns the check off or runs it now.
+
 ### How do I sign in?
 
 Account → Sign in opens a small window where you sign in to Google. The session belongs to
