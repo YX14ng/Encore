@@ -34,6 +34,7 @@ mod mini_player;
 mod mixer;
 mod mock;
 mod navigation;
+mod notes;
 mod notifications;
 mod now_playing;
 mod offline;
@@ -363,6 +364,8 @@ enum Message {
     SignInWindow,
     /// The sign-in window closed: the session's cookies, or why there are none.
     SignInWindowClosed(Result<String, String>),
+    /// Signing in again with no window finished: the new session, or why not.
+    SilentSignIn(Result<String, sign_in_window::Silent>),
     /// The main window's handle, for the Windows media controls.
     #[cfg(windows)]
     MainWindowFound(u64),

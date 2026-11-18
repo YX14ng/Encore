@@ -445,14 +445,17 @@ impl App {
     /// Shows `message` at the bottom for a few seconds.
     pub(crate) fn show_toast(&mut self, message: String) -> Task<Message> {
         // Likes and playlist changes fail this way when YouTube refuses the session.
-        if message.contains(&edit::session_expired()) {
-            self.session_rejected();
-        }
+        let rejected = if message.contains(&edit::session_expired()) {
+            self.session_rejected()
+        } else {
+            Task::none()
+        };
         let serial = self.toast.as_ref().map_or(0, |(serial, _)| serial + 1);
         self.toast = Some((serial, message));
-        Task::perform(tokio::time::sleep(TOAST_TIME), move |()| {
+        let done = Task::perform(tokio::time::sleep(TOAST_TIME), move |()| {
             Message::Playlist(Event::ToastDone(serial))
-        })
+        });
+        Task::batch([rejected, done])
     }
 
     /// The signed-in user's own playlists, which songs can be added to.

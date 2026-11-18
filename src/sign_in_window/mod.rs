@@ -4,17 +4,36 @@
 //! minutes; nothing renews this one behind Encore's back.
 //!
 //! The window runs in a second Encore process (`encore --sign-in-window`), so its main loop
-//! never meets iced's: WebKitGTK on Linux, WebView2 on Windows. It keeps its cookies in memory
-//! only. Once YouTube Music opens signed in,
-//! it writes the YouTube cookies as one `Cookie` header line to its standard output, which only
-//! the Encore that started it reads, and closes.
+//! never meets iced's: WebKitGTK on Linux, WebView2 on Windows. Once YouTube Music opens signed
+//! in, it writes the YouTube cookies as one `Cookie` header line to its standard output, which
+//! only the Encore that started it reads, and closes.
+//!
+//! Its browser profile (the Google account's sign-in) is kept in a private folder, so when
+//! YouTube stops accepting the session Encore can get a new one by itself: it runs the same
+//! page with no window (`--silent`), and Google, still knowing the account, sends it straight
+//! back to YouTube Music signed in. Only when Google wants the password again does the user see
+//! the window. Signing out deletes the profile.
 
+use std::path::PathBuf;
 use std::process::Stdio;
+use std::time::Duration;
 
 use rust_i18n::t;
 
 /// The command line flag that makes Encore show the sign-in window instead of the player.
 pub const FLAG: &str = "--sign-in-window";
+
+/// The flag, after `FLAG`, that signs in again with no window.
+const SILENT_FLAG: &str = "--silent";
+
+/// The exit codes of the sign-in process.
+const SIGNED_IN: i32 = 0;
+const CLOSED: i32 = 1;
+/// Google wants the user (the password, a confirmation): only the window can do it.
+const NEEDS_YOU: i32 = 3;
+
+/// How long signing in with no window may take before it gives up.
+const SILENT_TIME: Duration = Duration::from_secs(30);
 
 /// The interface language the window speaks, passed on from the Encore that opens it.
 const LANGUAGE_VAR: &str = "ENCORE_SIGN_IN_LANGUAGE";
@@ -33,6 +52,60 @@ const ENGINE: &str = "WebView2";
 #[cfg(not(windows))]
 const ENGINE: &str = "WebKitGTK";
 
+/// Where the browser profile (the Google sign-in) is kept, readable by the user only.
+fn profile_dir() -> PathBuf {
+    crate::platform::data_dir().join("web")
+}
+
+/// Deletes the browser profile, when the user signs out.
+pub fn forget_profile() {
+    // Tests must never touch the user's data.
+    if !cfg!(test) {
+        let _ = std::fs::remove_dir_all(profile_dir());
+    }
+}
+
+/// Whether a browser profile was kept from an earlier sign-in. Tests never see the user's.
+pub fn has_profile() -> bool {
+    !cfg!(test) && profile_dir().is_dir()
+}
+
+/// Why signing in with no window did not work.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Silent {
+    /// Google wants the user: the window has to open.
+    NeedsYou,
+    Failed(String),
+}
+
+/// Gets a new YouTube session with no window, from the Google sign-in the profile keeps.
+pub async fn sign_in_silently() -> Result<String, Silent> {
+    let encore = std::env::current_exe().map_err(|error| Silent::Failed(error.to_string()))?;
+    let child = tokio::process::Command::new(encore)
+        .args([FLAG, SILENT_FLAG])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .kill_on_drop(true)
+        .output();
+    let output = tokio::time::timeout(SILENT_TIME * 2, child)
+        .await
+        .map_err(|_| Silent::Failed("timed out".to_string()))?
+        .map_err(|error| Silent::Failed(error.to_string()))?;
+    let header = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    match output.status.code() {
+        Some(SIGNED_IN) if has_session(&header) => Ok(header),
+        Some(NEEDS_YOU) => Err(Silent::NeedsYou),
+        code => Err(Silent::Failed(format!("exit code {code:?}"))),
+    }
+}
+
+/// Runs the sign-in process: the window, or with `--silent` none. Returns its exit code.
+pub fn run() -> i32 {
+    let silent = std::env::args().nth(2).as_deref() == Some(SILENT_FLAG);
+    show(silent)
+}
+
 /// Opens the sign-in window and waits until the user signed in or closed it. Returns the
 /// YouTube cookies as a `Cookie` header line.
 pub async fn sign_in() -> Result<String, String> {
@@ -50,8 +123,8 @@ pub async fn sign_in() -> Result<String, String> {
         .map_err(|error| t!("sign_in_window.open_failed", error = error).into_owned())?;
     let header = String::from_utf8_lossy(&output.stdout).trim().to_string();
     match output.status.code() {
-        Some(0) if has_session(&header) => Ok(header),
-        Some(0) | Some(1) => Err(t!("sign_in_window.closed").into_owned()),
+        Some(SIGNED_IN) if has_session(&header) => Ok(header),
+        Some(SIGNED_IN) | Some(CLOSED) => Err(t!("sign_in_window.closed").into_owned()),
         _ => Err(t!("sign_in_window.no_webkit", engine = ENGINE).into_owned()),
     }
 }
@@ -62,9 +135,20 @@ mod gtk;
 mod webview2;
 
 #[cfg(target_os = "linux")]
-pub use gtk::run;
+use gtk::show;
 #[cfg(windows)]
-pub use webview2::run;
+use webview2::show;
+
+/// Whether `url` is one of Google's sign-in forms (the email, the password, a check): with no
+/// window, nobody can fill it in. A Google sign-in that is kept passes through other pages.
+fn wants_the_user(url: &str) -> bool {
+    let Some(rest) = url.strip_prefix("https://accounts.google.com/") else {
+        return false;
+    };
+    rest.starts_with("v3/signin/")
+        || rest.starts_with("signin/")
+        || rest.starts_with("InteractiveLogin")
+}
 
 /// The cookies as a `Cookie` header line, keeping the first of each name, or `None` without a
 /// signed-in session (YouTube signs requests with SAPISID).
@@ -120,5 +204,20 @@ mod tests {
             !has_session("__Secure-3PAPISID=x"),
             "only SAPISID itself counts"
         );
+    }
+
+    #[test]
+    fn google_sign_in_forms_need_the_user() {
+        assert!(wants_the_user(
+            "https://accounts.google.com/v3/signin/identifier?continue=x"
+        ));
+        assert!(wants_the_user(
+            "https://accounts.google.com/v3/signin/challenge/pwd"
+        ));
+        assert!(!wants_the_user(
+            "https://accounts.google.com/ServiceLogin?passive=true"
+        ));
+        assert!(!wants_the_user("https://accounts.google.com/CheckCookie"));
+        assert!(!wants_the_user("https://music.youtube.com/"));
     }
 }

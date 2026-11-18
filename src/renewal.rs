@@ -7,6 +7,10 @@
 //!
 //! Each renewal belongs to a run; signing in or out starts a new run, so the waits of an old
 //! one end there.
+//!
+//! When YouTube stops accepting the session anyway, Encore first signs in again with no window
+//! (see `sign_in_window`), once; only if Google wants the user does it ask. What happens goes
+//! to `session.log` in the cache.
 
 use std::time::Duration;
 
@@ -26,6 +30,8 @@ pub struct Renewal {
     run: u64,
     /// The sign-in in progress is the sign-in window's.
     from_window: bool,
+    /// Signing in again with no window was tried since the session last worked.
+    retried: bool,
 }
 
 /// Why a renewal failed.
@@ -76,12 +82,20 @@ impl App {
             Event::Due(run) if run == self.renewal.run => self.renew(run),
             Event::Renewed(run, result) if run == self.renewal.run => {
                 let wait = match result {
-                    Ok(wait) => wait,
-                    Err(Failure::Rejected) => {
-                        self.session_rejected();
-                        return Task::none();
+                    Ok(wait) => {
+                        // The session works: if it is lost again, signing in quietly may help.
+                        self.renewal.retried = false;
+                        crate::notes::session(format!("renewed; next in {} s", wait.as_secs()));
+                        wait
                     }
-                    Err(Failure::Other(_)) => RETRY,
+                    Err(Failure::Rejected) => return self.session_rejected(),
+                    Err(Failure::Other(error)) => {
+                        crate::notes::session(format!(
+                            "renewing failed ({error}); again in {} s",
+                            RETRY.as_secs()
+                        ));
+                        RETRY
+                    }
                 };
                 Task::perform(async move { tokio::time::sleep(wait).await }, move |()| {
                     Message::Renewal(Event::Due(run))
@@ -89,6 +103,54 @@ impl App {
             }
             // A run that was stopped.
             Event::Due(_) | Event::Renewed(..) => Task::none(),
+        }
+    }
+
+    /// YouTube no longer accepts the saved session. An Encore session whose Google sign-in is
+    /// kept is signed in again with no window, once; otherwise, or if that fails, the user is
+    /// asked to sign in again.
+    pub(crate) fn session_rejected(&mut self) -> Task<Message> {
+        self.stop_renewal();
+        crate::notes::session("YouTube no longer accepts the session");
+        let quietly = self.session_log.renewable
+            && !self.renewal.retried
+            && crate::sign_in_window::has_profile();
+        if !quietly {
+            self.session_lost();
+            return Task::none();
+        }
+        self.renewal.retried = true;
+        crate::notes::session("signing in again with no window");
+        Task::perform(
+            crate::sign_in_window::sign_in_silently(),
+            Message::SilentSignIn,
+        )
+    }
+
+    /// Signing in again with no window finished: the new session is loaded, or the user is
+    /// asked to sign in.
+    pub(crate) fn silent_sign_in_done(
+        &mut self,
+        result: Result<String, crate::sign_in_window::Silent>,
+    ) -> Task<Message> {
+        match result {
+            Ok(cookie) => {
+                crate::notes::session("signed in again with no window");
+                let Some(client) = self.online.client() else {
+                    return Task::none();
+                };
+                // The saved library stays on screen while the new session loads it.
+                self.signing_in_from_window(true);
+                Task::perform(
+                    crate::library::sign_in_with_cookie(client, cookie),
+                    Message::SignedIn,
+                )
+            }
+            Err(why) => {
+                crate::notes::session(format!("signing in with no window failed: {why:?}"));
+                self.session_lost();
+                Task::none()
+            }
         }
     }
 
@@ -181,5 +243,23 @@ mod tests {
         assert!(wait.is_ok(), "renewing failed: {:?}", wait.err());
         assert!(accepted.is_ok(), "YouTube refused the renewed session");
         assert_ne!(before, after, "Google sent no new cookies");
+    }
+
+    #[test]
+    fn a_failed_quiet_sign_in_asks_the_user() {
+        let mut app = app(true);
+        let task = app.silent_sign_in_done(Err(crate::sign_in_window::Silent::NeedsYou));
+        assert_eq!(task.units(), 0);
+        assert!(app.session_expired);
+    }
+
+    #[test]
+    fn a_working_session_may_be_signed_in_quietly_again_later() {
+        let mut app = app(true);
+        let _ = app.start_renewal();
+        app.renewal.retried = true;
+        let run = app.renewal.run;
+        let _ = app.renewal_event(Event::Renewed(run, Ok(Duration::from_secs(600))));
+        assert!(!app.renewal.retried);
     }
 }

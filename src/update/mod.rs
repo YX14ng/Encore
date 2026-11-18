@@ -327,6 +327,7 @@ impl App {
                 let Some(client) = self.online.client() else {
                     return Task::none();
                 };
+                crate::notes::session("signed in with the window");
                 // Loading the library takes a few seconds; say so as soon as the window is gone.
                 self.account = Account::SigningIn;
                 self.signing_in_from_window(true);
@@ -363,7 +364,10 @@ impl App {
                 let renew = self.start_renewal();
                 return Task::batch([self.library_loaded(Ok(data)), renew]);
             }
-            Message::Restored(Err(library::RestoreError::Expired)) => self.session_rejected(),
+            Message::Restored(Err(library::RestoreError::Expired)) => {
+                return self.session_rejected();
+            }
+            Message::SilentSignIn(result) => return self.silent_sign_in_done(result),
             Message::Restored(Err(library::RestoreError::NoSession)) => {
                 self.account = Account::SignedOut;
                 library::clear_cache();
@@ -376,6 +380,8 @@ impl App {
             }
             Message::SignOut => {
                 self.stop_renewal();
+                crate::notes::session("signed out");
+                crate::sign_in_window::forget_profile();
                 self.session_log.signed_out();
                 self.session_log.save();
                 self.session_expired = false;
@@ -545,10 +551,10 @@ impl App {
         self.audio_settings.save();
     }
 
-    /// YouTube no longer accepts the saved session: remember how long it lasted and ask to
-    /// sign in again, keeping the saved library on screen meanwhile.
-    pub(crate) fn session_rejected(&mut self) {
-        self.stop_renewal();
+    /// The session is lost for good: remember how long it lasted and ask to sign in again,
+    /// keeping the saved library on screen meanwhile.
+    pub(crate) fn session_lost(&mut self) {
+        crate::notes::session("asking the user to sign in again");
         if !self.session_expired {
             self.session_expired = true;
             self.session_log.expired(session::now());
