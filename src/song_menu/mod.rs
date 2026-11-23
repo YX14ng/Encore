@@ -1,15 +1,18 @@
 //! The menu a right click on a song opens, in song lists and in the queue: play it next, add it
 //! to the queue, start a radio from it, add it to a playlist or take it out of one, out of the
-//! queue or out of the downloads, go to its artist or album, like or dislike it, copy its link.
-//! Each choice shows only where it applies.
+//! queue or out of the downloads, go to its artist or album, like or dislike it, copy its link
+//! or its title, open it on YouTube Music. Each choice shows only where it applies; a song in
+//! the queue also offers what the playlist or download it came from allows.
 
 use iced::widget::{Column, button, column, container, mouse_area, opaque, rule, space, text};
-use iced::{Element, Fill, Padding, Point, Size, Task, border};
+use iced::{Element, Fill, Padding, Point, Size, border};
 use rust_i18n::t;
 
-use crate::rating::{self, Rating};
-use crate::youtube::{self, SearchTrack};
-use crate::{App, Message, Screen, theme};
+use crate::rating::Rating;
+use crate::youtube::SearchTrack;
+use crate::{Message, theme};
+
+mod act;
 
 /// How wide the menu is.
 const WIDTH: f32 = 250.0;
@@ -29,6 +32,8 @@ pub enum Place {
 /// What the menu can do.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
+    /// Plays song `index` of the queue now.
+    PlayNow(usize),
     PlayNext,
     AddToQueue,
     StartRadio,
@@ -42,6 +47,10 @@ pub enum Action {
     Like,
     Dislike,
     CopyLink,
+    /// Copies "Title - Artist".
+    CopyTitle,
+    /// Opens the song on YouTube Music in the browser.
+    OpenInBrowser,
 }
 
 #[derive(Debug, Clone)]
@@ -62,7 +71,10 @@ pub struct Menu {
     track: SearchTrack,
     place: Place,
     at: Point,
-    /// The downloaded collection on screen holding the song, if any.
+    /// The user's own playlist holding the song (the one on screen, or the one the queue
+    /// came from), if any.
+    playlist: Option<String>,
+    /// The downloaded collection holding the song (on screen, or the queue's), if any.
     downloaded_in: Option<String>,
     rating: Rating,
     signed_in: bool,
@@ -72,6 +84,16 @@ impl Menu {
     /// The choices, in groups.
     fn actions(&self) -> Vec<Vec<(Action, String)>> {
         let mut play = Vec::new();
+        if let Place::Queue {
+            index,
+            upcoming: true,
+        } = self.place
+        {
+            play.push((
+                Action::PlayNow(index),
+                t!("song_menu.play_now").into_owned(),
+            ));
+        }
         play.push((Action::PlayNext, t!("song_menu.play_next").into_owned()));
         if !matches!(self.place, Place::Queue { .. }) {
             play.push((
@@ -88,21 +110,21 @@ impl Menu {
                 t!("song_menu.add_to_playlist").into_owned(),
             ));
         }
-        match &self.place {
-            Place::List {
-                playlist: Some(playlist),
-            } => lists.push((
+        if let Some(playlist) = &self.playlist {
+            lists.push((
                 Action::RemoveFromPlaylist(playlist.clone()),
                 t!("song_menu.remove_from_playlist").into_owned(),
-            )),
-            Place::Queue {
-                index,
-                upcoming: true,
-            } => lists.push((
-                Action::RemoveFromQueue(*index),
+            ));
+        }
+        if let Place::Queue {
+            index,
+            upcoming: true,
+        } = self.place
+        {
+            lists.push((
+                Action::RemoveFromQueue(index),
                 t!("song_menu.remove_from_queue").into_owned(),
-            )),
-            _ => {}
+            ));
         }
         if let Some(collection) = &self.downloaded_in {
             lists.push((
@@ -135,6 +157,11 @@ impl Menu {
             more.push((Action::Dislike, dislike.into_owned()));
         }
         more.push((Action::CopyLink, t!("song_menu.copy_link").into_owned()));
+        more.push((Action::CopyTitle, t!("song_menu.copy_title").into_owned()));
+        more.push((
+            Action::OpenInBrowser,
+            t!("song_menu.open_in_browser").into_owned(),
+        ));
 
         [play, lists, go, more]
             .into_iter()
@@ -200,115 +227,10 @@ pub fn view(menu: &Menu, window: Size) -> Element<'_, Message> {
     )
 }
 
-impl App {
-    pub(crate) fn song_menu_event(&mut self, event: Event) -> Task<Message> {
-        match event {
-            Event::Open { track, place, at } => {
-                let downloaded_in = self.downloaded_collection_with(&track.id, &place);
-                self.song_menu = Some(Menu {
-                    rating: self.rating_of(&track.id),
-                    signed_in: matches!(self.account, crate::library::Account::SignedIn(_)),
-                    track,
-                    place,
-                    at,
-                    downloaded_in,
-                });
-                Task::none()
-            }
-            Event::Close => {
-                self.song_menu = None;
-                Task::none()
-            }
-            Event::Pick(action) => match self.song_menu.take() {
-                Some(menu) => self.do_menu_action(menu, action),
-                None => Task::none(),
-            },
-        }
-    }
-
-    /// The downloaded collection on screen that holds song `id`, when the menu opened on it.
-    fn downloaded_collection_with(&self, id: &str, place: &Place) -> Option<String> {
-        if self.screen != Screen::Collection || !matches!(place, Place::List { .. }) {
-            return None;
-        }
-        let shown = self.online.collection().0?;
-        self.offline
-            .get(&shown.id)
-            .filter(|downloaded| downloaded.tracks.iter().any(|track| track.id == id))
-            .map(|downloaded| downloaded.id.clone())
-    }
-
-    fn do_menu_action(&mut self, menu: Menu, action: Action) -> Task<Message> {
-        let track = menu.track;
-        match action {
-            Action::PlayNext => match menu.place {
-                Place::Queue { index, .. } => self.handle(Message::QueuePlayNext(index)),
-                Place::List { .. } => self.online.play_next(track),
-            },
-            Action::AddToQueue => self.handle(Message::AddToQueue(track)),
-            Action::StartRadio => match self.online.client() {
-                Some(client) => {
-                    let seed = track.id.clone();
-                    Task::perform(youtube::radio(client, seed), move |songs| {
-                        Message::RadioReady(track.clone(), songs)
-                    })
-                }
-                None => Task::none(),
-            },
-            Action::AddToPlaylist => {
-                self.handle(Message::Playlist(crate::playlists::Event::OpenAddTo(track)))
-            }
-            Action::RemoveFromPlaylist(id) => {
-                self.handle(Message::Playlist(crate::playlists::Event::Remove {
-                    id,
-                    song_id: track.id,
-                    entry: track.entry,
-                }))
-            }
-            Action::RemoveFromQueue(index) => self.handle(Message::QueueRemove(index)),
-            Action::RemoveFromDownloads(collection) => {
-                self.offline.remove_song(&collection, &track.id);
-                if let Some(updated) = self.offline.get(&collection).cloned() {
-                    return self.online.show_collection(updated);
-                }
-                Task::none()
-            }
-            Action::GoToArtist | Action::GoToAlbum => {
-                let Some(client) = self.online.client() else {
-                    return Task::none();
-                };
-                let place = if action == Action::GoToArtist {
-                    youtube::SongPlace::Artist(None)
-                } else {
-                    youtube::SongPlace::Album
-                };
-                Task::perform(
-                    youtube::place_of_song(client, track.id, place),
-                    Message::SongPlaceFound,
-                )
-            }
-            Action::Like => self.handle(Message::Rating(rating::Event::RateSong(
-                track,
-                Rating::Like,
-            ))),
-            Action::Dislike => self.handle(Message::Rating(rating::Event::RateSong(
-                track,
-                Rating::Dislike,
-            ))),
-            Action::CopyLink => {
-                let link = format!("https://music.youtube.com/watch?v={}", track.id);
-                Task::batch([
-                    iced::clipboard::write(link),
-                    self.show_toast(t!("song_menu.link_copied").into_owned()),
-                ])
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::App;
 
     fn song(album: &str) -> SearchTrack {
         SearchTrack {
@@ -323,10 +245,15 @@ mod tests {
     }
 
     fn menu(place: Place, signed_in: bool, album: &str) -> Vec<Action> {
+        let playlist = match &place {
+            Place::List { playlist } => playlist.clone(),
+            Place::Queue { .. } => None,
+        };
         Menu {
             track: song(album),
             place,
             at: Point::ORIGIN,
+            playlist,
             downloaded_in: None,
             rating: Rating::None,
             signed_in,
@@ -360,6 +287,7 @@ mod tests {
             "",
         );
         assert!(queued.contains(&Action::RemoveFromQueue(4)));
+        assert!(queued.contains(&Action::PlayNow(4)));
         assert!(
             !queued.contains(&Action::AddToQueue),
             "it is already queued"
@@ -375,11 +303,74 @@ mod tests {
             "",
         );
         assert!(!playing.contains(&Action::RemoveFromQueue(0)));
+        assert!(!playing.contains(&Action::PlayNow(0)), "it is playing");
         assert!(
             !playing.contains(&Action::Like) && !playing.contains(&Action::AddToPlaylist),
             "rating and playlists need the account"
         );
-        assert!(playing.contains(&Action::CopyLink));
+        assert!(playing.contains(&Action::CopyLink) && playing.contains(&Action::CopyTitle));
+        assert!(playing.contains(&Action::OpenInBrowser));
+    }
+
+    #[test]
+    fn the_title_is_copied_with_the_artist() {
+        assert_eq!(act::title_and_artist(&song("")), "Usseewa - Ado");
+        let mut alone = song("");
+        alone.artist.clear();
+        assert_eq!(act::title_and_artist(&alone), "Usseewa");
+    }
+
+    #[test]
+    fn a_song_in_the_queue_can_leave_the_users_playlist_it_came_from() {
+        let mut app = App::new();
+        let mut data = crate::library::LibraryData::default();
+        data.own_playlists.push("PLmine".to_string());
+        app.account = crate::library::Account::SignedIn(Box::new(data));
+        let playlist = crate::youtube::Collection {
+            id: "PLmine".to_string(),
+            kind: crate::youtube::TileKind::Playlist,
+            title: "Mine".to_string(),
+            subtitle: String::new(),
+            image_url: None,
+            tracks: vec![song("")],
+            artist: None,
+        };
+        let _ = app.online.show_collection(playlist.clone());
+        let _ = app.handle(Message::PlayAll(playlist.tracks.clone(), false));
+        app.screen = crate::Screen::Home;
+        let _ = app.handle(Message::SongMenu(Event::Open {
+            track: song(""),
+            place: Place::Queue {
+                index: 0,
+                upcoming: false,
+            },
+            at: Point::ORIGIN,
+        }));
+        assert_eq!(
+            app.song_menu
+                .as_ref()
+                .and_then(|menu| menu.playlist.clone()),
+            Some("PLmine".to_string())
+        );
+
+        let _ = app.handle(Message::SongMenu(Event::Open {
+            track: SearchTrack {
+                id: "other".to_string(),
+                ..song("")
+            },
+            place: Place::Queue {
+                index: 1,
+                upcoming: true,
+            },
+            at: Point::ORIGIN,
+        }));
+        assert_eq!(
+            app.song_menu
+                .as_ref()
+                .and_then(|menu| menu.playlist.clone()),
+            None,
+            "a song added by hand is not in the playlist"
+        );
     }
 
     #[test]

@@ -519,6 +519,15 @@ impl Online {
     }
 
     /// What the collection screen draws.
+    /// The songs of collection `id` as last loaded (open now or opened lately), if known.
+    pub fn known_tracks(&self, id: &str) -> Option<&[SearchTrack]> {
+        self.collection
+            .as_ref()
+            .filter(|collection| collection.id == id)
+            .or_else(|| self.recent.get(id))
+            .map(|collection| collection.tracks.as_slice())
+    }
+
     pub fn collection(&self) -> (Option<&Collection>, &Status, Shared<'_>) {
         (
             self.collection.as_ref(),

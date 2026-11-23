@@ -68,6 +68,11 @@ impl Queue {
         self.source = Some(id.to_string());
     }
 
+    /// The album or playlist the songs came from, when the queue is one.
+    pub fn source(&self) -> Option<&str> {
+        self.source.as_deref()
+    }
+
     /// Whether the songs are those of collection `id`.
     pub fn is_from(&self, id: &str) -> bool {
         self.source.as_deref() == Some(id)
