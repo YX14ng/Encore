@@ -1,6 +1,6 @@
 [package]
 name = "encore"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2024"
 description = "A YouTube Music player for the desktop"
 repository = "https://github.com/YX14ng/Encore"

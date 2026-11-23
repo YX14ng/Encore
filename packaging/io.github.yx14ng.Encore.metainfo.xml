@@ -52,6 +52,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.8.0" date="2026-11-23">
+      <description>
+        <p>The arrow keys go through the search suggestions and Enter searches for the one picked. The song menu also opens in the queue, where a song can leave the playlist or download it came from, and it can play a song now, copy its title and artist, or open it on YouTube Music.</p>
+      </description>
+    </release>
     <release version="0.7.0" date="2026-11-23">
       <description>
         <p>The artists' names under the song playing open their page. A downloaded playlist that changed on YouTube Music offers Update, which deletes the songs taken out and downloads the new ones.</p>
