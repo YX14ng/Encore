@@ -2,6 +2,7 @@
 //! the lyrics and the clock on the song.
 
 use iced::Task;
+use rust_i18n::t;
 
 use crate::clock::Playback;
 use crate::lyrics::Lyrics;
@@ -14,6 +15,9 @@ use crate::{
     notifications, sponsorblock,
 };
 
+/// How many songs in a row may fail before Encore stops trying the next one.
+const FAILURES_BEFORE_STOPPING: u32 = 3;
+
 impl App {
     /// Shows a YouTube track in the player once its audio has started.
     pub(crate) fn start_online(
@@ -21,12 +25,37 @@ impl App {
         index: usize,
         song: Result<crate::silence::SongFile, String>,
     ) -> Task<Message> {
-        let (started, prefetch) = self.online.audio_ready(index, song);
-        let Some(track) = started else {
-            return prefetch;
+        match self.online.audio_ready(index, song) {
+            crate::online::Ready::Started(track, prefetch) => {
+                self.failed_in_a_row = 0;
+                let started = self.song_started(track);
+                Task::batch([prefetch, started])
+            }
+            crate::online::Ready::Failed {
+                index,
+                title,
+                error,
+            } => self.song_failed(index, &title, &error),
+            crate::online::Ready::Ignored => Task::none(),
+        }
+    }
+
+    /// A song could not be played: the next one plays instead, as YouTube Music does with songs
+    /// that are gone. After a few in a row (no connection, yt-dlp broken) it stops and says why.
+    fn song_failed(&mut self, index: usize, title: &str, error: &str) -> Task<Message> {
+        self.failed_in_a_row += 1;
+        let next = (self.failed_in_a_row < FAILURES_BEFORE_STOPPING)
+            .then(|| self.online.skip_failed(index))
+            .flatten();
+        let Some(next) = next else {
+            self.failed_in_a_row = 0;
+            self.playback.is_playing = false;
+            let reason = error.lines().next().unwrap_or(error);
+            return self
+                .show_toast(t!("online.song_failed", title = title, error = reason).into_owned());
         };
-        let started = self.song_started(track);
-        Task::batch([prefetch, started])
+        let toast = self.show_toast(t!("online.song_skipped", title = title).into_owned());
+        Task::batch([toast, self.online.play(next)])
     }
 
     /// Shows the song mpv went on into with no gap, once it does.
@@ -311,5 +340,48 @@ mod tests {
         let _ = app.handle(Message::Next);
         assert!(!app.playback.is_playing, "there is nothing to play");
         assert!(app.now_playing.is_nothing());
+    }
+
+    #[test]
+    fn a_song_that_cannot_play_gives_way_to_the_next_until_too_many_fail() {
+        let mut app = App::starting(false);
+        let tracks: Vec<SearchTrack> = ["a", "b", "c", "d", "e"]
+            .iter()
+            .map(|id| SearchTrack {
+                id: (*id).to_string(),
+                title: (*id).to_string(),
+                artist: String::new(),
+                album: String::new(),
+                duration: 200,
+                cover_url: None,
+                entry: None,
+            })
+            .collect();
+        let _ = app.online.play_queue(tracks, 0);
+        let gone = || Err("ERROR: [youtube] x: Video unavailable".to_string());
+
+        let _ = app.start_online(0, gone());
+        let second = app.online.loading_track().map(|track| track.id.clone());
+        assert!(
+            second.as_deref().is_some_and(|id| id != "a"),
+            "the next song downloads: {second:?}"
+        );
+        let index = |app: &App, id: &str| {
+            (0..5)
+                .find(|&index| app.online.queue().get(index).is_some_and(|t| t.id == id))
+                .expect("queued")
+        };
+        let at = index(&app, second.as_deref().expect("second"));
+        let _ = app.start_online(at, gone());
+        let third = app.online.loading_track().map(|track| track.id.clone());
+        assert!(third.is_some() && third != second);
+
+        let at = index(&app, third.as_deref().expect("third"));
+        let _ = app.start_online(at, gone());
+        assert!(
+            app.online.loading_track().is_none(),
+            "three in a row: no connection or yt-dlp broken, so it stops"
+        );
+        assert_eq!(app.failed_in_a_row, 0, "counting starts over");
     }
 }

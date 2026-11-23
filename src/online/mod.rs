@@ -2,6 +2,8 @@
 //! playlists and downloading images. The audio player and its queue are in `playback`.
 
 mod playback;
+
+pub use playback::Ready;
 mod recent;
 
 use std::collections::{HashMap, HashSet};

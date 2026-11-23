@@ -452,7 +452,8 @@ impl App {
         };
         let serial = self.toast.as_ref().map_or(0, |(serial, _)| serial + 1);
         self.toast = Some((serial, message));
-        let done = Task::perform(tokio::time::sleep(TOAST_TIME), move |()| {
+        // The timer is made inside the task, where Tokio's runtime is.
+        let done = Task::perform(async { tokio::time::sleep(TOAST_TIME).await }, move |()| {
             Message::Playlist(Event::ToastDone(serial))
         });
         Task::batch([rejected, done])

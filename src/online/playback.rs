@@ -17,6 +17,20 @@ use crate::queue::{Queue, Repeat};
 use crate::silence::{self, SongFile};
 use crate::youtube::{self, SearchTrack, TopResult};
 
+/// What became of a song's download.
+pub enum Ready {
+    /// It plays; the task downloads the song after it.
+    Started(SearchTrack, Task<Message>),
+    /// It cannot be played (gone from YouTube, no connection).
+    Failed {
+        index: usize,
+        title: String,
+        error: String,
+    },
+    /// Another song was picked meanwhile.
+    Ignored,
+}
+
 /// How long a song may take to download before Play starts its download again.
 const STALLED: std::time::Duration = std::time::Duration::from_secs(20);
 
@@ -422,14 +436,10 @@ impl Online {
     }
 
     /// Starts the downloaded file. Returns the song that started, and prefetches the next one.
-    pub fn audio_ready(
-        &mut self,
-        index: usize,
-        song: Result<SongFile, String>,
-    ) -> (Option<SearchTrack>, Task<Message>) {
+    pub fn audio_ready(&mut self, index: usize, song: Result<SongFile, String>) -> Ready {
         let Some(track) = self.queue.get(index) else {
             playback_log::note(format!("ready #{index} ignored: not in the queue"));
-            return (None, Task::none());
+            return Ready::Ignored;
         };
         if self.loading.as_deref() != Some(track.id.as_str()) {
             // Another song was picked while this one was downloading.
@@ -437,9 +447,10 @@ impl Online {
                 "ready {} ignored: loading {:?}",
                 track.id, self.loading
             ));
-            return (None, Task::none());
+            return Ready::Ignored;
         }
         let id = track.id.clone();
+        let title = track.title.clone();
         self.loading = None;
         self.loading_started = None;
 
@@ -458,14 +469,30 @@ impl Online {
             }
             Err(error) => {
                 playback_log::note(format!("failed {id}: {error}"));
-                self.error = Some(error);
-                return (None, Task::none());
+                self.error = Some(error.clone());
+                return Ready::Failed {
+                    index,
+                    title,
+                    error,
+                };
             }
         }
 
         self.queue.set_playing(index);
         self.heard = false;
-        (self.queue.get(index).cloned(), self.prefetch_next())
+        match self.queue.get(index).cloned() {
+            Some(track) => Ready::Started(track, self.prefetch_next()),
+            None => Ready::Ignored,
+        }
+    }
+
+    /// Passes over song `index`, which could not be played, and returns the one after it: the
+    /// first again only with repeat all, never the same one.
+    pub fn skip_failed(&mut self, index: usize) -> Option<usize> {
+        self.queue.set_playing(index);
+        self.queue
+            .next(self.repeat == Repeat::All)
+            .filter(|&next| next != index)
     }
 
     /// The song being downloaded to play, while it is.

@@ -270,6 +270,8 @@ struct App {
     song_menu: Option<song_menu::Menu>,
     /// Looking for and installing new versions.
     updater: updater::Updater,
+    /// Songs that could not be played one after another; a few in a row stop skipping ahead.
+    failed_in_a_row: u32,
     explore: explore::Explore,
 }
 
@@ -584,6 +586,7 @@ impl App {
             song_order: song_order::SongOrder::default(),
             song_menu: None,
             updater: updater::Updater::new(),
+            failed_in_a_row: 0,
             explore: explore::Explore::default(),
         }
     }
