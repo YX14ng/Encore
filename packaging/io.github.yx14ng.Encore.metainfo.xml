@@ -52,6 +52,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.6.1" date="2026-11-23">
+      <description>
+        <p>A song that cannot be played (gone from YouTube) gives way to the next one instead of leaving the player stuck; after three in a row Encore stops and says why.</p>
+      </description>
+    </release>
     <release version="0.6.0" date="2026-11-17">
       <description>
         <p>Encore looks for a new version when it starts and offers to install it: it downloads the package for your system, checks it and installs it, then restarts. Settings, About turns the check off or runs it now.</p>
