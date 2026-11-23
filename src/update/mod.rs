@@ -293,6 +293,7 @@ impl App {
             }
             Message::SongPlaceFound(Ok(tile)) => return self.handle(Message::OpenTile(tile)),
             Message::SongPlaceFound(Err(error)) => return self.show_toast(error),
+            Message::GoToArtist(name) => return self.go_to_artist(name),
             Message::SongOrder(event) => {
                 self.song_order.handle(event);
                 self.arrange_songs();

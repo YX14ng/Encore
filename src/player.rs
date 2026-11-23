@@ -260,10 +260,7 @@ fn now_playing<'a>(song: &'a Song, format: Option<&'a str>, loading: bool) -> El
             text(&song.title)
                 .size(14)
                 .wrapping(iced::widget::text::Wrapping::None),
-            text(song.byline())
-                .size(12)
-                .color(theme::text_secondary())
-                .wrapping(iced::widget::text::Wrapping::None),
+            crate::artist_links::byline(song, 12.0, theme::text_secondary()),
         ]
     }
     .spacing(2)

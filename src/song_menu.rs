@@ -278,7 +278,7 @@ impl App {
                     return Task::none();
                 };
                 let place = if action == Action::GoToArtist {
-                    youtube::SongPlace::Artist
+                    youtube::SongPlace::Artist(None)
                 } else {
                     youtube::SongPlace::Album
                 };

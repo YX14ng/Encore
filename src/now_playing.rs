@@ -12,7 +12,7 @@ use iced::{Center, Color, ContentFit, Element, Fill, Font, Task, border};
 
 use rust_i18n::t;
 
-use crate::{App, Message, lyrics, queue_view, theme};
+use crate::{App, Message, artist_links, lyrics, queue_view, theme};
 
 /// How long the page takes to slide up.
 const SLIDE: Duration = Duration::from_millis(220);
@@ -80,7 +80,7 @@ impl App {
         }
     }
 
-    fn close_page(&mut self) -> Task<Message> {
+    pub(crate) fn close_page(&mut self) -> Task<Message> {
         self.page = None;
         if !self.immersive {
             self.stop_video();
@@ -176,9 +176,7 @@ impl App {
             weight: Weight::Bold,
             ..theme::INTER
         });
-        let artist = text(self.now_playing.byline())
-            .size(15)
-            .color(theme::text_secondary());
+        let artist = artist_links::byline(&self.now_playing, 15.0, theme::text_secondary());
         container(
             column![cover, title, artist]
                 .push(note)

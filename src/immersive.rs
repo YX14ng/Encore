@@ -78,7 +78,7 @@ pub fn view<'a>(
                     weight: Weight::Bold,
                     ..theme::INTER
                 }),
-                text(song.byline()).size(15).color(theme::text_secondary()),
+                crate::artist_links::byline(song, 15.0, theme::text_secondary()),
             ]
             .spacing(4),
             space::horizontal(),
@@ -101,7 +101,7 @@ pub fn view<'a>(
             weight: Weight::Bold,
             ..theme::INTER
         }),
-        text(song.byline()).size(17).color(theme::text_secondary()),
+        crate::artist_links::byline(song, 17.0, theme::text_secondary()),
         exit,
     ]
     .spacing(14)

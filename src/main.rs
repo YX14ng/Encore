@@ -7,6 +7,7 @@ rust_i18n::i18n!("locales", fallback = "en");
 
 mod account;
 mod artist;
+mod artist_links;
 mod audio;
 mod audio_settings;
 mod audio_view;
@@ -367,6 +368,8 @@ enum Message {
     RadioReady(SearchTrack, Result<Vec<SearchTrack>, String>),
     /// The artist or album a song's menu asked for, or why it was not found.
     SongPlaceFound(Result<Tile, String>),
+    /// An artist's name under the song playing was clicked.
+    GoToArtist(String),
     OpenAccount,
     SignInWindow,
     /// The sign-in window closed: the session's cookies, or why there are none.

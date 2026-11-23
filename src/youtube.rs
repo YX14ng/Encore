@@ -162,13 +162,15 @@ pub async fn radio(rp: RustyPipe, seed: String) -> Result<Vec<SearchTrack>, Stri
 }
 
 /// Which page of a song to go to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SongPlace {
-    Artist,
+    /// The artist with this name, or the first one with a page.
+    Artist(Option<String>),
     Album,
 }
 
-/// The artist (the first one with a page) or the album of song `id`, as a card to open.
+/// An artist (the one named, else the first one with a page) or the album of song `id`, as a
+/// card to open.
 pub async fn place_of_song(rp: RustyPipe, id: String, place: SongPlace) -> Result<Tile, String> {
     let details = rp
         .query()
@@ -177,10 +179,12 @@ pub async fn place_of_song(rp: RustyPipe, id: String, place: SongPlace) -> Resul
         .map_err(|error| error.to_string())?;
     let track = details.track;
     match place {
-        SongPlace::Artist => track
+        SongPlace::Artist(name) => track
             .artists
             .iter()
-            .find_map(|artist| {
+            .filter(|artist| artist.id.is_some())
+            .min_by_key(|artist| Some(&artist.name) != name.as_ref())
+            .and_then(|artist| {
                 Some(Tile {
                     kind: TileKind::Artist,
                     id: artist.id.clone()?,
