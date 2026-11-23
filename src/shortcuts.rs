@@ -1,6 +1,7 @@
 //! The player's keyboard shortcuts: ↑ and ↓ turn the volume by the mouse wheel's step, ← and →
-//! go back or forward five seconds, and Space plays or pauses. Keys a text field takes (the
-//! arrows while typing a search) never reach them.
+//! go back or forward five seconds, and Space plays or pauses. Keys a text field takes (← and
+//! → while typing a search) never reach them, and while search suggestions show, ↑ and ↓ go
+//! through those instead.
 
 use iced::Task;
 use iced::keyboard::{self, Key, key::Named};
@@ -41,6 +42,8 @@ pub fn from_key(event: keyboard::Event) -> Option<Message> {
 impl App {
     pub(crate) fn shortcut(&mut self, shortcut: Shortcut) -> Task<Message> {
         match shortcut {
+            Shortcut::VolumeUp if self.online.step_suggestion(-1) => {}
+            Shortcut::VolumeDown if self.online.step_suggestion(1) => {}
             Shortcut::VolumeUp => self.step_volume(1),
             Shortcut::VolumeDown => self.step_volume(-1),
             Shortcut::Back => self.jump(-SEEK_SECONDS),
@@ -137,5 +140,34 @@ mod tests {
         app.playback.elapsed = 197;
         let _ = app.shortcut(Shortcut::Forward);
         assert_eq!(app.playback.elapsed, 199, "never past the end");
+    }
+
+    #[test]
+    fn while_suggestions_show_the_arrows_pick_one_instead_of_the_volume() {
+        let mut app = App::new();
+        app.audio_settings.volume = 50.0;
+        let _ = app.handle(Message::SearchChanged("ad".to_string()));
+        // The answer to the request that typing made (the first one).
+        let _ = app.handle(Message::SuggestionsLoaded(
+            1,
+            Ok(vec!["ado".to_string(), "adele".to_string()]),
+        ));
+        let _ = app.shortcut(Shortcut::VolumeDown);
+        let _ = app.shortcut(Shortcut::VolumeDown);
+        assert_eq!(app.online.query, "adele");
+        assert_eq!(app.online.highlighted_suggestion(), Some(1));
+        let _ = app.shortcut(Shortcut::VolumeUp);
+        assert_eq!(app.online.query, "ado");
+        assert_eq!(app.audio_settings.volume, 50.0, "the volume stays");
+
+        // Enter searches for the one picked, and the suggestions go away.
+        let _ = app.handle(Message::Search);
+        assert_eq!(app.online.query, "ado");
+        assert!(app.online.suggestions().is_empty());
+        let _ = app.shortcut(Shortcut::VolumeUp);
+        assert!(
+            app.audio_settings.volume > 50.0,
+            "the arrows turn the volume again"
+        );
     }
 }

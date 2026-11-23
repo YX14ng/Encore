@@ -169,6 +169,7 @@ pub fn view<'a>(
     playlists: &'a [Playlist],
     query: &'a str,
     suggestions: &'a [String],
+    highlighted: Option<usize>,
     account: SidebarAccount<'a>,
 ) -> Element<'a, Message> {
     // Away from Home and the library (search results, an album) nothing is highlighted.
@@ -177,7 +178,8 @@ pub fn view<'a>(
     } else {
         NavItem::None
     };
-    let mut content = column![search_box(query), suggestion_list(suggestions)].spacing(2);
+    let mut content =
+        column![search_box(query), suggestion_list(suggestions, highlighted)].spacing(2);
 
     content = content.push(section_header("YouTube Music", Section::Music, state));
     if state.is_open(Section::Music) {
@@ -282,9 +284,11 @@ pub struct SidebarAccount<'a> {
     pub highlight: bool,
 }
 
-/// Search terms suggested while typing; clicking one searches for it.
-fn suggestion_list(suggestions: &[String]) -> Element<'_, Message> {
-    let rows = suggestions.iter().map(|term| {
+/// Search terms suggested while typing; clicking one searches for it, and the one picked with
+/// the arrows is highlighted.
+fn suggestion_list(suggestions: &[String], highlighted: Option<usize>) -> Element<'_, Message> {
+    let rows = suggestions.iter().enumerate().map(|(index, term)| {
+        let picked = Some(index) == highlighted;
         button(
             row![
                 theme::icon(
@@ -300,7 +304,7 @@ fn suggestion_list(suggestions: &[String]) -> Element<'_, Message> {
         .on_press(Message::PickSuggestion(term.clone()))
         .width(Fill)
         .padding([6, 10])
-        .style(|_, status| theme::flat_button(status, false))
+        .style(move |_, status| theme::flat_button(status, picked))
         .into()
     });
     Column::with_children(rows).padding([4, 0]).into()

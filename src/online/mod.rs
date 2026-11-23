@@ -5,6 +5,7 @@ mod playback;
 
 pub use playback::Ready;
 mod recent;
+mod suggestions;
 
 use std::collections::{HashMap, HashSet};
 
@@ -21,6 +22,7 @@ use crate::queue::{Queue, Repeat};
 use crate::search::{Filter, Results, Shared, Status};
 use crate::silence::SongFile;
 use crate::youtube::{self, Collection, SearchPage, SearchTrack, Tile, TopResult};
+use suggestions::Suggestions;
 
 /// What the audio player reports on each tick.
 pub enum Poll {
@@ -37,9 +39,7 @@ pub struct Online {
     client: Option<RustyPipe>,
     mixer: Option<Mixer>,
     pub query: String,
-    suggestions: Vec<String>,
-    /// Bumped on every keystroke, so late suggestions for old text are dropped.
-    suggestion_request: u64,
+    suggestions: Suggestions,
     status: Status,
     page: SearchPage,
     filter: Filter,
@@ -96,8 +96,7 @@ impl Online {
             client: youtube::client().ok(),
             mixer: Mixer::new(settings).ok(),
             query: String::new(),
-            suggestions: Vec::new(),
-            suggestion_request: 0,
+            suggestions: Suggestions::default(),
             status: Status::Idle,
             page: SearchPage::default(),
             filter: Filter::All,
@@ -141,13 +140,12 @@ impl Online {
     /// Updates the query and asks YouTube Music for suggestions.
     pub fn query_changed(&mut self, query: String) -> Task<Message> {
         self.query = query;
-        self.suggestion_request += 1;
+        let request = self.suggestions.typed(&self.query);
         let typed = self.query.trim().to_string();
         let Some(client) = self.client.clone().filter(|_| !typed.is_empty()) else {
             self.suggestions.clear();
             return Task::none();
         };
-        let request = self.suggestion_request;
         Task::perform(youtube::suggestions(client, typed), move |result| {
             Message::SuggestionsLoaded(request, result)
         })
@@ -155,19 +153,33 @@ impl Online {
 
     /// Shows suggestions, unless the text changed since they were asked for.
     pub fn suggestions_loaded(&mut self, request: u64, result: Result<Vec<String>, String>) {
-        if request == self.suggestion_request {
-            self.suggestions = result.unwrap_or_default();
-        }
+        self.suggestions.loaded(request, result.unwrap_or_default());
     }
 
     /// The suggestions under the search box.
     pub fn suggestions(&self) -> &[String] {
-        &self.suggestions
+        self.suggestions.terms()
+    }
+
+    /// The suggestion picked with the arrows, if any.
+    pub fn highlighted_suggestion(&self) -> Option<usize> {
+        self.suggestions.highlighted()
+    }
+
+    /// ↑ or ↓ while suggestions show: picks the next one, putting it in the search box.
+    /// Returns `false` with no suggestions, so the arrow does what it does elsewhere.
+    pub fn step_suggestion(&mut self, step: i32) -> bool {
+        match self.suggestions.step(step) {
+            Some(shown) => {
+                self.query = shown;
+                true
+            }
+            None => false,
+        }
     }
 
     /// Runs a search for the current query.
     pub fn search(&mut self) -> Task<Message> {
-        self.suggestion_request += 1;
         self.suggestions.clear();
         let query = self.query.trim().to_string();
         if query.is_empty() {

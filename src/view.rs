@@ -226,6 +226,7 @@ impl App {
                         if self.samples { &self.playlists } else { &[] },
                         &self.online.query,
                         self.online.suggestions(),
+                        self.online.highlighted_suggestion(),
                         SidebarAccount {
                             signed_in: matches!(self.account, Account::SignedIn(_)),
                             profile: self.profile(),
