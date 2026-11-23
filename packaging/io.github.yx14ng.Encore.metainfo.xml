@@ -52,6 +52,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.7.0" date="2026-11-23">
+      <description>
+        <p>The artists' names under the song playing open their page. A downloaded playlist that changed on YouTube Music offers Update, which deletes the songs taken out and downloads the new ones.</p>
+      </description>
+    </release>
     <release version="0.6.1" date="2026-11-23">
       <description>
         <p>A song that cannot be played (gone from YouTube) gives way to the next one instead of leaving the player stuck; after three in a row Encore stops and says why.</p>
