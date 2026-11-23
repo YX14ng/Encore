@@ -25,6 +25,17 @@ pub(super) fn pick_folder() -> Task<Message> {
     )
 }
 
+/// The card that opens `collection`.
+pub(super) fn tile_of(collection: &Collection) -> Tile {
+    Tile {
+        kind: collection.kind,
+        id: collection.id.clone(),
+        title: collection.title.clone(),
+        subtitle: collection.subtitle.clone(),
+        image_url: collection.image_url.clone(),
+    }
+}
+
 impl App {
     /// Download pressed: every page of a playlist is fetched first, so a long one downloads
     /// whole even when only its first songs had loaded on screen.
@@ -37,15 +48,24 @@ impl App {
             return self.save_offline_covers(task);
         };
         self.offline.prepare(&collection.id);
-        let tile = Tile {
-            kind: collection.kind,
-            id: collection.id.clone(),
-            title: collection.title.clone(),
-            subtitle: collection.subtitle.clone(),
-            image_url: collection.image_url.clone(),
-        };
+        let tile = tile_of(&collection);
         Task::perform(youtube::open_whole(client, tile), move |whole| {
             Message::DownloadListReady(collection.clone(), whole)
+        })
+    }
+
+    /// A downloaded playlist was opened: its song list is fetched again to see whether it
+    /// changed on YouTube Music, which turns its Download button into Update.
+    pub(super) fn check_download(&self, tile: &Tile) -> Task<Message> {
+        if !self.offline.wants_check(&tile.id, tile.kind) {
+            return Task::none();
+        }
+        let Some(client) = self.online.client() else {
+            return Task::none();
+        };
+        let id = tile.id.clone();
+        Task::perform(youtube::open_whole(client, tile.clone()), move |fresh| {
+            Message::DownloadChecked(id.clone(), fresh)
         })
     }
 

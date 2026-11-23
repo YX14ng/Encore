@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 /// How many songs of a playlist to load. The first page shows at once and the rest follow
 /// a page at a time (`more_tracks`).
-const PLAYLIST_LIMIT: usize = 5000;
+pub(crate) const PLAYLIST_LIMIT: usize = 5000;
 
 /// The widest image worth downloading for covers and the blurred background.
 const COVER_MAX_WIDTH: u32 = 544;

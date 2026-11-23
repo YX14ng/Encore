@@ -196,7 +196,8 @@ impl App {
             }
             Message::OpenTile(tile) => {
                 self.go_to(Screen::Collection);
-                return self.online.open(tile);
+                let check = self.check_download(&tile);
+                return Task::batch([self.online.open(tile), check]);
             }
             Message::CollectionLoaded(Ok(opened)) => {
                 let shown = self.online.collection_loaded(Ok(opened.collection));
@@ -416,6 +417,13 @@ impl App {
                 return self.save_offline_covers(task);
             }
             Message::RemoveDownload(id) => self.offline.remove(&id),
+            Message::DownloadChecked(id, Ok(fresh)) => self.offline.checked(&id, fresh.tracks),
+            // Nothing is known; the button stays as it was.
+            Message::DownloadChecked(_, Err(_)) => {}
+            Message::UpdateDownload(id) => {
+                let task = self.offline.update(&id);
+                return self.save_offline_covers(task);
+            }
             Message::LyricsLoaded(id, lyrics) => {
                 if self
                     .online
@@ -539,7 +547,8 @@ impl App {
             Message::OpenOffline(id) => {
                 if let Some(collection) = self.offline.get(&id).cloned() {
                     self.go_to(Screen::Collection);
-                    return self.online.show_collection(collection);
+                    let check = self.check_download(&downloads::tile_of(&collection));
+                    return Task::batch([self.online.show_collection(collection), check]);
                 }
             }
         }

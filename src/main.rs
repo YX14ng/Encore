@@ -398,6 +398,11 @@ enum Message {
     /// The downloads were moved to the folder (`None` is the default one), or why not.
     DownloadFolderMoved(Option<std::path::PathBuf>, Result<(), String>),
     RemoveDownload(String),
+    /// The whole song list of downloaded playlist `id` as YouTube Music has it now, to see
+    /// whether it changed.
+    DownloadChecked(String, Result<Collection, String>),
+    /// Update pressed on a downloaded playlist that changed.
+    UpdateDownload(String),
     OpenOffline(String),
     LyricsLoaded(String, Lyrics),
     ToggleImmersive,

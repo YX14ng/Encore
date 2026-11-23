@@ -4,7 +4,7 @@
 //! `index.json` that lists the downloaded collections and `pending.json` with the ones still
 //! downloading. No database.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use iced::Task;
@@ -14,8 +14,10 @@ use crate::Message;
 use crate::download;
 use crate::youtube::Collection;
 
+mod changes;
 mod folder;
 
+pub use changes::Changes;
 pub use folder::move_downloads;
 
 /// The downloads folder setting: whether the downloads are being moved, and the last error.
@@ -38,6 +40,8 @@ pub enum State {
         total: usize,
     },
     Downloaded,
+    /// Downloaded, but the playlist changed on YouTube Music since.
+    Outdated(Changes),
 }
 
 /// The download in progress: one song at a time, so YouTube is not hammered.
@@ -73,6 +77,8 @@ pub struct Offline {
     error: Option<String>,
     /// A collection whose download was just asked for, until the app saves its covers.
     new: Option<Collection>,
+    /// The song lists on YouTube Music of downloaded playlists that changed since.
+    outdated: HashMap<String, Vec<crate::youtube::SearchTrack>>,
 }
 
 impl Offline {
@@ -90,6 +96,7 @@ impl Offline {
             preparing: HashSet::new(),
             error: None,
             new: None,
+            outdated: HashMap::new(),
         }
     }
 
@@ -135,7 +142,9 @@ impl Offline {
         if self.waiting.iter().any(|waiting| waiting == id) {
             return State::Waiting;
         }
-        if self.get(id).is_some() {
+        if let Some(changes) = self.changes_of(id) {
+            State::Outdated(changes)
+        } else if self.get(id).is_some() {
             State::Downloaded
         } else {
             State::NotDownloaded
@@ -155,6 +164,7 @@ impl Offline {
             return Task::none();
         }
         self.error = None;
+        self.outdated.remove(&id);
         self.collections.retain(|kept| kept.id != id);
         self.new = Some(collection.clone());
         self.collections.insert(0, collection);
@@ -287,17 +297,8 @@ impl Offline {
                 self.job = Some(Job::new(self.waiting.remove(0)));
             }
         }
-        let still_used: HashSet<&str> = self.collections.iter().flat_map(image_urls).collect();
-        for url in image_urls(&removed).filter(|url| !still_used.contains(url)) {
-            let _ = std::fs::remove_file(images_dir().join(image_file_name(url)));
-        }
-        let dir = download::offline_dir();
-        for song in songs_to_delete(&removed, &self.collections) {
-            if let Some(path) = download::find_cached(&dir, &song) {
-                // A file that is already gone is fine.
-                let _ = std::fs::remove_file(path);
-            }
-        }
+        self.outdated.remove(id);
+        self.forget_files(&removed);
         self.save_all();
     }
 }
@@ -468,7 +469,7 @@ mod tests {
         assert_eq!(back, list);
     }
 
-    fn offline_with(collections: Vec<Collection>) -> Offline {
+    pub(super) fn offline_with(collections: Vec<Collection>) -> Offline {
         Offline {
             collections,
             job: None,
@@ -476,6 +477,7 @@ mod tests {
             preparing: HashSet::new(),
             error: None,
             new: None,
+            outdated: HashMap::new(),
         }
     }
 

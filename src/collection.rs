@@ -227,14 +227,20 @@ pub(crate) fn download_button<'a>(
             t!("collection.downloading", done = done, total = total)
         }
         State::Downloaded => t!("collection.downloaded"),
+        State::Outdated(changes) => t!(
+            "collection.update",
+            added = changes.added,
+            removed = changes.removed
+        ),
     };
     let message = match state {
         State::NotDownloaded => !collection.tracks.is_empty(),
         State::Preparing | State::Waiting | State::Downloading { .. } => false,
-        State::Downloaded => true,
+        State::Downloaded | State::Outdated(_) => true,
     }
     .then_some(move || match state {
         State::Downloaded => Message::RemoveDownload(collection.id.clone()),
+        State::Outdated(_) => Message::UpdateDownload(collection.id.clone()),
         _ => Message::DownloadCollection(collection.clone()),
     });
 
