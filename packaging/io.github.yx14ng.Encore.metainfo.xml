@@ -52,6 +52,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.9.0" date="2026-11-24">
+      <description>
+        <p>Lyrics can show their translation into the language of the interface under each line, as YouTube Music translates them. It can be switched off among the plugins.</p>
+      </description>
+    </release>
     <release version="0.8.0" date="2026-11-23">
       <description>
         <p>The arrow keys go through the search suggestions and Enter searches for the one picked. The song menu also opens in the queue, where a song can leave the playlist or download it came from, and it can play a song now, copy its title and artist, or open it on YouTube Music.</p>
