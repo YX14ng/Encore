@@ -1,6 +1,6 @@
 pkgbase = encore-ytm
 	pkgdesc = Desktop player for YouTube Music, with synced lyrics
-	pkgver = 0.8.0
+	pkgver = 0.9.0
 	pkgrel = 1
 	url = https://github.com/YX14ng/Encore
 	arch = x86_64
@@ -18,7 +18,7 @@ pkgbase = encore-ytm
 	conflicts = encore
 	options = !lto
 	options = !debug
-	source = Encore-0.8.0.tar.gz::https://github.com/YX14ng/Encore/archive/refs/tags/v0.8.0.tar.gz
-	sha256sums = db7dc0b9c92948abe1086f01bdafad39a0656d3c27441e06126143eb0a318d56
+	source = Encore-0.9.0.tar.gz::https://github.com/YX14ng/Encore/archive/refs/tags/v0.9.0.tar.gz
+	sha256sums = 36767f726d5b27c596e8ce9d8df798f14a75c55414253b4bb0491fdfd78d3a78
 
 pkgname = encore-ytm
