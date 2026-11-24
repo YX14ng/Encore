@@ -332,6 +332,7 @@ impl App {
         lyrics::view(
             &self.lyrics,
             self.romanized.as_deref(),
+            self.translated.as_deref(),
             current,
             scroll,
             style,

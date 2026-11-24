@@ -433,9 +433,11 @@ impl App {
                 {
                     self.lyrics = lyrics;
                     self.romanize_lyrics();
+                    self.translate_lyrics();
                     self.follow_lyrics();
                 }
             }
+            Message::TranslationLoaded(translation) => self.translation_loaded(translation),
             Message::MediaKey(key) => {
                 let playing = self.playback.is_playing;
                 return match key {
@@ -510,6 +512,7 @@ impl App {
                 self.appearance.language = language;
                 self.appearance.save();
                 self.romanize_lyrics();
+                return self.retranslate();
             }
             Message::PickAccent(accent) => {
                 self.appearance.accent = accent;
@@ -520,6 +523,7 @@ impl App {
                 self.plugins.set(plugin, on);
                 self.plugins.save();
                 self.romanize_lyrics();
+                return self.retranslate();
             }
             Message::SegmentsLoaded(id, Ok(segments)) => {
                 self.skip_segments = Some((id, segments));

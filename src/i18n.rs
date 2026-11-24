@@ -93,12 +93,18 @@ pub fn apply(choice: Option<&str>) {
 
 /// YouTube's language for the interface's: what YouTube Music sends its own texts in.
 pub fn youtube_language() -> rustypipe::param::Language {
+    youtube_code()
+        .parse()
+        .unwrap_or(rustypipe::param::Language::En)
+}
+
+/// YouTube's code ("hl") for the language of the interface.
+pub fn youtube_code() -> &'static str {
     let current = rust_i18n::locale();
-    let code = LANGUAGES
+    LANGUAGES
         .iter()
         .find(|language| language.code == &*current)
-        .map_or("en", |language| language.youtube);
-    code.parse().unwrap_or(rustypipe::param::Language::En)
+        .map_or("en", |language| language.youtube)
 }
 
 #[cfg(test)]

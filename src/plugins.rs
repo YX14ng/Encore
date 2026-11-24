@@ -22,10 +22,11 @@ pub enum Plugin {
     SkipDisliked,
     Visualizer,
     Romanize,
+    TranslateLyrics,
 }
 
 impl Plugin {
-    pub const ALL: [Plugin; 7] = [
+    pub const ALL: [Plugin; 8] = [
         Plugin::Discord,
         Plugin::LastFm,
         Plugin::Notifications,
@@ -33,6 +34,7 @@ impl Plugin {
         Plugin::SkipDisliked,
         Plugin::Visualizer,
         Plugin::Romanize,
+        Plugin::TranslateLyrics,
     ];
 
     fn name(self) -> Cow<'static, str> {
@@ -44,6 +46,7 @@ impl Plugin {
             Plugin::SkipDisliked => t!("plugins.skip_disliked_name"),
             Plugin::Visualizer => t!("plugins.visualizer_name"),
             Plugin::Romanize => t!("plugins.romanize_name"),
+            Plugin::TranslateLyrics => t!("plugins.translate_name"),
         }
     }
 
@@ -56,6 +59,7 @@ impl Plugin {
             Plugin::SkipDisliked => t!("plugins.skip_disliked_description"),
             Plugin::Visualizer => t!("plugins.visualizer_description"),
             Plugin::Romanize => t!("plugins.romanize_description"),
+            Plugin::TranslateLyrics => t!("plugins.translate_description"),
         }
     }
 }
@@ -72,6 +76,8 @@ pub struct Plugins {
     pub visualizer: bool,
     /// Japanese, Korean and Chinese lyrics written out in the Latin alphabet too.
     pub romanize: bool,
+    /// Lyrics translated by YouTube Music into the language of the interface, under each line.
+    pub translate: bool,
 }
 
 impl Default for Plugins {
@@ -84,6 +90,7 @@ impl Default for Plugins {
             skip_disliked: true,
             visualizer: true,
             romanize: true,
+            translate: true,
         }
     }
 }
@@ -120,6 +127,7 @@ impl Plugins {
             Plugin::SkipDisliked => self.skip_disliked,
             Plugin::Visualizer => self.visualizer,
             Plugin::Romanize => self.romanize,
+            Plugin::TranslateLyrics => self.translate,
         }
     }
 
@@ -132,6 +140,7 @@ impl Plugins {
             Plugin::SkipDisliked => &mut self.skip_disliked,
             Plugin::Visualizer => &mut self.visualizer,
             Plugin::Romanize => &mut self.romanize,
+            Plugin::TranslateLyrics => &mut self.translate,
         };
         *slot = on;
     }

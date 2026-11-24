@@ -30,6 +30,7 @@ mod library;
 mod lyrics;
 mod lyrics_focus;
 mod lyrics_source;
+mod lyrics_translation;
 mod media_keys;
 mod mini_player;
 mod mixer;
@@ -207,6 +208,10 @@ struct App {
     /// The lyrics in the Latin alphabet, a line per line of `lyrics`, when they are in Japanese,
     /// Korean or Chinese and the plugin is on.
     romanized: Option<Vec<String>>,
+    /// The song playing's lyrics translated by YouTube Music, as it sent them.
+    translation: Option<lyrics_translation::Translation>,
+    /// That translation, a line per line of `lyrics`, when it matches them and the plugin is on.
+    translated: Option<Vec<String>>,
     /// How far the open collection's song list is scrolled, so only the rows in sight are built.
     collection_scroll: virtual_list::Scroll,
     /// How far the library screen's list is scrolled.
@@ -408,6 +413,7 @@ enum Message {
     UpdateDownload(String),
     OpenOffline(String),
     LyricsLoaded(String, Lyrics),
+    TranslationLoaded(lyrics_translation::Translation),
     ToggleImmersive,
     ExitImmersive,
     MediaKey(media_keys::MediaKey),
@@ -561,6 +567,8 @@ impl App {
             session_log: session::SessionLog::load(),
             session_expired: false,
             romanized: None,
+            translation: None,
+            translated: None,
             volume_scroll: 0.0,
             collection_scroll: virtual_list::Scroll::default(),
             shelf_scroll: virtual_list::Scroll::default(),

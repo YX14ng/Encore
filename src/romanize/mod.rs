@@ -79,11 +79,7 @@ fn latin_punctuation(c: char) -> char {
 /// `None` when the song is not in a romanized script or is in the interface's (`interface`, a
 /// language code).
 pub fn lines(lyrics: &Lyrics, interface: &str) -> Option<Vec<String>> {
-    let texts: Vec<&str> = match lyrics {
-        Lyrics::Synced(lines) => lines.iter().map(|line| line.text.as_str()).collect(),
-        Lyrics::Plain(lines) => lines.iter().map(String::as_str).collect(),
-        Lyrics::Idle | Lyrics::Loading | Lyrics::Instrumental | Lyrics::Missing => return None,
-    };
+    let texts = lyrics.texts()?;
     let script = Script::of_lines(texts.iter().copied())?;
     if Script::of_language(interface) == Some(script) {
         return None;

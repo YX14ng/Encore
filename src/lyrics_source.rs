@@ -48,16 +48,19 @@ pub async fn fetch(track: SearchTrack, rp: Option<RustyPipe>) -> Lyrics {
     lyrics
 }
 
+/// Where lyrics and their translations are kept.
+pub(crate) fn cache_dir() -> PathBuf {
+    download::cache_dir().join("lyrics")
+}
+
 /// The cache file of a song's lyrics. The ".ytm" keeps lyrics found on LRCLIB by older versions
 /// from being shown.
 fn cache_path(video_id: &str) -> PathBuf {
-    download::cache_dir()
-        .join("lyrics")
-        .join(format!("{video_id}.ytm.json"))
+    cache_dir().join(format!("{video_id}.ytm.json"))
 }
 
 /// The song's synced lyrics, else its plain ones. A song without a Lyrics tab has none.
-async fn from_youtube(rp: &RustyPipe, video_id: &str) -> Option<Lyrics> {
+pub(crate) async fn from_youtube(rp: &RustyPipe, video_id: &str) -> Option<Lyrics> {
     let q = rp.query();
     let lyrics_id = q.music_details(video_id).await.ok()?.lyrics_id?;
     if let Some(lines) = synced(&lyrics_id).await {
@@ -71,18 +74,24 @@ async fn from_youtube(rp: &RustyPipe, video_id: &str) -> Option<Lyrics> {
 
 /// The synced lines behind `lyrics_id` (an "MPLYt…" id), as the phone app gets them.
 async fn synced(lyrics_id: &str) -> Option<Vec<LyricLine>> {
-    let body = json!({
-        "browseId": lyrics_id,
-        "context": { "client": {
-            "clientName": APP_CLIENT,
-            "clientVersion": APP_VERSION,
-            "androidSdkVersion": 30,
-            "hl": "en",
-        } },
-    });
-    let answer: Value = reqwest::Client::new()
+    let request = json!({ "browseId": lyrics_id });
+    let answer = app_browse(request, APP_VERSION, "en").await?;
+    let lines = timed_lines(&answer);
+    (!lines.is_empty()).then_some(lines)
+}
+
+/// Sends `request` (a `browse` body without its context) as version `version` of the phone
+/// app, asking for YouTube's texts in language `hl`.
+pub(crate) async fn app_browse(mut request: Value, version: &str, hl: &str) -> Option<Value> {
+    request["context"] = json!({ "client": {
+        "clientName": APP_CLIENT,
+        "clientVersion": version,
+        "androidSdkVersion": 30,
+        "hl": hl,
+    } });
+    reqwest::Client::new()
         .post(BROWSE_URL)
-        .json(&body)
+        .json(&request)
         .send()
         .await
         .ok()?
@@ -90,9 +99,7 @@ async fn synced(lyrics_id: &str) -> Option<Vec<LyricLine>> {
         .ok()?
         .json()
         .await
-        .ok()?;
-    let lines = timed_lines(&answer);
-    (!lines.is_empty()).then_some(lines)
+        .ok()
 }
 
 /// The lines of a `timedLyricsModel` answer, each with when it starts.
@@ -118,7 +125,7 @@ fn timed_lines(answer: &Value) -> Vec<LyricLine> {
 }
 
 /// The first value under `key`, anywhere in `value`.
-fn find<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
+pub(crate) fn find<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
     match value {
         Value::Object(map) => map
             .get(key)

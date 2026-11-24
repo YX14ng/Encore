@@ -98,6 +98,7 @@ impl App {
         };
         self.lyrics = Lyrics::Loading;
         self.romanized = None;
+        self.forget_translation();
         self.follow_lyrics();
         let now_playing = if self.plugins.lastfm {
             self.lastfm.track_started(&track)
@@ -144,12 +145,14 @@ impl App {
         };
         let video = self.find_video();
         let id = track.id.clone();
+        let translation = self.fetch_translation(&id);
         let lyrics = Task::perform(
             lyrics_source::fetch(track, self.online.client()),
             move |lyrics| Message::LyricsLoaded(id.clone(), lyrics),
         );
         Task::batch([
             lyrics,
+            translation,
             now_playing,
             notice,
             segments,
@@ -323,6 +326,7 @@ impl App {
         self.audio_format = None;
         self.lyrics = Lyrics::Loading;
         self.romanized = None;
+        self.forget_translation();
     }
 }
 
